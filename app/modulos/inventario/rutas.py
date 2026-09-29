@@ -7,7 +7,7 @@
 from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, Depends, Query, status
 
 from app.comun.errores import respuestas_error
 from app.comun.paginacion import Pagina, Paginacion
@@ -27,10 +27,14 @@ from app.modulos.inventario.esquemas import (
     VehiculoGestion,
 )
 from app.modulos.inventario.modelos import EstadoNovedad, EstadoVehiculo
-from app.seguridad import AdministradorUOperador
+from app.modulos.usuarios.modelos import Usuario
+from app.seguridad import AdministradorUOperador, requiere_roles
 
 enrutador_catalogo = APIRouter(prefix="/catalogo", tags=["catálogo"])
 enrutador_vehiculos = APIRouter(prefix="/vehiculos", tags=["flota"])
+
+# Administrador, operador o domiciliario: los mismos roles que exige el servicio.
+QuienReporta = Annotated[Usuario, Depends(requiere_roles(*servicio.ROLES_QUE_REPORTAN))]
 
 
 @enrutador_catalogo.get(
@@ -156,14 +160,15 @@ def inactivar(
     "/{vehiculo_id}/novedades",
     response_model=OperacionVehiculo,
     status_code=status.HTTP_201_CREATED,
-    summary="Reportar una novedad",
+    summary="Reportar una novedad (también el domiciliario)",
     responses=respuestas_error(401, 403, 404, 409, 422),
 )
 def reportar_novedad(
-    sesion: SesionBD, usuario: AdministradorUOperador, vehiculo_id: int, datos: NovedadCrear
+    sesion: SesionBD, usuario: QuienReporta, vehiculo_id: int, datos: NovedadCrear
 ) -> OperacionVehiculo:
     """Daño, falla, pérdida de accesorio, batería baja o incidente (SRS 3.1.8). Si es crítica,
-    la unidad pasa a `mantenimiento` automáticamente.
+    la unidad pasa a `mantenimiento` automáticamente. Pueden reportar el administrador, el
+    operador y el domiciliario; cerrar novedades y devolver unidades es solo del taller.
     """
     resultado = servicio.reportar_novedad(sesion, vehiculo_id, datos, usuario)
     return OperacionVehiculo.model_validate(resultado)

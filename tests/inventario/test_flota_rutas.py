@@ -9,26 +9,52 @@ import pytest
 from app.modulos.usuarios.modelos import Rol
 from tests.conftest import encabezado_de
 
-RUTAS = [
+REPORTAR = ("post", "/vehiculos/1/novedades")
+SOLO_TALLER = [
     ("get", "/vehiculos"),
     ("get", "/vehiculos/1/novedades"),
     ("post", "/vehiculos/1/inactivacion"),
-    ("post", "/vehiculos/1/novedades"),
     ("post", "/vehiculos/1/novedades/1/cierre"),
 ]
+RUTAS = [*SOLO_TALLER, REPORTAR]
 
 
-@pytest.mark.parametrize("rol", [Rol.CLIENTE, Rol.DOMICILIARIO])
 @pytest.mark.parametrize(("metodo", "ruta"), RUTAS)
-def test_clientes_y_domiciliarios_no_gestionan_la_flota(
-    cliente_api, crear_usuario, rol: Rol, metodo: str, ruta: str
+def test_el_cliente_no_entra_a_ninguna_ruta_de_la_flota(
+    cliente_api, crear_usuario, metodo: str, ruta: str
 ) -> None:
     respuesta = cliente_api.request(
-        metodo, ruta, headers=encabezado_de(crear_usuario(rol)), json={}
+        metodo, ruta, headers=encabezado_de(crear_usuario(Rol.CLIENTE)), json={}
     )
 
     assert respuesta.status_code == 403
     assert respuesta.json()["error"]["codigo"] == "permiso_denegado"
+
+
+@pytest.mark.parametrize(("metodo", "ruta"), SOLO_TALLER)
+def test_el_domiciliario_solo_puede_reportar(
+    cliente_api, crear_usuario, metodo: str, ruta: str
+) -> None:
+    respuesta = cliente_api.request(
+        metodo, ruta, headers=encabezado_de(crear_usuario(Rol.DOMICILIARIO)), json={}
+    )
+
+    assert respuesta.status_code == 403
+
+
+def test_el_domiciliario_reporta_una_falla_critica_por_la_api(
+    cliente_api, crear_usuario, fabrica
+) -> None:
+    vehiculo = fabrica.vehiculo(codigo="MON-0001")
+
+    respuesta = cliente_api.post(
+        f"/vehiculos/{vehiculo.id}/novedades",
+        json={"tipo": "falla", "descripcion": "Se apagó en plena ruta.", "es_critica": True},
+        headers=encabezado_de(crear_usuario(Rol.DOMICILIARIO)),
+    )
+
+    assert respuesta.status_code == 201
+    assert respuesta.json()["vehiculo"]["estado"] == "mantenimiento"
 
 
 @pytest.mark.parametrize(("metodo", "ruta"), RUTAS)
@@ -77,7 +103,7 @@ def test_regreso_rechazado_responde_409_con_la_causa(cliente_api, crear_usuario,
     ).json()["novedad"]
     cliente_api.post(
         f"/vehiculos/{vehiculo.id}/novedades",
-        json={"tipo": "dano", "descripcion": "Rayón lateral."},
+        json={"tipo": "falla", "descripcion": "El acelerador falla.", "es_critica": True},
         headers=operador,
     )
 
@@ -90,4 +116,4 @@ def test_regreso_rechazado_responde_409_con_la_causa(cliente_api, crear_usuario,
     assert respuesta.status_code == 409
     error = respuesta.json()["error"]
     assert error["codigo"] == "no_puede_volver_a_servicio"
-    assert "novedad(es) abierta(s)" in error["mensaje"]
+    assert "novedad(es) crítica(s) abierta(s)" in error["mensaje"]

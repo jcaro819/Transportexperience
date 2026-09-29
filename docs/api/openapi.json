@@ -1150,8 +1150,8 @@
         "tags": [
           "flota"
         ],
-        "summary": "Reportar una novedad",
-        "description": "Daño, falla, pérdida de accesorio, batería baja o incidente (SRS 3.1.8). Si es crítica,\nla unidad pasa a `mantenimiento` automáticamente.",
+        "summary": "Reportar una novedad (también el domiciliario)",
+        "description": "Daño, falla, pérdida de accesorio, batería baja o incidente (SRS 3.1.8). Si es crítica,\nla unidad pasa a `mantenimiento` automáticamente. Pueden reportar el administrador, el\noperador y el domiciliario; cerrar novedades y devolver unidades es solo del taller.",
         "operationId": "reportar_novedad_vehiculos__vehiculo_id__novedades_post",
         "security": [
           {

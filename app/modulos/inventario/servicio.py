@@ -228,7 +228,10 @@ def consultar_disponibilidad(
 # todo antes de modificar nada, y confirma su transacción al final. Si algo falla, la
 # unidad queda exactamente como estaba (SRS 3.3.4).
 
-_ROLES_DE_TALLER = frozenset({Rol.ADMINISTRADOR, Rol.OPERADOR})
+# Inactivar, cerrar novedades y devolver a servicio: solo el taller.
+ROLES_DE_TALLER = frozenset({Rol.ADMINISTRADOR, Rol.OPERADOR})
+# Reportar novedades (incluidas críticas): también el domiciliario, que ve la unidad en ruta.
+ROLES_QUE_REPORTAN = ROLES_DE_TALLER | {Rol.DOMICILIARIO}
 
 
 @dataclass(frozen=True)
@@ -238,9 +241,9 @@ class ResultadoOperacion:
     alquileres_afectados: list[Alquiler]
 
 
-def _exigir_rol_de_taller(usuario: Usuario) -> None:
+def _exigir_rol(usuario: Usuario, permitidos: frozenset[Rol]) -> None:
     # Las rutas ya lo exigen; el servicio lo repite para que ninguna llamada futura lo salte.
-    if usuario.rol not in _ROLES_DE_TALLER:
+    if usuario.rol not in permitidos:
         raise PermisoDenegado()
 
 
@@ -331,10 +334,11 @@ def reportar_novedad(
 ) -> ResultadoOperacion:
     """Registra una novedad. Si es crítica, la unidad pasa a mantenimiento automáticamente.
 
-    Los alquileres vigentes de la unidad NO se cancelan: se devuelven en
-    ``alquileres_afectados`` para que el personal decida qué hacer con cada uno.
+    Pueden reportar el administrador, el operador y el domiciliario. Los alquileres
+    vigentes de la unidad NO se cancelan: se devuelven en ``alquileres_afectados`` para que
+    el personal decida qué hacer con cada uno.
     """
-    _exigir_rol_de_taller(usuario)
+    _exigir_rol(usuario, ROLES_QUE_REPORTAN)
     vehiculo = bloquear_vehiculo(sesion, vehiculo_id)
     if vehiculo.estado == EstadoVehiculo.VENDIDO:
         raise VehiculoVendido()
@@ -371,7 +375,11 @@ def inactivar_vehiculo(
     hoy: date | None = None,
     momento: datetime | None = None,
 ) -> ResultadoOperacion:
-    """HU-09: saca la unidad de servicio con un motivo. Desaparece del catálogo al instante."""
+    """HU-09: saca la unidad de servicio con un motivo. Desaparece del catálogo al instante.
+
+    Solo el taller (administrador u operador); el domiciliario reporta novedades.
+    """
+    _exigir_rol(usuario, ROLES_DE_TALLER)
     datos = NovedadCrear(tipo=TipoNovedad.MANTENIMIENTO, descripcion=motivo, es_critica=True)
     return reportar_novedad(sesion, vehiculo_id, datos, usuario, hoy=hoy, momento=momento)
 
@@ -385,17 +393,19 @@ def _verificar_que_puede_volver(
             f"La unidad está en '{vehiculo.estado}', no en mantenimiento: no hay nada que "
             "devolver a servicio."
         )
-    otras_abiertas = sesion.scalar(
+    # Solo bloquean las críticas: las no críticas quedan como registro (p. ej., un rayón).
+    otras_criticas = sesion.scalar(
         select(func.count()).where(
             NovedadVehiculo.vehiculo_id == vehiculo.id,
             NovedadVehiculo.estado == EstadoNovedad.ABIERTA,
+            NovedadVehiculo.es_critica,
             NovedadVehiculo.id != novedad_que_se_cierra,
         )
     )
-    if otras_abiertas:
+    if otras_criticas:
         raise NoPuedeVolverAServicio(
-            f"La unidad tiene {otras_abiertas} novedad(es) abierta(s) además de esta. "
-            "Ciérralas antes de devolverla a servicio."
+            f"La unidad tiene {otras_criticas} novedad(es) crítica(s) abierta(s) además de "
+            "esta. Ciérralas antes de devolverla a servicio."
         )
     if sesion.scalars(consulta_alquiler_en_curso(vehiculo.id)).first() is not None:
         raise NoPuedeVolverAServicio(
@@ -417,7 +427,7 @@ def cerrar_novedad(
     Solo un operador o un administrador. Con ``devolver_a_servicio`` todo se valida antes
     de tocar nada: si la unidad no puede volver, la novedad tampoco se cierra.
     """
-    _exigir_rol_de_taller(usuario)
+    _exigir_rol(usuario, ROLES_DE_TALLER)
     vehiculo = bloquear_vehiculo(sesion, vehiculo_id)
     novedad = sesion.scalars(
         select(NovedadVehiculo)

@@ -229,10 +229,12 @@ def test_cerrar_sin_devolver_deja_la_unidad_en_mantenimiento(sesion, fabrica, op
     assert vehiculo.estado == EstadoVehiculo.MANTENIMIENTO
 
 
-def test_no_vuelve_con_otra_novedad_abierta_y_no_cierra_nada(sesion, fabrica, operador) -> None:
+def test_no_vuelve_con_otra_novedad_critica_abierta_y_no_cierra_nada(
+    sesion, fabrica, operador
+) -> None:
     vehiculo = fabrica.vehiculo()
     novedad = _inactivar(sesion, vehiculo, operador).novedad
-    _reportar(sesion, vehiculo, operador, critica=False)
+    _reportar(sesion, vehiculo, operador, critica=True, tipo=TipoNovedad.FALLA)
 
     with pytest.raises(NoPuedeVolverAServicio, match="1 novedad"):
         _cerrar(sesion, vehiculo, novedad, operador, devolver=True)
@@ -244,13 +246,62 @@ def test_no_vuelve_con_otra_novedad_abierta_y_no_cierra_nada(sesion, fabrica, op
     assert vehiculo.estado == EstadoVehiculo.MANTENIMIENTO
 
 
-def test_cerrando_primero_las_demas_si_vuelve(sesion, fabrica, operador) -> None:
+def test_una_novedad_no_critica_abierta_no_impide_el_regreso(sesion, fabrica, operador) -> None:
     vehiculo = fabrica.vehiculo()
     principal = _inactivar(sesion, vehiculo, operador).novedad
-    menor = _reportar(sesion, vehiculo, operador, critica=False).novedad
+    rayon = _reportar(sesion, vehiculo, operador, critica=False).novedad
 
-    _cerrar(sesion, vehiculo, menor, operador, devolver=False)
     _cerrar(sesion, vehiculo, principal, operador, devolver=True)
+
+    assert vehiculo.estado == EstadoVehiculo.DISPONIBLE
+    assert rayon.estado == EstadoNovedad.ABIERTA  # queda como registro
+
+
+def test_cerrando_primero_las_demas_criticas_si_vuelve(sesion, fabrica, operador) -> None:
+    vehiculo = fabrica.vehiculo()
+    principal = _inactivar(sesion, vehiculo, operador).novedad
+    falla = _reportar(sesion, vehiculo, operador, critica=True, tipo=TipoNovedad.FALLA).novedad
+
+    _cerrar(sesion, vehiculo, falla, operador, devolver=False)
+    _cerrar(sesion, vehiculo, principal, operador, devolver=True)
+
+    assert vehiculo.estado == EstadoVehiculo.DISPONIBLE
+
+
+# --- Domiciliario: reporta, pero no cierra ni devuelve --------------------------------
+
+
+def test_el_domiciliario_reporta_una_novedad_critica(sesion, fabrica, crear_usuario) -> None:
+    domiciliario = crear_usuario(Rol.DOMICILIARIO)
+    vehiculo = fabrica.vehiculo(estado=EstadoVehiculo.ASIGNADO_A_DOMICILIO)
+
+    resultado = _reportar(sesion, vehiculo, domiciliario, critica=True, tipo=TipoNovedad.FALLA)
+
+    assert vehiculo.estado == EstadoVehiculo.MANTENIMIENTO
+    assert resultado.novedad.reportada_por_id == domiciliario.id
+    [registro] = _cambios_de_estado(sesion, vehiculo)
+    assert registro.usuario_id == domiciliario.id
+
+
+@pytest.mark.parametrize("devolver", [False, True], ids=["solo_cerrar", "cerrar_y_devolver"])
+def test_el_domiciliario_no_cierra_novedades_ni_devuelve_unidades(
+    sesion, fabrica, crear_usuario, operador, devolver: bool
+) -> None:
+    vehiculo = fabrica.vehiculo()
+    novedad = _inactivar(sesion, vehiculo, operador).novedad
+
+    with pytest.raises(PermisoDenegado):
+        _cerrar(sesion, vehiculo, novedad, crear_usuario(Rol.DOMICILIARIO), devolver=devolver)
+
+    assert novedad.estado == EstadoNovedad.ABIERTA
+    assert vehiculo.estado == EstadoVehiculo.MANTENIMIENTO
+
+
+def test_el_cliente_no_reporta_novedades(sesion, fabrica, crear_usuario) -> None:
+    vehiculo = fabrica.vehiculo()
+
+    with pytest.raises(PermisoDenegado):
+        _reportar(sesion, vehiculo, crear_usuario(Rol.CLIENTE), critica=True)
 
     assert vehiculo.estado == EstadoVehiculo.DISPONIBLE
 
