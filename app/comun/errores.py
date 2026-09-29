@@ -105,7 +105,17 @@ async def _manejar_error_de_negocio(_: Request, error: ErrorDeNegocio) -> JSONRe
     )
 
 
+_CUERPO_INVALIDO = (
+    "cuerpo_invalido",
+    "El cuerpo de la solicitud no es un JSON válido.",
+    "Envía JSON bien formado y codificado en UTF-8.",
+)
+
+
 async def _manejar_validacion(_: Request, error: RequestValidationError) -> JSONResponse:
+    if any(e["type"] == "json_invalid" for e in error.errors()):
+        # JSON cortado o mal escrito: no hay "campos" que señalar, el problema es el cuerpo.
+        return _respuesta(status.HTTP_400_BAD_REQUEST, *_CUERPO_INVALIDO)
     detalles = [{"campo": _campo(e["loc"]), "mensaje": e["msg"]} for e in error.errors()]
     return _respuesta(
         status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -117,17 +127,18 @@ async def _manejar_validacion(_: Request, error: RequestValidationError) -> JSON
 
 
 async def _manejar_http(_: Request, error: StarletteHTTPException) -> JSONResponse:
+    revisar_ruta = "Revisa la dirección y el método de la solicitud."
     mensajes = {
-        404: ("recurso_no_encontrado", "La dirección solicitada no existe."),
-        405: ("metodo_no_permitido", "Esta dirección no admite ese método."),
+        # FastAPI responde 400 cuando el cuerpo no se puede leer como JSON.
+        400: _CUERPO_INVALIDO,
+        404: ("recurso_no_encontrado", "La dirección solicitada no existe.", revisar_ruta),
+        405: ("metodo_no_permitido", "Esta dirección no admite ese método.", revisar_ruta),
     }
-    codigo, mensaje = mensajes.get(error.status_code, (f"http_{error.status_code}", error.detail))
+    codigo, mensaje, accion = mensajes.get(
+        error.status_code, (f"http_{error.status_code}", str(error.detail), revisar_ruta)
+    )
     return _respuesta(
-        error.status_code,
-        codigo,
-        str(mensaje),
-        "Revisa la dirección y el método de la solicitud.",
-        encabezados=getattr(error, "headers", None),
+        error.status_code, codigo, mensaje, accion, encabezados=getattr(error, "headers", None)
     )
 
 

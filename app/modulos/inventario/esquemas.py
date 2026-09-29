@@ -4,14 +4,20 @@ Todo el dinero va en pesos colombianos enteros.
 """
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from enum import StrEnum
 from typing import Annotated, Self
 
 from fastapi import Depends, Query
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
-from app.modulos.inventario.modelos import ModeloVehiculo, Vehiculo
+from app.modulos.inventario.modelos import (
+    EstadoNovedad,
+    EstadoVehiculo,
+    ModeloVehiculo,
+    TipoNovedad,
+    Vehiculo,
+)
 
 
 class Modalidad(StrEnum):
@@ -131,3 +137,105 @@ class DisponibilidadRango(BaseModel):
     dias: int = Field(description="Días del rango, contando inicio y fin.")
     unidades_libres: int
     disponible: bool = Field(description="true si hay al menos una unidad libre.")
+
+
+# --- Gestión de la flota (HU-09): solo administrador y operador ---------------------------
+
+
+class ModeloResumen(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    nombre: str
+
+
+class VehiculoGestion(BaseModel):
+    """Una unidad vista por el personal: con su estado real, no solo si está libre."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    codigo: str
+    modelo: ModeloResumen
+    estado: EstadoVehiculo
+    nivel_bateria: int | None
+    ubicacion: str | None
+    observaciones: str | None
+
+
+class NovedadCrear(BaseModel):
+    """Reporte de una novedad (SRS 3.1.8). Si es crítica, la unidad pasa a mantenimiento."""
+
+    tipo: TipoNovedad
+    descripcion: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=5, max_length=2000)
+    ]
+    es_critica: bool = Field(
+        False, description="true: la unidad sale de servicio hasta que un operador la devuelva."
+    )
+
+
+class InactivacionCrear(BaseModel):
+    """Inactivación para mantenimiento (HU-09). Equivale a una novedad crítica de mantenimiento."""
+
+    motivo: Annotated[
+        str,
+        StringConstraints(strip_whitespace=True, min_length=5, max_length=2000),
+        Field(examples=["Cambio de rodamientos de la rueda delantera."]),
+    ]
+
+
+class CierreNovedad(BaseModel):
+    solucion: Annotated[
+        str,
+        StringConstraints(strip_whitespace=True, min_length=5, max_length=2000),
+        Field(examples=["Se cambiaron los rodamientos y se probó en ruta."]),
+    ]
+    devolver_a_servicio: bool = Field(
+        False,
+        description=(
+            "true: además de cerrar la novedad, la unidad vuelve a `disponible`. Se rechaza "
+            "(y la novedad no se cierra) si la unidad tiene otra novedad abierta, un domicilio "
+            "sin finalizar o un alquiler en curso."
+        ),
+    )
+
+
+class NovedadRespuesta(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    vehiculo_id: int
+    tipo: TipoNovedad
+    descripcion: str
+    es_critica: bool
+    estado: EstadoNovedad
+    reportada_por_id: int
+    creado_en: datetime
+    cerrada_por_id: int | None
+    cerrada_en: datetime | None
+    solucion: str | None
+
+
+class AlquilerAfectado(BaseModel):
+    """Alquiler activo de una unidad que salió de servicio. No se cancela solo."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    fecha_inicio: date
+    fecha_fin: date
+    estado: str
+
+
+class OperacionVehiculo(BaseModel):
+    """Resultado de reportar, inactivar o cerrar: la unidad y la novedad como quedaron."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    vehiculo: VehiculoGestion
+    novedad: NovedadRespuesta
+    alquileres_afectados: list[AlquilerAfectado] = Field(
+        default_factory=list,
+        description="Alquileres activos o futuros de la unidad, para que el personal los atienda.",
+    )

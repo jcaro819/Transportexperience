@@ -162,11 +162,46 @@ correspondiente, y si el equipo corrige el SRS, actualiza este archivo.
 3. **Las unidades dentro de la ficha de un modelo van sin paginar** (ver la excepción en la
    sección 9).
 
+### Decisiones de la revisión de HU-09 (29/09/2026)
+
+1. **Solo las novedades críticas abiertas bloquean el regreso a servicio.** Las no críticas
+   quedan como registro y no bloquean.
+2. **Los domiciliarios pueden reportar novedades, incluidas críticas**, pero **no pueden
+   cerrarlas ni devolver unidades a servicio**: eso es solo de operador y administrador.
+   Inactivar (HU-09) también es solo de operador y administrador.
+3. **Los alquileres vigentes de una unidad que sale de servicio no se cancelan solos.** La
+   respuesta los informa en `alquileres_afectados`.
+
 ### Decisiones pendientes para HU-03
 
 1. **Máximo de días por alquiler.** Hay que definir cuántos días puede durar como máximo un
    alquiler. Va **configurable en base de datos** por el administrador, no como constante en
    el código (SRS 3.5.3).
+2. **Vehículo que pasa a mantenimiento durante un alquiler en curso.** La devolución debe
+   finalizar el alquiler **sin intentar pasar el vehículo a `disponible`**: se queda en
+   `mantenimiento` hasta que el taller cierre su novedad.
+3. **Alquileres afectados por una unidad que sale de servicio (propuesta, sin implementar):**
+   - Reasignación **asistida por el administrador**: un endpoint para mover el alquiler a
+     otra unidad libre del mismo modelo en esas fechas, con el mismo precio, bloqueando las
+     dos unidades en la misma transacción.
+   - Si no hay unidad libre, el administrador decide entre esperar a que la unidad vuelva o
+     cancelar con devolución (pago de compensación, sección 7.3).
+   - Consulta de **"alquileres en riesgo"**: alquileres futuros de unidades en
+     mantenimiento, para que nadie los olvide.
+   - La reasignación automática queda para después.
+
+### Decisiones pendientes para HU-04 y HU-05
+
+1. **Vehículo reservado para compra que pasa a mantenimiento y luego se aprueba el pago.**
+   Opciones: devolver el dinero con un pago de compensación, o impedir la inactivación
+   mientras haya una compra pendiente. **Se decide al llegar a HU-04.**
+
+### Casos pendientes para HU-06
+
+1. **El vehículo del domiciliario sale de su domicilio asignado.** El domiciliario no puede
+   listar la flota (`GET /vehiculos` es solo del taller), así que el vehículo que usa y sobre
+   el que puede reportar novedades lo debe obtener de su domicilio asignado
+   (`domicilios.vehiculo_transporte_id`).
 
 ---
 
@@ -438,15 +473,15 @@ En este orden. No saltes pasos, y para después de cada bloque para que yo revis
 **Bloque 1 — Sprint 1 (HU-12, HU-02, HU-09, HU-01)**
 
 6. Usuarios, JWT, RBAC con los cuatro roles, y las dependencias de FastAPI que protegen
-   las rutas por rol.
-7. Catálogo con filtros, paginación y disponibilidad en tiempo real.
+   las rutas por rol. **Hecho (HU-12, PR #1).**
+7. Catálogo con filtros, paginación y disponibilidad en tiempo real. **Hecho (HU-02, PR #2).**
 8. Inactivación de unidades con motivo, y que desaparezcan del catálogo público al
-   instante.
+   instante. **Hecho (HU-09, rama `hu-09-inactivacion`).**
 9. Endpoints del portal institucional.
 10. Exportar el OpenAPI y avisarle al frontend que ya puede empezar.
 
 De ahí en adelante seguimos el backlog sprint por sprint.
 
-**El siguiente es el Bloque 1, paso 6** (usuarios, JWT y RBAC), en la rama
-`hu-12-usuarios` que sale de `main`. Cuando lo termines, muéstrame qué quedó y espera mi
-confirmación antes de seguir al paso 7.
+**El siguiente es el Bloque 1, paso 9** (HU-01, portal institucional), en la rama
+`hu-01-portal` que sale de `main`, y luego el **paso 10** (OpenAPI para el frontend).
+Cuando termines cada paso, muéstrame qué quedó y espera mi confirmación antes de seguir.

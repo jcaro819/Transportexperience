@@ -28,3 +28,27 @@ def consulta_vehiculos_ocupados(inicio: date, fin: date, momento: datetime) -> S
         or_(Alquiler.estado != EstadoAlquiler.PENDIENTE_PAGO, Alquiler.expira_en > momento),
         _RANGO_ALQUILER.op("&&")(pedido),
     )
+
+
+def consulta_alquileres_vigentes(vehiculo_id: int, desde: date, momento: datetime) -> Select:
+    """Alquileres activos del vehículo que terminan ``desde`` en adelante (en curso o futuros).
+
+    Igual que arriba, un ``pendiente_pago`` vencido no cuenta.
+    """
+    return (
+        select(Alquiler)
+        .where(
+            Alquiler.vehiculo_id == vehiculo_id,
+            Alquiler.estado.in_(ESTADOS_ACTIVOS),
+            or_(Alquiler.estado != EstadoAlquiler.PENDIENTE_PAGO, Alquiler.expira_en > momento),
+            Alquiler.fecha_fin >= desde,
+        )
+        .order_by(Alquiler.fecha_inicio)
+    )
+
+
+def consulta_alquiler_en_curso(vehiculo_id: int) -> Select:
+    """El alquiler que el cliente tiene en sus manos ahora mismo, si existe."""
+    return select(Alquiler.id).where(
+        Alquiler.vehiculo_id == vehiculo_id, Alquiler.estado == EstadoAlquiler.EN_CURSO
+    )

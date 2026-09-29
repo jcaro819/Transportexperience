@@ -117,3 +117,6 @@ def requiere_roles(*roles: Rol) -> Callable[[Usuario], Usuario]:
 
 
 SoloAdministrador = Annotated[Usuario, Depends(requiere_roles(Rol.ADMINISTRADOR))]
+AdministradorUOperador = Annotated[
+    Usuario, Depends(requiere_roles(Rol.ADMINISTRADOR, Rol.OPERADOR))
+]

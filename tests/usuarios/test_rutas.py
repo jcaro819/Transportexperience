@@ -148,3 +148,19 @@ def test_login_con_la_contrasena_de_pruebas(cliente_api, crear_usuario) -> None:
 
     assert respuesta.status_code == 200
     assert respuesta.json()["usuario"]["rol"] == "domiciliario"
+
+
+@pytest.mark.parametrize(
+    "cuerpo",
+    [b'{"nombre_completo": "Carla", "correo": ', '{"motivo": "ajustó"}'.encode("latin-1")],
+    ids=["json_cortado", "no_es_utf8"],
+)
+def test_json_mal_formado_responde_con_la_causa(cliente_api, cuerpo: bytes) -> None:
+    respuesta = cliente_api.post(
+        "/usuarios/registro", content=cuerpo, headers={"Content-Type": "application/json"}
+    )
+
+    assert respuesta.status_code == 400
+    error = respuesta.json()["error"]
+    assert error["codigo"] == "cuerpo_invalido"
+    assert "UTF-8" in error["accion"]
