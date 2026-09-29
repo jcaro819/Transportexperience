@@ -43,12 +43,20 @@ class Configuracion(BaseSettings):
     jwt_secreto: str
     jwt_minutos_expiracion: int = 60
 
+    # Orígenes del frontend que el navegador deja llamar a la API (CORS), separados por
+    # comas. Por defecto, los puertos de desarrollo de Vite, React/Next y Angular.
+    cors_origenes: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,http://localhost:4200"
+
     gps_fuente: Literal["simulador", "dispositivo"] = "simulador"
 
     pagos_proveedor: Literal["falso", "wompi"] = "falso"
     wompi_llave_publica: str = ""
     wompi_llave_privada: str = ""
     wompi_secreto_eventos: str = ""
+
+    @property
+    def lista_cors_origenes(self) -> list[str]:
+        return [origen.strip() for origen in self.cors_origenes.split(",") if origen.strip()]
 
     @field_validator("jwt_secreto")
     @classmethod
