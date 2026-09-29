@@ -63,10 +63,15 @@ class Pagina(BaseModel, Generic[T]):
     paginas: int
 
 
-def paginar(sesion: Session, consulta: Select, parametros: ParametrosPagina) -> ResultadoPagina:
-    """Ejecuta ``consulta`` devolviendo solo la página pedida, más el total de filas."""
+def paginar(
+    sesion: Session, consulta: Select, parametros: ParametrosPagina, *, filas: bool = False
+) -> ResultadoPagina:
+    """Ejecuta ``consulta`` devolviendo solo la página pedida, más el total de filas.
+
+    Con ``filas=True`` cada elemento es una fila con todas las columnas seleccionadas;
+    si no, solo la primera (normalmente, el objeto del modelo).
+    """
     total = sesion.scalar(select(func.count()).select_from(consulta.order_by(None).subquery()))
-    elementos = sesion.scalars(
-        consulta.limit(parametros.tamano).offset(parametros.desplazamiento)
-    ).all()
+    pagina = consulta.limit(parametros.tamano).offset(parametros.desplazamiento)
+    elementos = sesion.execute(pagina).all() if filas else sesion.scalars(pagina).all()
     return ResultadoPagina(list(elementos), total or 0, parametros.pagina, parametros.tamano)
