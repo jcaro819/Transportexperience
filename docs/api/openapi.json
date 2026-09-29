@@ -1,0 +1,1100 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "TransportExperience API",
+    "description": "\nBackend del MVP de TransportExperience: alquiler, venta y domicilio de ciclas, patines y\nmonopatines eléctricos.\n\n**Autenticación.** `POST /autenticacion/token` con un formulario `username` (el correo) y\n`password`. Envía el `access_token` recibido en el encabezado `Authorization: Bearer <token>`.\nEn esta página, usa el botón **Authorize**.\n\n**Errores.** Todas las respuestas de error tienen la forma\n`{\"error\": {\"codigo\", \"mensaje\", \"accion\", \"detalles\"}}`. Decide por `codigo`; muestra\n`mensaje` y `accion` al usuario.\n\n**Listas.** Siempre paginadas: parámetros `pagina` (desde 1) y `tamano` (máx. 100).\n",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/autenticacion/token": {
+      "post": {
+        "tags": [
+          "autenticación"
+        ],
+        "summary": "Iniciar sesión",
+        "description": "Recibe un formulario (``application/x-www-form-urlencoded``) con ``username`` = el\ncorreo y ``password``. Devuelve el token para enviar en ``Authorization: Bearer``.",
+        "operationId": "iniciar_sesion_autenticacion_token_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_iniciar_sesion_autenticacion_token_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenAcceso"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/usuarios/registro": {
+      "post": {
+        "tags": [
+          "usuarios"
+        ],
+        "summary": "Registrarse como cliente",
+        "description": "Registro público. La cuenta queda con rol ``cliente``.",
+        "operationId": "registrarse_usuarios_registro_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistroCliente"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsuarioRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto con el estado actual",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/usuarios/yo": {
+      "get": {
+        "tags": [
+          "usuarios"
+        ],
+        "summary": "Mi perfil",
+        "description": "Datos del usuario dueño del token. Sirve para saber el rol y armar el menú.",
+        "operationId": "mi_perfil_usuarios_yo_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsuarioRespuesta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/usuarios": {
+      "get": {
+        "tags": [
+          "usuarios"
+        ],
+        "summary": "Listar usuarios (administrador)",
+        "operationId": "listar_usuarios_usuarios_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "rol",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Rol"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Rol"
+            }
+          },
+          {
+            "name": "activo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Activo"
+            }
+          },
+          {
+            "name": "busqueda",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Busca en nombre y correo.",
+              "title": "Busqueda"
+            },
+            "description": "Busca en nombre y correo."
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Número de página, desde 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Número de página, desde 1."
+          },
+          {
+            "name": "tamano",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Elementos por página (máx. 100).",
+              "default": 20,
+              "title": "Tamano"
+            },
+            "description": "Elementos por página (máx. 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_UsuarioRespuesta_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "usuarios"
+        ],
+        "summary": "Crear usuario con cualquier rol (administrador)",
+        "operationId": "crear_usuario_usuarios_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UsuarioCrear"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsuarioRespuesta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto con el estado actual",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/usuarios/{usuario_id}": {
+      "get": {
+        "tags": [
+          "usuarios"
+        ],
+        "summary": "Ver un usuario (administrador)",
+        "operationId": "ver_usuario_usuarios__usuario_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "usuario_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Usuario Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsuarioRespuesta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "usuarios"
+        ],
+        "summary": "Modificar rol, estado o datos de un usuario (administrador)",
+        "description": "Solo cambia los campos enviados. Para desactivar una cuenta: ``{\"activo\": false}``.",
+        "operationId": "actualizar_usuario_usuarios__usuario_id__patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "usuario_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Usuario Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UsuarioActualizar"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsuarioRespuesta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto con el estado actual",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/salud": {
+      "get": {
+        "tags": [
+          "sistema"
+        ],
+        "summary": "Chequeo de salud",
+        "description": "Indica si la API está viva y si alcanza la base de datos.",
+        "operationId": "salud_salud_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstadoSalud"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "La base de datos no responde",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstadoSalud"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Body_iniciar_sesion_autenticacion_token_post": {
+        "properties": {
+          "grant_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^password$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grant Type"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "title": "Password"
+          },
+          "scope": {
+            "type": "string",
+            "title": "Scope",
+            "default": ""
+          },
+          "client_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Id"
+          },
+          "client_secret": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "format": "password",
+            "title": "Client Secret"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "Body_iniciar_sesion_autenticacion_token_post"
+      },
+      "CuerpoError": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "mensaje": {
+            "type": "string",
+            "title": "Mensaje"
+          },
+          "accion": {
+            "type": "string",
+            "title": "Accion"
+          },
+          "detalles": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/DetalleCampo"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detalles"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "mensaje",
+          "accion"
+        ],
+        "title": "CuerpoError"
+      },
+      "DetalleCampo": {
+        "properties": {
+          "campo": {
+            "type": "string",
+            "title": "Campo"
+          },
+          "mensaje": {
+            "type": "string",
+            "title": "Mensaje"
+          }
+        },
+        "type": "object",
+        "required": [
+          "campo",
+          "mensaje"
+        ],
+        "title": "DetalleCampo"
+      },
+      "ErrorRespuesta": {
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/CuerpoError"
+          }
+        },
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "title": "ErrorRespuesta",
+        "description": "Forma de todas las respuestas de error de la API."
+      },
+      "EstadoSalud": {
+        "properties": {
+          "estado": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "degradado"
+            ],
+            "title": "Estado"
+          },
+          "base_datos": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "sin_conexion"
+            ],
+            "title": "Base Datos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "estado",
+          "base_datos"
+        ],
+        "title": "EstadoSalud",
+        "description": "Respuesta del chequeo de salud."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "Pagina_UsuarioRespuesta_": {
+        "properties": {
+          "elementos": {
+            "items": {
+              "$ref": "#/components/schemas/UsuarioRespuesta"
+            },
+            "type": "array",
+            "title": "Elementos"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamano": {
+            "type": "integer",
+            "title": "Tamano"
+          },
+          "paginas": {
+            "type": "integer",
+            "title": "Paginas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "elementos",
+          "total",
+          "pagina",
+          "tamano",
+          "paginas"
+        ],
+        "title": "Pagina[UsuarioRespuesta]"
+      },
+      "RegistroCliente": {
+        "properties": {
+          "nombre_completo": {
+            "type": "string",
+            "maxLength": 150,
+            "minLength": 3,
+            "title": "Nombre Completo",
+            "examples": [
+              "Carla Cliente"
+            ]
+          },
+          "correo": {
+            "type": "string",
+            "maxLength": 254,
+            "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
+            "title": "Correo",
+            "examples": [
+              "carla@correo.com"
+            ]
+          },
+          "telefono": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\+?[0-9 ]{7,20}$",
+                "examples": [
+                  "3001234567"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telefono"
+          },
+          "contrasena": {
+            "type": "string",
+            "maxLength": 72,
+            "minLength": 8,
+            "title": "Contrasena",
+            "description": "Mínimo 8 caracteres.",
+            "examples": [
+              "MiClave2026"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre_completo",
+          "correo",
+          "contrasena"
+        ],
+        "title": "RegistroCliente",
+        "description": "Registro público. La cuenta creada siempre tiene rol ``cliente``."
+      },
+      "Rol": {
+        "type": "string",
+        "enum": [
+          "cliente",
+          "administrador",
+          "operador",
+          "domiciliario"
+        ],
+        "title": "Rol",
+        "description": "Los cuatro roles del SRS. HU-12 nombra tres; el domiciliario lo exigen HU-06 y HU-07."
+      },
+      "TokenAcceso": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "token_type": {
+            "type": "string",
+            "const": "bearer",
+            "title": "Token Type",
+            "default": "bearer"
+          },
+          "expira_en_segundos": {
+            "type": "integer",
+            "title": "Expira En Segundos",
+            "description": "Tras este tiempo hay que iniciar sesión de nuevo."
+          },
+          "usuario": {
+            "$ref": "#/components/schemas/UsuarioRespuesta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token",
+          "expira_en_segundos",
+          "usuario"
+        ],
+        "title": "TokenAcceso",
+        "description": "Respuesta del inicio de sesión (formato OAuth2, más los datos del usuario)."
+      },
+      "UsuarioActualizar": {
+        "properties": {
+          "nombre_completo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 150,
+                "minLength": 3,
+                "examples": [
+                  "Carla Cliente"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nombre Completo"
+          },
+          "telefono": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\+?[0-9 ]{7,20}$",
+                "examples": [
+                  "3001234567"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telefono"
+          },
+          "rol": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Rol"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "activo": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activo",
+            "description": "false desactiva la cuenta (no se borra)."
+          }
+        },
+        "type": "object",
+        "title": "UsuarioActualizar",
+        "description": "Cambios parciales hechos por un administrador. Solo se aplican los campos enviados."
+      },
+      "UsuarioCrear": {
+        "properties": {
+          "nombre_completo": {
+            "type": "string",
+            "maxLength": 150,
+            "minLength": 3,
+            "title": "Nombre Completo",
+            "examples": [
+              "Carla Cliente"
+            ]
+          },
+          "correo": {
+            "type": "string",
+            "maxLength": 254,
+            "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
+            "title": "Correo",
+            "examples": [
+              "carla@correo.com"
+            ]
+          },
+          "telefono": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\+?[0-9 ]{7,20}$",
+                "examples": [
+                  "3001234567"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telefono"
+          },
+          "contrasena": {
+            "type": "string",
+            "maxLength": 72,
+            "minLength": 8,
+            "title": "Contrasena",
+            "description": "Mínimo 8 caracteres.",
+            "examples": [
+              "MiClave2026"
+            ]
+          },
+          "rol": {
+            "$ref": "#/components/schemas/Rol"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre_completo",
+          "correo",
+          "contrasena",
+          "rol"
+        ],
+        "title": "UsuarioCrear",
+        "description": "Creación por un administrador, con cualquier rol."
+      },
+      "UsuarioRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nombre_completo": {
+            "type": "string",
+            "title": "Nombre Completo"
+          },
+          "correo": {
+            "type": "string",
+            "title": "Correo"
+          },
+          "telefono": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telefono"
+          },
+          "rol": {
+            "$ref": "#/components/schemas/Rol"
+          },
+          "activo": {
+            "type": "boolean",
+            "title": "Activo"
+          },
+          "creado_en": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Creado En"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre_completo",
+          "correo",
+          "telefono",
+          "rol",
+          "activo",
+          "creado_en"
+        ],
+        "title": "UsuarioRespuesta",
+        "description": "Usuario tal como lo ve la API. Nunca incluye el hash de la contraseña."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "OAuth2PasswordBearer": {
+        "type": "oauth2",
+        "flows": {
+          "password": {
+            "scopes": {},
+            "tokenUrl": "/autenticacion/token"
+          }
+        }
+      }
+    }
+  }
+}

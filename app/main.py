@@ -12,16 +12,29 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.comun.errores import registrar_manejadores
 from app.db import obtener_sesion
+from app.modulos.usuarios.rutas import enrutador_autenticacion, enrutador_usuarios
 
-app = FastAPI(
-    title="TransportExperience API",
-    version="0.1.0",
-    description=(
-        "Backend del MVP de TransportExperience: alquiler, venta y domicilio de "
-        "ciclas, patines y monopatines eléctricos."
-    ),
-)
+DESCRIPCION = """
+Backend del MVP de TransportExperience: alquiler, venta y domicilio de ciclas, patines y
+monopatines eléctricos.
+
+**Autenticación.** `POST /autenticacion/token` con un formulario `username` (el correo) y
+`password`. Envía el `access_token` recibido en el encabezado `Authorization: Bearer <token>`.
+En esta página, usa el botón **Authorize**.
+
+**Errores.** Todas las respuestas de error tienen la forma
+`{"error": {"codigo", "mensaje", "accion", "detalles"}}`. Decide por `codigo`; muestra
+`mensaje` y `accion` al usuario.
+
+**Listas.** Siempre paginadas: parámetros `pagina` (desde 1) y `tamano` (máx. 100).
+"""
+
+app = FastAPI(title="TransportExperience API", version="0.1.0", description=DESCRIPCION)
+registrar_manejadores(app)
+app.include_router(enrutador_autenticacion)
+app.include_router(enrutador_usuarios)
 
 
 class EstadoSalud(BaseModel):
