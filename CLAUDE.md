@@ -162,11 +162,39 @@ correspondiente, y si el equipo corrige el SRS, actualiza este archivo.
 3. **Las unidades dentro de la ficha de un modelo van sin paginar** (ver la excepción en la
    sección 9).
 
+### Decisiones de la revisión de HU-09 (29/09/2026)
+
+1. **Solo las novedades críticas abiertas bloquean el regreso a servicio.** Las no críticas
+   quedan como registro y no bloquean.
+2. **Los domiciliarios pueden reportar novedades, incluidas críticas**, pero **no pueden
+   cerrarlas ni devolver unidades a servicio**: eso es solo de operador y administrador.
+   Inactivar (HU-09) también es solo de operador y administrador.
+3. **Los alquileres vigentes de una unidad que sale de servicio no se cancelan solos.** La
+   respuesta los informa en `alquileres_afectados`.
+
 ### Decisiones pendientes para HU-03
 
 1. **Máximo de días por alquiler.** Hay que definir cuántos días puede durar como máximo un
    alquiler. Va **configurable en base de datos** por el administrador, no como constante en
    el código (SRS 3.5.3).
+2. **Vehículo que pasa a mantenimiento durante un alquiler en curso.** La devolución debe
+   finalizar el alquiler **sin intentar pasar el vehículo a `disponible`**: se queda en
+   `mantenimiento` hasta que el taller cierre su novedad.
+3. **Alquileres afectados por una unidad que sale de servicio (propuesta, sin implementar):**
+   - Reasignación **asistida por el administrador**: un endpoint para mover el alquiler a
+     otra unidad libre del mismo modelo en esas fechas, con el mismo precio, bloqueando las
+     dos unidades en la misma transacción.
+   - Si no hay unidad libre, el administrador decide entre esperar a que la unidad vuelva o
+     cancelar con devolución (pago de compensación, sección 7.3).
+   - Consulta de **"alquileres en riesgo"**: alquileres futuros de unidades en
+     mantenimiento, para que nadie los olvide.
+   - La reasignación automática queda para después.
+
+### Decisiones pendientes para HU-04 y HU-05
+
+1. **Vehículo reservado para compra que pasa a mantenimiento y luego se aprueba el pago.**
+   Opciones: devolver el dinero con un pago de compensación, o impedir la inactivación
+   mientras haya una compra pendiente. **Se decide al llegar a HU-04.**
 
 ---
 
