@@ -4,11 +4,36 @@ Ambos son editables por el administrador sin tocar código.
 """
 
 from datetime import datetime, time
+from enum import StrEnum
 
 from sqlalchemy import CheckConstraint, DateTime, SmallInteger, String, Text, Time, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
+
+
+class SeccionPortal(StrEnum):
+    """Secciones del portal que pide HU-01, en el orden en que se muestran."""
+
+    MISION = "mision"
+    VISION = "vision"
+    CONTACTO = "contacto"
+
+
+class DiaSemana(StrEnum):
+    """Días en el orden de ``horarios_atencion.dia_semana`` (0 = lunes ... 6 = domingo)."""
+
+    LUNES = "lunes"
+    MARTES = "martes"
+    MIERCOLES = "miercoles"
+    JUEVES = "jueves"
+    VIERNES = "viernes"
+    SABADO = "sabado"
+    DOMINGO = "domingo"
+
+    @property
+    def numero(self) -> int:
+        return list(DiaSemana).index(self)
 
 
 class ContenidoPortal(Base):
