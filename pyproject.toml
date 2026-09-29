@@ -7,6 +7,8 @@ authors = [{ name = "SystemSolutions" }]
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
+    # Formularios: el login OAuth2 de FastAPI (OAuth2PasswordRequestForm) los necesita.
+    "python-multipart>=0.0.9",
     "sqlalchemy>=2.0",
     "alembic>=1.13",
     "psycopg[binary]>=3.2",

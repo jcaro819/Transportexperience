@@ -1,7 +1,9 @@
 """Conexión a la base de datos y clase base de los modelos de SQLAlchemy."""
 
 from collections.abc import Iterator
+from typing import Annotated
 
+from fastapi import Depends
 from sqlalchemy import MetaData, create_engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
@@ -35,6 +37,14 @@ SesionLocal = sessionmaker(bind=motor, autoflush=False, expire_on_commit=False)
 
 
 def obtener_sesion() -> Iterator[Session]:
-    """Dependencia de FastAPI: abre una sesión por petición y la cierra al terminar."""
+    """Dependencia de FastAPI: abre una sesión por petición y la cierra al terminar.
+
+    No hace commit: cada función de servicio confirma su propia transacción. Lo que no se
+    confirmó se descarta al cerrar la sesión (SRS 3.3.4: conservar el estado anterior).
+    """
     with SesionLocal() as sesion:
         yield sesion
+
+
+# Úsalo como parámetro de una ruta: ``sesion: SesionBD``.
+SesionBD = Annotated[Session, Depends(obtener_sesion)]
