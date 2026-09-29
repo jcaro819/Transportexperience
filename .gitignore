@@ -1,0 +1,32 @@
+# Secretos: nunca se suben. Copia .env.example a .env y llénalo localmente.
+.env
+.env.*
+!.env.example
+
+# Entorno virtual
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Herramientas
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Bases de datos locales y respaldos
+*.sqlite3
+*.db
+backups/
+
+# Editores y sistema operativo
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

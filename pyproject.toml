@@ -1,0 +1,54 @@
+[project]
+name = "transportexperience"
+version = "0.1.0"
+description = "Backend del MVP de TransportExperience: alquiler, venta y domicilios de movilidad urbana liviana."
+requires-python = ">=3.11"
+authors = [{ name = "SystemSolutions" }]
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "sqlalchemy>=2.0",
+    "alembic>=1.13",
+    "psycopg[binary]>=3.2",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "python-jose[cryptography]>=3.3",
+    "passlib[bcrypt]>=1.7.4",
+    # bcrypt 5 rompe passlib 1.7.4 (falla al iniciar el hash); se fija por debajo.
+    "bcrypt>=4.0,<5",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.2",
+    "httpx>=0.27",
+    "ruff>=0.6",
+]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*", "simulador_gps*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+# E/W: estilo, F: errores, I: orden de imports, UP: sintaxis moderna,
+# B: bugs comunes, SIM: simplificaciones
+select = ["E", "W", "F", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+# FastAPI usa Depends(...) como valor por defecto a propósito.
+"app/**/rutas.py" = ["B008"]
+
+[tool.ruff.format]
+quote-style = "double"
