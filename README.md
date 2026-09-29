@@ -42,11 +42,12 @@ uvicorn app.main:app --reload    # docs en http://127.0.0.1:8000/docs
 ## Comandos habituales
 
 ```bash
-pytest                 # correr los tests
+pytest                 # correr los tests (necesita docker compose up: usan Postgres)
 ruff check .           # revisar estilo y errores
 ruff format .          # formatear el código
 alembic revision --autogenerate -m "descripcion"   # nueva migración
 alembic upgrade head   # aplicar migraciones pendientes
+python -m scripts.generar_diagrama_er   # regenerar docs/uml/modelo-datos.md
 docker compose down    # apagar la base (conserva los datos)
 ```
 

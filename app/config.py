@@ -30,6 +30,9 @@ class Configuracion(BaseSettings):
     entorno: Literal["desarrollo", "pruebas", "produccion"] = "desarrollo"
 
     database_url: str
+    # Base separada para los tests (mismo contenedor). Su nombre debe terminar en
+    # "_pruebas": los tests borran y recrean tablas, y así nunca tocan la base de desarrollo.
+    database_url_pruebas: str | None = None
 
     jwt_secreto: str
     jwt_minutos_expiracion: int = 60

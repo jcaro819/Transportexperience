@@ -46,9 +46,15 @@ target-version = "py311"
 # B: bugs comunes, SIM: simplificaciones
 select = ["E", "W", "F", "I", "UP", "B", "SIM"]
 
+[tool.ruff.lint.isort]
+# La carpeta alembic/ del repo hace creer a ruff que "alembic" es código propio.
+known-third-party = ["alembic"]
+
 [tool.ruff.lint.per-file-ignores]
 # FastAPI usa Depends(...) como valor por defecto a propósito.
 "app/**/rutas.py" = ["B008"]
+# Migraciones generadas por Alembic: contienen SQL en textos largos que no se pueden partir.
+"alembic/versions/*.py" = ["E501"]
 
 [tool.ruff.format]
 quote-style = "double"

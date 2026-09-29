@@ -4,7 +4,6 @@ from collections.abc import Iterator
 
 from sqlalchemy import MetaData, create_engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
-from sqlalchemy.pool import StaticPool
 
 from app.config import obtener_configuracion
 
@@ -25,16 +24,13 @@ class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=CONVENCION_NOMBRES)
 
 
-def _crear_motor(url: str):
-    """Crea el motor de SQLAlchemy. SQLite en memoria (tests) necesita una sola conexión."""
-    if url.startswith("sqlite"):
-        return create_engine(url, connect_args={"check_same_thread": False}, poolclass=StaticPool)
-    # Sin connect_timeout, una base caída deja cada petición colgada indefinidamente
-    # en lugar de fallar rápido con un error claro.
-    return create_engine(url, pool_pre_ping=True, connect_args={"connect_timeout": 5})
-
-
-motor = _crear_motor(obtener_configuracion().database_url)
+# connect_timeout: sin él, una base caída deja cada petición colgada indefinidamente en
+# lugar de fallar rápido con un error claro.
+motor = create_engine(
+    obtener_configuracion().database_url,
+    pool_pre_ping=True,
+    connect_args={"connect_timeout": 5},
+)
 SesionLocal = sessionmaker(bind=motor, autoflush=False, expire_on_commit=False)
 
 

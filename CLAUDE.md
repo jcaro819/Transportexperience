@@ -106,7 +106,9 @@ correspondiente, y si el equipo corrige el SRS, actualiza este archivo.
 5. **La numeración de secciones del SRS no coincide con su tabla de contenido.** No afecta
    el código, pero conviene arreglarlo antes de entregar.
 6. **HU-11 pide "firma digital de conformidad"** en el plan. Propuesta: registro de
-   conformidad con usuario, fecha y hash del PDF. Pendiente de confirmar.
+   conformidad con usuario, fecha y hash del PDF. La tabla `actas` ya existe con esos
+   campos (`conforme_por_id`, `conforme_en`, `hash_pdf`), pero **sigue pendiente de
+   confirmar con el equipo**.
 7. **Estados del domicilio:** HU-07 lista tres y el SRS 3.1.7 seis. Se usan los seis del
    SRS, que cubren los de HU-07.
 8. **Autenticación:** el SRS 3.9.4 dice OAuth y el backlog JWT. Se usa el flujo OAuth2
@@ -118,15 +120,40 @@ correspondiente, y si el equipo corrige el SRS, actualiza este archivo.
     como parte de HU-09.
 11. **El plan dice v0.1.1 en la portada** pero su historial llega a la 0.2.0.
 
-### Decisiones pendientes antes del modelo de datos (Bloque 0, paso 4)
+### Decisiones tomadas antes del modelo de datos (29/09/2026)
 
-1. Vehículos como unidades únicas y accesorios como productos con cantidad (propuesta).
-2. Cobro del alquiler: por hora, por día o ambos.
-3. Duración del bloqueo temporal de HU-03 mientras se paga (propuesta: 15 min).
-4. Tarifa de envío de HU-06: fija por zona (propuesta) o por distancia.
-5. Zonas de cobertura: polígonos en base de datos y el cliente marca el punto en el mapa
-   (propuesta), o geocodificación con Google Maps.
-6. Rastreo HU-08: consulta cada 5 s (propuesta) o WebSocket. Acordar con frontend.
+1. **Vehículos como unidades únicas**, con código y estado propio; se alquilan o se venden.
+   **Accesorios y repuestos como productos con cantidad en stock**; solo se venden.
+2. **El alquiler se cobra por día.**
+3. **Bloqueo temporal de 15 minutos** mientras se paga (HU-03). Si no se paga, la reserva
+   expira y el vehículo se libera solo.
+4. **Tarifa de envío fija por zona** (HU-06), configurable por el administrador en base de
+   datos.
+5. **Zonas de cobertura como polígonos guardados en la base.** El cliente marca el punto en
+   el mapa, el frontend envía latitud y longitud, y el backend valida que esté dentro.
+   Sin Google Maps.
+6. **Rastreo GPS por consulta cada 5 segundos** (HU-08), no WebSocket. *Pendiente de
+   confirmar con Julián (frontend).*
+
+### Decisiones tomadas en la revisión del modelo de datos (29/09/2026)
+
+1. **`modelos_vehiculo`**: ficha del catálogo (nombre, foto, tarifa diaria, precio de venta)
+   compartida por las unidades iguales. Un modelo sin tarifa no se alquila; sin precio, no
+   se vende. Accesorios y repuestos siguen aparte, como `productos` con cantidad.
+2. **Módulo `portal/` mínimo**: solo contenido institucional (HU-01) y horarios de atención.
+3. **Tipos de vehículo y métodos de pago en tablas**, configurables por el administrador.
+4. **Zonas en GeoJSON (`jsonb`), sin PostGIS.** La validación de punto dentro de polígono es
+   una **función propia con tests, sin dependencias nuevas** (se implementa con HU-06).
+5. **`vehiculos.estado` es solo el estado físico actual.** La disponibilidad por fechas sale
+   de `alquileres` (ver 7.1 y 7.2).
+6. **Un domicilio es la entrega de un alquiler o de una venta**, ligado siempre a
+   exactamente uno de los dos. No hay domicilios sueltos. El vehículo del domiciliario es
+   opcional y, si se usa, queda en `asignado_a_domicilio`.
+7. **Un solo pago con el envío incluido.** El alquiler o la venta guardan el desglose
+   (`subtotal`, `valor_envio`, `total`) y el pago cubre el total.
+8. **Fechas de alquiler inclusivas.** Del 5 al 7 son 3 días; el siguiente cliente puede
+   recoger desde el día 8.
+9. **Dirección fuera de cobertura: se bloquea** (SRS 3.6.1). No se marca para revisión.
 
 ---
 
@@ -138,7 +165,12 @@ Propón cambios si tienes una razón fuerte, pero no los apliques sin que yo con
 - **FastAPI** + **Uvicorn** — da OpenAPI automático, que es justo lo que el frontend necesita
 - **SQLAlchemy 2.x** + **Alembic** para migraciones
 - **PostgreSQL** vía **Docker Compose**, para que los cuatro tengamos exactamente la misma
-  base. SQLite solo para los tests.
+  base. **Los tests que tocan base de datos también usan Postgres**, en una base de prueba
+  separada dentro del mismo contenedor (`transportexperience_pruebas`). **Nada de SQLite**:
+  el modelo usa funciones propias de Postgres (bloqueo de fila y la restricción de exclusión
+  que impide reservas con fechas solapadas) y no queremos dos bases que se comporten
+  distinto. Los tests de lógica pura (transiciones de estado, cálculo de tarifas) no usan
+  base de datos.
 - **Pydantic v2** para esquemas de entrada y salida
 - **python-jose** + **passlib[bcrypt]** para JWT y hash de contraseñas
 - **pytest** + **httpx** para tests
@@ -185,7 +217,9 @@ transportexperience/
 │       ├── pagos/              ← HU-05
 │       ├── domicilios/         ← HU-06, HU-07
 │       ├── rastreo/            ← HU-08
-│       └── reportes/           ← HU-11
+│       ├── reportes/           ← HU-11
+│       └── portal/             ← HU-01 (solo contenido institucional y horarios)
+├── scripts/                    ← utilidades (generar el diagrama ER, respaldos)
 ├── simulador_gps/              ← ver sección 8
 ├── seeds/
 └── tests/
@@ -212,9 +246,10 @@ condición de carrera.
 
 **No lo resuelvas con un `if disponible:` en Python.** Eso falla bajo concurrencia. Usa:
 
-- Una transacción con bloqueo de fila (`SELECT ... FOR UPDATE`) sobre el vehículo, o
-- Un índice único parcial en la base que impida dos reservas activas del mismo vehículo
-  en rangos de fecha que se solapen.
+- Una transacción con bloqueo de fila (`SELECT ... FOR UPDATE`) sobre el vehículo, y
+- **Decidido:** la restricción de exclusión `ex_alquileres_sin_solapamiento` en Postgres
+  (extensión `btree_gist`), que impide dos alquileres activos del mismo vehículo con rangos
+  de fechas que se crucen. Ver 7.2.
 
 Escribe un test que lance dos reservas concurrentes del mismo vehículo y verifique que
 exactamente una gana. Ese test es oro para la sustentación.
@@ -224,11 +259,16 @@ exactamente una gana. Ese test es oro para la sustentación.
 El SRS 3.3.6 exige integridad de estados. Modela las transiciones explícitamente y prohíbe
 las inválidas en el código, no en la interfaz.
 
+`vehiculos.estado` es **solo el estado físico actual** del vehículo. Que un monopatín esté
+reservado para el día 5 no cambia su estado hoy: la disponibilidad por fechas sale de la
+tabla `alquileres`.
+
 ```
-Vehículo:  disponible → reservado → alquilado → disponible
-           disponible → vendido (terminal)
+Vehículo:  disponible → alquilado → disponible   (entrega y devolución de un alquiler)
+           disponible → reservado → vendido      (reservado = compra pendiente de pago;
+                        reservado → disponible    vendido es terminal)
            cualquiera → mantenimiento → disponible (requiere autorización de operador)
-           disponible → asignado_a_domicilio → disponible
+           disponible → asignado_a_domicilio → disponible  (vehículo del domiciliario)
 
 Domicilio: pendiente → asignado → recogido → en_camino → entregado
            cualquiera → cancelado
@@ -239,6 +279,15 @@ y solo un operador puede devolverlo a servicio.
 
 Un vehículo no puede volver a `disponible` si tiene una reserva activa, un mantenimiento
 abierto o un domicilio sin finalizar.
+
+**Protección contra dobles reservas por fechas:** una *exclusion constraint* de Postgres,
+`ex_alquileres_sin_solapamiento`, sobre `(vehiculo_id WITH =, daterange(fecha_inicio,
+fecha_fin, '[]') WITH &&)` para los alquileres activos (`pendiente_pago`, `confirmado`,
+`en_curso`). Usa la extensión `btree_gist`, creada en la misma migración. Las fechas son
+inclusivas (`'[]'`): un alquiler del 5 al 7 bloquea los días 5, 6 y 7. Un alquiler
+`pendiente_pago` vencido sigue bloqueando hasta que el servicio lo marque `expirado`; por
+eso, al crear una reserva, primero se expiran los bloqueos vencidos de ese vehículo en la
+misma transacción.
 
 ### 7.3 Los pagos
 

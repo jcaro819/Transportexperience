@@ -5,7 +5,7 @@ from pydantic import ValidationError
 
 from app.config import Configuracion
 
-BASICA = {"database_url": "sqlite:///:memory:", "jwt_secreto": "x"}
+BASICA = {"database_url": "postgresql+psycopg://u:p@127.0.0.1/x", "jwt_secreto": "x"}
 
 
 def test_acepta_llaves_de_sandbox_de_wompi() -> None:

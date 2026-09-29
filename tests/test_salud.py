@@ -1,5 +1,6 @@
 """Chequeo de salud de la API (/salud)."""
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import OperationalError
 
@@ -7,6 +8,7 @@ from app.db import obtener_sesion
 from app.main import app
 
 
+@pytest.mark.usefixtures("base_datos_pruebas")
 def test_salud_responde_ok_con_base_disponible() -> None:
     with TestClient(app) as cliente:
         respuesta = cliente.get("/salud")
