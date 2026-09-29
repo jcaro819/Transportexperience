@@ -1,0 +1,48 @@
+# Base de datos de desarrollo de TransportExperience.
+#
+# Arranque:  docker compose up -d
+# Estado:    docker compose ps
+# Parar:     docker compose down        (conserva los datos)
+# Borrar:    docker compose down -v     (elimina también el volumen con los datos)
+#
+# Las variables se leen del archivo .env (copia de .env.example). Si no existe,
+# se usan los valores por defecto de abajo, que coinciden con .env.example.
+
+name: transportexperience
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: transportexperience-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-transport}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cambia_esta_clave}
+      POSTGRES_DB: ${POSTGRES_DB:-transportexperience}
+      TZ: America/Bogota
+      PGTZ: America/Bogota
+    ports:
+      # Solo se expone en la máquina local, no en la red.
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - datos_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  adminer:
+    # Interfaz web para inspeccionar la base: http://localhost:8080
+    # Sistema: PostgreSQL, Servidor: postgres, y el usuario/clave del .env.
+    image: adminer:latest
+    container_name: transportexperience-adminer
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${ADMINER_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  datos_postgres:
