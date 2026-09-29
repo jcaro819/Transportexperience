@@ -156,3 +156,11 @@ def encabezado_de(usuario) -> dict[str, str]:
     from app.seguridad import crear_token_acceso
 
     return {"Authorization": f"Bearer {crear_token_acceso(usuario)[0]}"}
+
+
+@pytest.fixture
+def fabrica(sesion: Session):
+    """Crea tipos, modelos, vehículos y alquileres de prueba. Ver ``tests/fabricas.py``."""
+    from tests.fabricas import Fabrica
+
+    return Fabrica(sesion)

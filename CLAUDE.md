@@ -153,6 +153,21 @@ correspondiente, y si el equipo corrige el SRS, actualiza este archivo.
    recoger desde el día 8.
 9. **Dirección fuera de cobertura: se bloquea** (SRS 3.6.1). No se marca para revisión.
 
+### Decisiones de la revisión de HU-02 (29/09/2026)
+
+1. **Accesorios y repuestos no van en el catálogo de HU-02.** Su listado se hace con HU-04
+   (compra).
+2. **No hay filtro por ubicación** en el catálogo: no está en HU-02 (aunque el SRS 3.4.2 lo
+   mencione).
+3. **Las unidades dentro de la ficha de un modelo van sin paginar** (ver la excepción en la
+   sección 9).
+
+### Decisiones pendientes para HU-03
+
+1. **Máximo de días por alquiler.** Hay que definir cuántos días puede durar como máximo un
+   alquiler. Va **configurable en base de datos** por el administrador, no como constante en
+   el código (SRS 3.5.3).
+
 ---
 
 ## 5. Stack
@@ -355,6 +370,8 @@ Reglas de la API:
 - Rutas en plural y en inglés o español, pero **consistentes**: escoge una y no mezcles.
 - Todas las listas paginadas desde el primer día (SRS 3.4.6). Nunca devuelvas una tabla
   completa.
+  **Excepción:** las listas anidadas pequeñas y acotadas (como las unidades de un modelo
+  dentro de su ficha) pueden ir sin paginar.
 - Errores con una estructura uniforme: código, mensaje legible para el usuario y acción
   recomendada. El SRS 3.2.3 lo pide explícitamente: el mensaje debe decir la causa y qué
   hacer.
