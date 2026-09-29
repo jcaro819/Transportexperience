@@ -1,0 +1,14 @@
+# Finales de línea: LF para todos los archivos de texto, en el repositorio y al hacer
+# checkout, sin importar el sistema de cada integrante (Windows, Linux o macOS).
+* text=auto eol=lf
+
+# Binarios: Git no convierte finales de línea ni intenta mostrar diferencias de texto.
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.svgz binary
+*.xlsx binary
