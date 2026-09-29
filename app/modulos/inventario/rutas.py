@@ -1,23 +1,36 @@
-"""Rutas del catálogo público (HU-02). No requieren iniciar sesión."""
+"""Rutas del inventario.
+
+- ``/catalogo``: catálogo público (HU-02). No requiere iniciar sesión.
+- ``/vehiculos``: gestión de la flota (HU-09). Solo administrador y operador.
+"""
 
 from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, status
 
 from app.comun.errores import respuestas_error
 from app.comun.paginacion import Pagina, Paginacion
 from app.db import SesionBD
 from app.modulos.inventario import servicio
 from app.modulos.inventario.esquemas import (
+    CierreNovedad,
     DisponibilidadRango,
     FiltrosDelCatalogo,
+    InactivacionCrear,
     ModeloCatalogo,
     ModeloDetalle,
+    NovedadCrear,
+    NovedadRespuesta,
+    OperacionVehiculo,
     TipoVehiculoRespuesta,
+    VehiculoGestion,
 )
+from app.modulos.inventario.modelos import EstadoNovedad, EstadoVehiculo
+from app.seguridad import AdministradorUOperador
 
 enrutador_catalogo = APIRouter(prefix="/catalogo", tags=["catálogo"])
+enrutador_vehiculos = APIRouter(prefix="/vehiculos", tags=["flota"])
 
 
 @enrutador_catalogo.get(
@@ -78,3 +91,96 @@ def consultar_disponibilidad(
     """Unidades libres durante todo el rango. Del 5 al 7 son 3 días (fechas inclusivas)."""
     resultado = servicio.consultar_disponibilidad(sesion, modelo_id, fecha_inicio, fecha_fin)
     return DisponibilidadRango.model_validate(resultado)
+
+
+# --- Gestión de la flota (HU-09) --------------------------------------------------------
+
+
+@enrutador_vehiculos.get(
+    "",
+    response_model=Pagina[VehiculoGestion],
+    summary="Listar la flota",
+    responses=respuestas_error(401, 403, 422),
+)
+def listar_vehiculos(
+    sesion: SesionBD,
+    _: AdministradorUOperador,
+    parametros: Paginacion,
+    estado: EstadoVehiculo | None = None,
+    modelo_id: Annotated[int | None, Query(gt=0)] = None,
+    codigo: Annotated[
+        str | None, Query(max_length=20, description="Busca en el código, p. ej. MON-00.")
+    ] = None,
+) -> Pagina[VehiculoGestion]:
+    """Todas las unidades con su estado real (el catálogo público solo muestra las libres)."""
+    resultado = servicio.listar_vehiculos(sesion, parametros, estado, modelo_id, codigo)
+    return Pagina[VehiculoGestion].model_validate(resultado)
+
+
+@enrutador_vehiculos.get(
+    "/{vehiculo_id}/novedades",
+    response_model=Pagina[NovedadRespuesta],
+    summary="Historial de novedades de una unidad",
+    responses=respuestas_error(401, 403, 404, 422),
+)
+def listar_novedades(
+    sesion: SesionBD,
+    _: AdministradorUOperador,
+    vehiculo_id: int,
+    parametros: Paginacion,
+    estado: EstadoNovedad | None = None,
+) -> Pagina[NovedadRespuesta]:
+    resultado = servicio.listar_novedades(sesion, vehiculo_id, parametros, estado)
+    return Pagina[NovedadRespuesta].model_validate(resultado)
+
+
+@enrutador_vehiculos.post(
+    "/{vehiculo_id}/inactivacion",
+    response_model=OperacionVehiculo,
+    status_code=status.HTTP_201_CREATED,
+    summary="Inactivar una unidad para mantenimiento",
+    responses=respuestas_error(401, 403, 404, 409, 422),
+)
+def inactivar(
+    sesion: SesionBD, usuario: AdministradorUOperador, vehiculo_id: int, datos: InactivacionCrear
+) -> OperacionVehiculo:
+    """La unidad pasa a `mantenimiento`, se registra el motivo como novedad abierta y deja de
+    aparecer en el catálogo de inmediato. Sus alquileres vigentes NO se cancelan: vienen en
+    `alquileres_afectados`.
+    """
+    resultado = servicio.inactivar_vehiculo(sesion, vehiculo_id, datos.motivo, usuario)
+    return OperacionVehiculo.model_validate(resultado)
+
+
+@enrutador_vehiculos.post(
+    "/{vehiculo_id}/novedades",
+    response_model=OperacionVehiculo,
+    status_code=status.HTTP_201_CREATED,
+    summary="Reportar una novedad",
+    responses=respuestas_error(401, 403, 404, 409, 422),
+)
+def reportar_novedad(
+    sesion: SesionBD, usuario: AdministradorUOperador, vehiculo_id: int, datos: NovedadCrear
+) -> OperacionVehiculo:
+    """Daño, falla, pérdida de accesorio, batería baja o incidente (SRS 3.1.8). Si es crítica,
+    la unidad pasa a `mantenimiento` automáticamente.
+    """
+    resultado = servicio.reportar_novedad(sesion, vehiculo_id, datos, usuario)
+    return OperacionVehiculo.model_validate(resultado)
+
+
+@enrutador_vehiculos.post(
+    "/{vehiculo_id}/novedades/{novedad_id}/cierre",
+    response_model=OperacionVehiculo,
+    summary="Cerrar una novedad y, si se pide, devolver la unidad a servicio",
+    responses=respuestas_error(401, 403, 404, 409, 422),
+)
+def cerrar_novedad(
+    sesion: SesionBD,
+    usuario: AdministradorUOperador,
+    vehiculo_id: int,
+    novedad_id: int,
+    datos: CierreNovedad,
+) -> OperacionVehiculo:
+    resultado = servicio.cerrar_novedad(sesion, vehiculo_id, novedad_id, datos, usuario)
+    return OperacionVehiculo.model_validate(resultado)

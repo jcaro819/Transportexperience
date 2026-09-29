@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.comun.errores import registrar_manejadores
 from app.db import obtener_sesion
-from app.modulos.inventario.rutas import enrutador_catalogo
+from app.modulos.inventario.rutas import enrutador_catalogo, enrutador_vehiculos
 from app.modulos.usuarios.rutas import enrutador_autenticacion, enrutador_usuarios
 
 DESCRIPCION = """
@@ -37,6 +37,7 @@ registrar_manejadores(app)
 app.include_router(enrutador_autenticacion)
 app.include_router(enrutador_usuarios)
 app.include_router(enrutador_catalogo)
+app.include_router(enrutador_vehiculos)
 
 
 class EstadoSalud(BaseModel):

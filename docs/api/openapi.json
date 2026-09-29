@@ -889,6 +889,564 @@
         }
       }
     },
+    "/vehiculos": {
+      "get": {
+        "tags": [
+          "flota"
+        ],
+        "summary": "Listar la flota",
+        "description": "Todas las unidades con su estado real (el catálogo público solo muestra las libres).",
+        "operationId": "listar_vehiculos_vehiculos_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "estado",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/EstadoVehiculo"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Estado"
+            }
+          },
+          {
+            "name": "modelo_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "exclusiveMinimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Modelo Id"
+            }
+          },
+          {
+            "name": "codigo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Busca en el código, p. ej. MON-00.",
+              "title": "Codigo"
+            },
+            "description": "Busca en el código, p. ej. MON-00."
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Número de página, desde 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Número de página, desde 1."
+          },
+          {
+            "name": "tamano",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Elementos por página (máx. 100).",
+              "default": 20,
+              "title": "Tamano"
+            },
+            "description": "Elementos por página (máx. 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_VehiculoGestion_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/vehiculos/{vehiculo_id}/novedades": {
+      "get": {
+        "tags": [
+          "flota"
+        ],
+        "summary": "Historial de novedades de una unidad",
+        "operationId": "listar_novedades_vehiculos__vehiculo_id__novedades_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "vehiculo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Vehiculo Id"
+            }
+          },
+          {
+            "name": "estado",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/EstadoNovedad"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Estado"
+            }
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Número de página, desde 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Número de página, desde 1."
+          },
+          {
+            "name": "tamano",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Elementos por página (máx. 100).",
+              "default": 20,
+              "title": "Tamano"
+            },
+            "description": "Elementos por página (máx. 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_NovedadRespuesta_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "flota"
+        ],
+        "summary": "Reportar una novedad",
+        "description": "Daño, falla, pérdida de accesorio, batería baja o incidente (SRS 3.1.8). Si es crítica,\nla unidad pasa a `mantenimiento` automáticamente.",
+        "operationId": "reportar_novedad_vehiculos__vehiculo_id__novedades_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "vehiculo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Vehiculo Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NovedadCrear"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperacionVehiculo"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto con el estado actual",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/vehiculos/{vehiculo_id}/inactivacion": {
+      "post": {
+        "tags": [
+          "flota"
+        ],
+        "summary": "Inactivar una unidad para mantenimiento",
+        "description": "La unidad pasa a `mantenimiento`, se registra el motivo como novedad abierta y deja de\naparecer en el catálogo de inmediato. Sus alquileres vigentes NO se cancelan: vienen en\n`alquileres_afectados`.",
+        "operationId": "inactivar_vehiculos__vehiculo_id__inactivacion_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "vehiculo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Vehiculo Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InactivacionCrear"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperacionVehiculo"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto con el estado actual",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/vehiculos/{vehiculo_id}/novedades/{novedad_id}/cierre": {
+      "post": {
+        "tags": [
+          "flota"
+        ],
+        "summary": "Cerrar una novedad y, si se pide, devolver la unidad a servicio",
+        "operationId": "cerrar_novedad_vehiculos__vehiculo_id__novedades__novedad_id__cierre_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "vehiculo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Vehiculo Id"
+            }
+          },
+          {
+            "name": "novedad_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Novedad Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CierreNovedad"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperacionVehiculo"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto con el estado actual",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/salud": {
       "get": {
         "tags": [
@@ -924,6 +1482,37 @@
   },
   "components": {
     "schemas": {
+      "AlquilerAfectado": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "fecha_inicio": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha Inicio"
+          },
+          "fecha_fin": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha Fin"
+          },
+          "estado": {
+            "type": "string",
+            "title": "Estado"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "fecha_inicio",
+          "fecha_fin",
+          "estado"
+        ],
+        "title": "AlquilerAfectado",
+        "description": "Alquiler activo de una unidad que salió de servicio. No se cancela solo."
+      },
       "Body_iniciar_sesion_autenticacion_token_post": {
         "properties": {
           "grant_type": {
@@ -982,6 +1571,30 @@
           "password"
         ],
         "title": "Body_iniciar_sesion_autenticacion_token_post"
+      },
+      "CierreNovedad": {
+        "properties": {
+          "solucion": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 5,
+            "title": "Solucion",
+            "examples": [
+              "Se cambiaron los rodamientos y se probó en ruta."
+            ]
+          },
+          "devolver_a_servicio": {
+            "type": "boolean",
+            "title": "Devolver A Servicio",
+            "description": "true: además de cerrar la novedad, la unidad vuelve a `disponible`. Se rechaza (y la novedad no se cierra) si la unidad tiene otra novedad abierta, un domicilio sin finalizar o un alquiler en curso.",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "solucion"
+        ],
+        "title": "CierreNovedad"
       },
       "CuerpoError": {
         "properties": {
@@ -1094,6 +1707,14 @@
         "title": "ErrorRespuesta",
         "description": "Forma de todas las respuestas de error de la API."
       },
+      "EstadoNovedad": {
+        "type": "string",
+        "enum": [
+          "abierta",
+          "cerrada"
+        ],
+        "title": "EstadoNovedad"
+      },
       "EstadoSalud": {
         "properties": {
           "estado": {
@@ -1121,6 +1742,19 @@
         "title": "EstadoSalud",
         "description": "Respuesta del chequeo de salud."
       },
+      "EstadoVehiculo": {
+        "type": "string",
+        "enum": [
+          "disponible",
+          "reservado",
+          "alquilado",
+          "vendido",
+          "mantenimiento",
+          "asignado_a_domicilio"
+        ],
+        "title": "EstadoVehiculo",
+        "description": "Estado operativo actual de una unidad (SRS 3.3.6). Transiciones en el servicio."
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -1133,6 +1767,25 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "InactivacionCrear": {
+        "properties": {
+          "motivo": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 5,
+            "title": "Motivo",
+            "examples": [
+              "Cambio de rodamientos de la rueda delantera."
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "motivo"
+        ],
+        "title": "InactivacionCrear",
+        "description": "Inactivación para mantenimiento (HU-09). Equivale a una novedad crítica de mantenimiento."
       },
       "Modalidad": {
         "type": "string",
@@ -1352,6 +2005,159 @@
         "title": "ModeloDetalle",
         "description": "Vista detallada de un modelo: su ficha más las unidades libres hoy."
       },
+      "ModeloResumen": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre"
+        ],
+        "title": "ModeloResumen"
+      },
+      "NovedadCrear": {
+        "properties": {
+          "tipo": {
+            "$ref": "#/components/schemas/TipoNovedad"
+          },
+          "descripcion": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 5,
+            "title": "Descripcion"
+          },
+          "es_critica": {
+            "type": "boolean",
+            "title": "Es Critica",
+            "description": "true: la unidad sale de servicio hasta que un operador la devuelva.",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "tipo",
+          "descripcion"
+        ],
+        "title": "NovedadCrear",
+        "description": "Reporte de una novedad (SRS 3.1.8). Si es crítica, la unidad pasa a mantenimiento."
+      },
+      "NovedadRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "vehiculo_id": {
+            "type": "integer",
+            "title": "Vehiculo Id"
+          },
+          "tipo": {
+            "$ref": "#/components/schemas/TipoNovedad"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "es_critica": {
+            "type": "boolean",
+            "title": "Es Critica"
+          },
+          "estado": {
+            "$ref": "#/components/schemas/EstadoNovedad"
+          },
+          "reportada_por_id": {
+            "type": "integer",
+            "title": "Reportada Por Id"
+          },
+          "creado_en": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Creado En"
+          },
+          "cerrada_por_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cerrada Por Id"
+          },
+          "cerrada_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cerrada En"
+          },
+          "solucion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Solucion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "vehiculo_id",
+          "tipo",
+          "descripcion",
+          "es_critica",
+          "estado",
+          "reportada_por_id",
+          "creado_en",
+          "cerrada_por_id",
+          "cerrada_en",
+          "solucion"
+        ],
+        "title": "NovedadRespuesta"
+      },
+      "OperacionVehiculo": {
+        "properties": {
+          "vehiculo": {
+            "$ref": "#/components/schemas/VehiculoGestion"
+          },
+          "novedad": {
+            "$ref": "#/components/schemas/NovedadRespuesta"
+          },
+          "alquileres_afectados": {
+            "items": {
+              "$ref": "#/components/schemas/AlquilerAfectado"
+            },
+            "type": "array",
+            "title": "Alquileres Afectados",
+            "description": "Alquileres activos o futuros de la unidad, para que el personal los atienda."
+          }
+        },
+        "type": "object",
+        "required": [
+          "vehiculo",
+          "novedad"
+        ],
+        "title": "OperacionVehiculo",
+        "description": "Resultado de reportar, inactivar o cerrar: la unidad y la novedad como quedaron."
+      },
       "Pagina_ModeloCatalogo_": {
         "properties": {
           "elementos": {
@@ -1387,6 +2193,42 @@
           "paginas"
         ],
         "title": "Pagina[ModeloCatalogo]"
+      },
+      "Pagina_NovedadRespuesta_": {
+        "properties": {
+          "elementos": {
+            "items": {
+              "$ref": "#/components/schemas/NovedadRespuesta"
+            },
+            "type": "array",
+            "title": "Elementos"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamano": {
+            "type": "integer",
+            "title": "Tamano"
+          },
+          "paginas": {
+            "type": "integer",
+            "title": "Paginas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "elementos",
+          "total",
+          "pagina",
+          "tamano",
+          "paginas"
+        ],
+        "title": "Pagina[NovedadRespuesta]"
       },
       "Pagina_TipoVehiculoRespuesta_": {
         "properties": {
@@ -1460,6 +2302,42 @@
         ],
         "title": "Pagina[UsuarioRespuesta]"
       },
+      "Pagina_VehiculoGestion_": {
+        "properties": {
+          "elementos": {
+            "items": {
+              "$ref": "#/components/schemas/VehiculoGestion"
+            },
+            "type": "array",
+            "title": "Elementos"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamano": {
+            "type": "integer",
+            "title": "Tamano"
+          },
+          "paginas": {
+            "type": "integer",
+            "title": "Paginas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "elementos",
+          "total",
+          "pagina",
+          "tamano",
+          "paginas"
+        ],
+        "title": "Pagina[VehiculoGestion]"
+      },
       "RegistroCliente": {
         "properties": {
           "nombre_completo": {
@@ -1525,6 +2403,19 @@
         ],
         "title": "Rol",
         "description": "Los cuatro roles del SRS. HU-12 nombra tres; el domiciliario lo exigen HU-06 y HU-07."
+      },
+      "TipoNovedad": {
+        "type": "string",
+        "enum": [
+          "dano",
+          "falla",
+          "perdida_accesorio",
+          "bateria_baja",
+          "incidente",
+          "mantenimiento"
+        ],
+        "title": "TipoNovedad",
+        "description": "Tipos de novedad del SRS 3.1.8, más ``mantenimiento`` para la inactivación de HU-09."
       },
       "TipoVehiculoRespuesta": {
         "properties": {
@@ -1827,6 +2718,69 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VehiculoGestion": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "modelo": {
+            "$ref": "#/components/schemas/ModeloResumen"
+          },
+          "estado": {
+            "$ref": "#/components/schemas/EstadoVehiculo"
+          },
+          "nivel_bateria": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nivel Bateria"
+          },
+          "ubicacion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ubicacion"
+          },
+          "observaciones": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observaciones"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "codigo",
+          "modelo",
+          "estado",
+          "nivel_bateria",
+          "ubicacion",
+          "observaciones"
+        ],
+        "title": "VehiculoGestion",
+        "description": "Una unidad vista por el personal: con su estado real, no solo si está libre."
       }
     },
     "securitySchemes": {
