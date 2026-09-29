@@ -196,6 +196,13 @@ correspondiente, y si el equipo corrige el SRS, actualiza este archivo.
    Opciones: devolver el dinero con un pago de compensación, o impedir la inactivación
    mientras haya una compra pendiente. **Se decide al llegar a HU-04.**
 
+### Casos pendientes para HU-06
+
+1. **El vehículo del domiciliario sale de su domicilio asignado.** El domiciliario no puede
+   listar la flota (`GET /vehiculos` es solo del taller), así que el vehículo que usa y sobre
+   el que puede reportar novedades lo debe obtener de su domicilio asignado
+   (`domicilios.vehiculo_transporte_id`).
+
 ---
 
 ## 5. Stack
@@ -466,15 +473,15 @@ En este orden. No saltes pasos, y para después de cada bloque para que yo revis
 **Bloque 1 — Sprint 1 (HU-12, HU-02, HU-09, HU-01)**
 
 6. Usuarios, JWT, RBAC con los cuatro roles, y las dependencias de FastAPI que protegen
-   las rutas por rol.
-7. Catálogo con filtros, paginación y disponibilidad en tiempo real.
+   las rutas por rol. **Hecho (HU-12, PR #1).**
+7. Catálogo con filtros, paginación y disponibilidad en tiempo real. **Hecho (HU-02, PR #2).**
 8. Inactivación de unidades con motivo, y que desaparezcan del catálogo público al
-   instante.
+   instante. **Hecho (HU-09, rama `hu-09-inactivacion`).**
 9. Endpoints del portal institucional.
 10. Exportar el OpenAPI y avisarle al frontend que ya puede empezar.
 
 De ahí en adelante seguimos el backlog sprint por sprint.
 
-**El siguiente es el Bloque 1, paso 6** (usuarios, JWT y RBAC), en la rama
-`hu-12-usuarios` que sale de `main`. Cuando lo termines, muéstrame qué quedó y espera mi
-confirmación antes de seguir al paso 7.
+**El siguiente es el Bloque 1, paso 9** (HU-01, portal institucional), en la rama
+`hu-01-portal` que sale de `main`, y luego el **paso 10** (OpenAPI para el frontend).
+Cuando termines cada paso, muéstrame qué quedó y espera mi confirmación antes de seguir.
