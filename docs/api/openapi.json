@@ -1447,6 +1447,246 @@
         }
       }
     },
+    "/portal": {
+      "get": {
+        "tags": [
+          "portal"
+        ],
+        "summary": "Contenido del portal",
+        "description": "Misión, visión, contacto y horarios de atención, en una sola petición. Público.",
+        "operationId": "ver_portal_portal_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portal/secciones/{seccion}": {
+      "put": {
+        "tags": [
+          "portal"
+        ],
+        "summary": "Editar una sección (administrador)",
+        "description": "Crea o reemplaza el título y el texto de la sección.",
+        "operationId": "editar_seccion_portal_secciones__seccion__put",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "seccion",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/SeccionPortal"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SeccionEditar"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeccionRespuesta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portal/horarios/{dia}": {
+      "put": {
+        "tags": [
+          "portal"
+        ],
+        "summary": "Abrir un día o cambiar su horario (administrador)",
+        "operationId": "editar_horario_portal_horarios__dia__put",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dia",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/DiaSemana"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HorarioEditar"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorarioDia"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "portal"
+        ],
+        "summary": "Cerrar un día (administrador)",
+        "description": "El día queda sin atención. Si ya estaba cerrado, responde igual.",
+        "operationId": "cerrar_dia_portal_horarios__dia__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dia",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/DiaSemana"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorarioDia"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/salud": {
       "get": {
         "tags": [
@@ -1651,6 +1891,20 @@
         ],
         "title": "DetalleCampo"
       },
+      "DiaSemana": {
+        "type": "string",
+        "enum": [
+          "lunes",
+          "martes",
+          "miercoles",
+          "jueves",
+          "viernes",
+          "sabado",
+          "domingo"
+        ],
+        "title": "DiaSemana",
+        "description": "Días en el orden de ``horarios_atencion.dia_semana`` (0 = lunes ... 6 = domingo)."
+      },
       "DisponibilidadRango": {
         "properties": {
           "modelo_id": {
@@ -1767,6 +2021,82 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HorarioDia": {
+        "properties": {
+          "dia": {
+            "$ref": "#/components/schemas/DiaSemana"
+          },
+          "abierto": {
+            "type": "boolean",
+            "title": "Abierto"
+          },
+          "hora_apertura": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hora Apertura",
+            "examples": [
+              "07:00:00"
+            ]
+          },
+          "hora_cierre": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hora Cierre",
+            "examples": [
+              "19:00:00"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "dia",
+          "abierto",
+          "hora_apertura",
+          "hora_cierre"
+        ],
+        "title": "HorarioDia",
+        "description": "Horario de un día. Si ``abierto`` es false, las horas vienen en null."
+      },
+      "HorarioEditar": {
+        "properties": {
+          "hora_apertura": {
+            "type": "string",
+            "format": "time",
+            "title": "Hora Apertura",
+            "examples": [
+              "07:00"
+            ]
+          },
+          "hora_cierre": {
+            "type": "string",
+            "format": "time",
+            "title": "Hora Cierre",
+            "examples": [
+              "19:00"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "hora_apertura",
+          "hora_cierre"
+        ],
+        "title": "HorarioEditar"
       },
       "InactivacionCrear": {
         "properties": {
@@ -2338,6 +2668,33 @@
         ],
         "title": "Pagina[VehiculoGestion]"
       },
+      "PortalRespuesta": {
+        "properties": {
+          "secciones": {
+            "items": {
+              "$ref": "#/components/schemas/SeccionRespuesta"
+            },
+            "type": "array",
+            "title": "Secciones",
+            "description": "Misión, visión y contacto, en ese orden. Solo las que tienen texto."
+          },
+          "horarios": {
+            "items": {
+              "$ref": "#/components/schemas/HorarioDia"
+            },
+            "type": "array",
+            "title": "Horarios",
+            "description": "Siempre los 7 días, de lunes a domingo."
+          }
+        },
+        "type": "object",
+        "required": [
+          "secciones",
+          "horarios"
+        ],
+        "title": "PortalRespuesta",
+        "description": "Todo lo que muestra el portal, en una sola petición (HU-01: carga < 2 s)."
+      },
       "RegistroCliente": {
         "properties": {
           "nombre_completo": {
@@ -2403,6 +2760,66 @@
         ],
         "title": "Rol",
         "description": "Los cuatro roles del SRS. HU-12 nombra tres; el domiciliario lo exigen HU-06 y HU-07."
+      },
+      "SeccionEditar": {
+        "properties": {
+          "titulo": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 2,
+            "title": "Titulo"
+          },
+          "contenido": {
+            "type": "string",
+            "maxLength": 10000,
+            "minLength": 2,
+            "title": "Contenido"
+          }
+        },
+        "type": "object",
+        "required": [
+          "titulo",
+          "contenido"
+        ],
+        "title": "SeccionEditar"
+      },
+      "SeccionPortal": {
+        "type": "string",
+        "enum": [
+          "mision",
+          "vision",
+          "contacto"
+        ],
+        "title": "SeccionPortal",
+        "description": "Secciones del portal que pide HU-01, en el orden en que se muestran."
+      },
+      "SeccionRespuesta": {
+        "properties": {
+          "seccion": {
+            "$ref": "#/components/schemas/SeccionPortal"
+          },
+          "titulo": {
+            "type": "string",
+            "title": "Titulo"
+          },
+          "contenido": {
+            "type": "string",
+            "title": "Contenido"
+          },
+          "actualizado_en": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Actualizado En"
+          }
+        },
+        "type": "object",
+        "required": [
+          "seccion",
+          "titulo",
+          "contenido",
+          "actualizado_en"
+        ],
+        "title": "SeccionRespuesta"
       },
       "TipoNovedad": {
         "type": "string",
