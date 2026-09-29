@@ -39,6 +39,26 @@ alembic upgrade head
 uvicorn app.main:app --reload    # docs en http://127.0.0.1:8000/docs
 ```
 
+## Datos de ejemplo (seeds)
+
+```bash
+python -m seeds.cargar     # solo con ENTORNO=desarrollo; se puede correr varias veces
+```
+
+Carga usuarios, catálogo (6 modelos, 15 unidades en estados variados), accesorios y
+repuestos (3 en bajo stock), 3 zonas de cobertura aproximadas de Bucaramanga, métodos de
+pago, contenido del portal (**provisional**) y horarios de atención.
+
+Usuarios de desarrollo. **Todos tienen la contraseña `Desarrollo2026!`**. Solo existen
+en bases de desarrollo: el script se niega a correr si `ENTORNO` no es `desarrollo`.
+
+| Rol | Correo |
+|---|---|
+| Administrador | `admin@transportexperience.test` |
+| Operador | `operador@transportexperience.test` |
+| Cliente | `cliente@transportexperience.test` |
+| Domiciliario | `domiciliario@transportexperience.test` |
+
 ## Comandos habituales
 
 ```bash
