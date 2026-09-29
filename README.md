@@ -10,7 +10,7 @@ eléctricos. Proyecto académico del equipo **SystemSolutions** (Scrum, 4 sprint
 ## Requisitos previos
 
 - Python 3.11 o superior
-- Docker Desktop (para PostgreSQL; se agrega en el paso 2 del Bloque 0)
+- Docker Desktop (para PostgreSQL)
 - Git
 
 ## Puesta en marcha
@@ -30,6 +30,13 @@ pip install -e ".[dev]"
 
 # 4. Variables de entorno
 cp .env.example .env             # Windows: copy .env.example .env
+
+# 5. Levantar PostgreSQL y Adminer (http://localhost:8080)
+docker compose up -d --wait
+
+# 6. Aplicar migraciones y arrancar la API
+alembic upgrade head
+uvicorn app.main:app --reload    # docs en http://127.0.0.1:8000/docs
 ```
 
 ## Comandos habituales
@@ -38,6 +45,9 @@ cp .env.example .env             # Windows: copy .env.example .env
 pytest                 # correr los tests
 ruff check .           # revisar estilo y errores
 ruff format .          # formatear el código
+alembic revision --autogenerate -m "descripcion"   # nueva migración
+alembic upgrade head   # aplicar migraciones pendientes
+docker compose down    # apagar la base (conserva los datos)
 ```
 
 ## Estructura
