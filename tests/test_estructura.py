@@ -13,6 +13,7 @@ MODULOS = [
     "domicilios",
     "rastreo",
     "reportes",
+    "portal",
 ]
 
 

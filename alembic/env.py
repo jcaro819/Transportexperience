@@ -11,15 +11,12 @@ Comandos habituales:
 
 from logging.config import fileConfig
 
+from alembic import context
 from sqlalchemy import create_engine, pool
 
-from alembic import context
+from app import modelos as _modelos  # noqa: F401  registra todas las tablas en Base.metadata
 from app.config import obtener_configuracion
 from app.db import Base
-
-# Importa aquí los modelos de cada módulo a medida que existan, para que
-# --autogenerate los detecte. Ejemplo:
-# from app.modulos.usuarios import modelos as _usuarios  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:
