@@ -19,10 +19,13 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine import URL, make_url
 from sqlalchemy.orm import Session
 
+# Secreto fijo y largo, solo para los tests. No es un secreto real: no protege nada.
+SECRETO_JWT_PRUEBAS = "secreto-fijo-solo-para-los-tests-de-transportexperience-0123456789"
+
 # Se fijan antes de importar la aplicación. Las variables de entorno tienen prioridad
 # sobre el archivo .env.
 os.environ["ENTORNO"] = "pruebas"
-os.environ["JWT_SECRETO"] = "secreto-solo-para-tests"
+os.environ["JWT_SECRETO"] = SECRETO_JWT_PRUEBAS
 os.environ["PAGOS_PROVEEDOR"] = "falso"
 os.environ["GPS_FUENTE"] = "simulador"
 
