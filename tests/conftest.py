@@ -19,14 +19,19 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine import URL, make_url
 from sqlalchemy.orm import Session
 
+# Secreto fijo y largo, solo para los tests. No es un secreto real: no protege nada.
+SECRETO_JWT_PRUEBAS = "secreto-fijo-solo-para-los-tests-de-transportexperience-0123456789"
+
 # Se fijan antes de importar la aplicación. Las variables de entorno tienen prioridad
 # sobre el archivo .env.
 os.environ["ENTORNO"] = "pruebas"
-os.environ["JWT_SECRETO"] = "secreto-solo-para-tests"
+os.environ["JWT_SECRETO"] = SECRETO_JWT_PRUEBAS
 os.environ["PAGOS_PROVEEDOR"] = "falso"
 os.environ["GPS_FUENTE"] = "simulador"
 
 from app.config import Configuracion  # noqa: E402
+
+CONTRASENA_PRUEBAS = "ClaveDePrueba2026"
 
 
 def _url_pruebas() -> URL:
@@ -96,3 +101,58 @@ def sesion(base_datos_pruebas: URL) -> Iterator[Session]:
         with Session(bind=conexion, join_transaction_mode="create_savepoint") as sesion:
             yield sesion
         transaccion.rollback()
+
+
+@pytest.fixture
+def crear_usuario(sesion: Session):
+    """Fábrica de usuarios de prueba: ``crear_usuario(Rol.OPERADOR, activo=False)``."""
+    from itertools import count
+
+    from app.modulos.usuarios.modelos import Rol, Usuario
+    from app.seguridad import hashear_contrasena
+
+    numeros = count(1)
+
+    def _crear(
+        rol: Rol = Rol.CLIENTE,
+        *,
+        correo: str | None = None,
+        contrasena: str = CONTRASENA_PRUEBAS,
+        activo: bool = True,
+    ) -> Usuario:
+        n = next(numeros)
+        usuario = Usuario(
+            nombre_completo=f"Usuario de prueba {n}",
+            correo=correo or f"{rol.value}{n}@prueba.co",
+            rol=rol,
+            hash_contrasena=hashear_contrasena(contrasena),
+            activo=activo,
+        )
+        sesion.add(usuario)
+        sesion.flush()
+        return usuario
+
+    return _crear
+
+
+@pytest.fixture
+def cliente_api(sesion: Session):
+    """Cliente HTTP de la API que usa la sesión de prueba (todo se revierte al final)."""
+    from fastapi.testclient import TestClient
+
+    from app.db import obtener_sesion
+    from app.main import app
+
+    app.dependency_overrides[obtener_sesion] = lambda: sesion
+    try:
+        with TestClient(app) as cliente:
+            yield cliente
+    finally:
+        app.dependency_overrides.clear()
+
+
+def encabezado_de(usuario) -> dict[str, str]:
+    """Encabezado Authorization con un token válido para ``usuario``."""
+    from app.seguridad import crear_token_acceso
+
+    return {"Authorization": f"Bearer {crear_token_acceso(usuario)[0]}"}

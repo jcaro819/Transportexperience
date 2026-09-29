@@ -15,6 +15,10 @@ from typing import Literal
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# El valor de .env.example: si llega aquí, alguien copió el ejemplo sin cambiarlo.
+SECRETO_JWT_DE_EJEMPLO = "cambia_este_secreto"
+LONGITUD_MINIMA_SECRETO_JWT = 32
+
 
 class Configuracion(BaseSettings):
     """Variables de entorno de TransportExperience. Ver ``.env.example``."""
@@ -25,6 +29,8 @@ class Configuracion(BaseSettings):
         case_sensitive=False,
         # docker compose también lee el .env (POSTGRES_USER, etc.); se ignoran aquí.
         extra="ignore",
+        # Los errores de validación no repiten el valor recibido: podría ser un secreto.
+        hide_input_in_errors=True,
     )
 
     entorno: Literal["desarrollo", "pruebas", "produccion"] = "desarrollo"
@@ -43,6 +49,19 @@ class Configuracion(BaseSettings):
     wompi_llave_publica: str = ""
     wompi_llave_privada: str = ""
     wompi_secreto_eventos: str = ""
+
+    @field_validator("jwt_secreto")
+    @classmethod
+    def _secreto_jwt_seguro(cls, valor: str) -> str:
+        """Rechaza el secreto de ejemplo y los secretos cortos, fáciles de adivinar."""
+        if valor == SECRETO_JWT_DE_EJEMPLO or len(valor) < LONGITUD_MINIMA_SECRETO_JWT:
+            raise ValueError(
+                f"JWT_SECRETO debe tener al menos {LONGITUD_MINIMA_SECRETO_JWT} caracteres y no "
+                "puede ser el valor de ejemplo. Genera uno con: "
+                'python -c "import secrets; print(secrets.token_urlsafe(48))" '
+                "y ponlo en tu archivo .env"
+            )
+        return valor
 
     @field_validator("wompi_llave_publica")
     @classmethod

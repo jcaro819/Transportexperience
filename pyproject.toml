@@ -7,12 +7,15 @@ authors = [{ name = "SystemSolutions" }]
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
+    # Formularios: el login OAuth2 de FastAPI (OAuth2PasswordRequestForm) los necesita.
+    "python-multipart>=0.0.9",
     "sqlalchemy>=2.0",
     "alembic>=1.13",
     "psycopg[binary]>=3.2",
     "pydantic>=2.7",
     "pydantic-settings>=2.3",
-    "python-jose[cryptography]>=3.3",
+    # 3.4.0 corrige CVE-2024-33663 (confusión de algoritmo) y CVE-2024-33664 (JWE bomb).
+    "python-jose[cryptography]>=3.4.0",
     "passlib[bcrypt]>=1.7.4",
     # bcrypt 5 rompe passlib 1.7.4 (falla al iniciar el hash); se fija por debajo.
     "bcrypt>=4.0,<5",
