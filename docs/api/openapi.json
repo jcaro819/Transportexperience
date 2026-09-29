@@ -540,6 +540,355 @@
         }
       }
     },
+    "/catalogo/tipos": {
+      "get": {
+        "tags": [
+          "catálogo"
+        ],
+        "summary": "Tipos de vehículo",
+        "description": "Tipos activos (cicla, patín, monopatín eléctrico...), para armar el filtro.",
+        "operationId": "listar_tipos_catalogo_tipos_get",
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Número de página, desde 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Número de página, desde 1."
+          },
+          {
+            "name": "tamano",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Elementos por página (máx. 100).",
+              "default": 20,
+              "title": "Tamano"
+            },
+            "description": "Elementos por página (máx. 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_TipoVehiculoRespuesta_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/catalogo/modelos": {
+      "get": {
+        "tags": [
+          "catálogo"
+        ],
+        "summary": "Catálogo de vehículos",
+        "description": "Modelos del catálogo con sus unidades disponibles hoy. Filtros combinables.",
+        "operationId": "listar_modelos_catalogo_modelos_get",
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Número de página, desde 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Número de página, desde 1."
+          },
+          {
+            "name": "tamano",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Elementos por página (máx. 100).",
+              "default": 20,
+              "title": "Tamano"
+            },
+            "description": "Elementos por página (máx. 100)."
+          },
+          {
+            "name": "tipo_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "exclusiveMinimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Solo modelos de este tipo de vehículo.",
+              "title": "Tipo Id"
+            },
+            "description": "Solo modelos de este tipo de vehículo."
+          },
+          {
+            "name": "tarifa_min",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tarifa diaria mínima, en pesos.",
+              "title": "Tarifa Min"
+            },
+            "description": "Tarifa diaria mínima, en pesos."
+          },
+          {
+            "name": "tarifa_max",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tarifa diaria máxima, en pesos.",
+              "title": "Tarifa Max"
+            },
+            "description": "Tarifa diaria máxima, en pesos."
+          },
+          {
+            "name": "modalidad",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Modalidad"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "`alquiler`: solo los que se alquilan. `venta`: los que se venden.",
+              "title": "Modalidad"
+            },
+            "description": "`alquiler`: solo los que se alquilan. `venta`: los que se venden."
+          },
+          {
+            "name": "solo_disponibles",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Solo modelos con unidades libres hoy.",
+              "default": false,
+              "title": "Solo Disponibles"
+            },
+            "description": "Solo modelos con unidades libres hoy."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_ModeloCatalogo_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/catalogo/modelos/{modelo_id}": {
+      "get": {
+        "tags": [
+          "catálogo"
+        ],
+        "summary": "Detalle de un modelo",
+        "description": "Ficha del modelo con cada unidad libre hoy: código, ubicación y batería.",
+        "operationId": "ver_modelo_catalogo_modelos__modelo_id__get",
+        "parameters": [
+          {
+            "name": "modelo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Modelo Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModeloDetalle"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/catalogo/modelos/{modelo_id}/disponibilidad": {
+      "get": {
+        "tags": [
+          "catálogo"
+        ],
+        "summary": "Disponibilidad para un rango de fechas",
+        "description": "Unidades libres durante todo el rango. Del 5 al 7 son 3 días (fechas inclusivas).",
+        "operationId": "consultar_disponibilidad_catalogo_modelos__modelo_id__disponibilidad_get",
+        "parameters": [
+          {
+            "name": "modelo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Modelo Id"
+            }
+          },
+          {
+            "name": "fecha_inicio",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "Primer día del alquiler (AAAA-MM-DD).",
+              "title": "Fecha Inicio"
+            },
+            "description": "Primer día del alquiler (AAAA-MM-DD)."
+          },
+          {
+            "name": "fecha_fin",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "Último día del alquiler, inclusive.",
+              "title": "Fecha Fin"
+            },
+            "description": "Último día del alquiler, inclusive."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisponibilidadRango"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto con el estado actual",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/salud": {
       "get": {
         "tags": [
@@ -689,6 +1038,49 @@
         ],
         "title": "DetalleCampo"
       },
+      "DisponibilidadRango": {
+        "properties": {
+          "modelo_id": {
+            "type": "integer",
+            "title": "Modelo Id"
+          },
+          "fecha_inicio": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha Inicio"
+          },
+          "fecha_fin": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha Fin"
+          },
+          "dias": {
+            "type": "integer",
+            "title": "Dias",
+            "description": "Días del rango, contando inicio y fin."
+          },
+          "unidades_libres": {
+            "type": "integer",
+            "title": "Unidades Libres"
+          },
+          "disponible": {
+            "type": "boolean",
+            "title": "Disponible",
+            "description": "true si hay al menos una unidad libre."
+          }
+        },
+        "type": "object",
+        "required": [
+          "modelo_id",
+          "fecha_inicio",
+          "fecha_fin",
+          "dias",
+          "unidades_libres",
+          "disponible"
+        ],
+        "title": "DisponibilidadRango",
+        "description": "Cuántas unidades de un modelo están libres durante todo un rango de fechas."
+      },
       "ErrorRespuesta": {
         "properties": {
           "error": {
@@ -741,6 +1133,296 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "Modalidad": {
+        "type": "string",
+        "enum": [
+          "alquiler",
+          "venta"
+        ],
+        "title": "Modalidad"
+      },
+      "ModeloCatalogo": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "marca": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Marca"
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion"
+          },
+          "imagen_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imagen Url"
+          },
+          "tipo": {
+            "$ref": "#/components/schemas/TipoVehiculoRespuesta"
+          },
+          "tarifa_diaria": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tarifa Diaria",
+            "description": "Pesos por día. null: no se alquila."
+          },
+          "precio_venta": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precio Venta",
+            "description": "Pesos. null: no se vende."
+          },
+          "se_alquila": {
+            "type": "boolean",
+            "title": "Se Alquila"
+          },
+          "se_vende": {
+            "type": "boolean",
+            "title": "Se Vende"
+          },
+          "disponibles_hoy": {
+            "type": "integer",
+            "title": "Disponibles Hoy",
+            "description": "Unidades que se pueden entregar hoy."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre",
+          "marca",
+          "descripcion",
+          "imagen_url",
+          "tipo",
+          "tarifa_diaria",
+          "precio_venta",
+          "se_alquila",
+          "se_vende",
+          "disponibles_hoy"
+        ],
+        "title": "ModeloCatalogo",
+        "description": "Una ficha del catálogo: un modelo y cuántas unidades suyas están libres hoy."
+      },
+      "ModeloDetalle": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "marca": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Marca"
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion"
+          },
+          "imagen_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imagen Url"
+          },
+          "tipo": {
+            "$ref": "#/components/schemas/TipoVehiculoRespuesta"
+          },
+          "tarifa_diaria": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tarifa Diaria",
+            "description": "Pesos por día. null: no se alquila."
+          },
+          "precio_venta": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precio Venta",
+            "description": "Pesos. null: no se vende."
+          },
+          "se_alquila": {
+            "type": "boolean",
+            "title": "Se Alquila"
+          },
+          "se_vende": {
+            "type": "boolean",
+            "title": "Se Vende"
+          },
+          "disponibles_hoy": {
+            "type": "integer",
+            "title": "Disponibles Hoy",
+            "description": "Unidades que se pueden entregar hoy."
+          },
+          "unidades_disponibles": {
+            "items": {
+              "$ref": "#/components/schemas/UnidadDisponible"
+            },
+            "type": "array",
+            "title": "Unidades Disponibles"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre",
+          "marca",
+          "descripcion",
+          "imagen_url",
+          "tipo",
+          "tarifa_diaria",
+          "precio_venta",
+          "se_alquila",
+          "se_vende",
+          "disponibles_hoy",
+          "unidades_disponibles"
+        ],
+        "title": "ModeloDetalle",
+        "description": "Vista detallada de un modelo: su ficha más las unidades libres hoy."
+      },
+      "Pagina_ModeloCatalogo_": {
+        "properties": {
+          "elementos": {
+            "items": {
+              "$ref": "#/components/schemas/ModeloCatalogo"
+            },
+            "type": "array",
+            "title": "Elementos"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamano": {
+            "type": "integer",
+            "title": "Tamano"
+          },
+          "paginas": {
+            "type": "integer",
+            "title": "Paginas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "elementos",
+          "total",
+          "pagina",
+          "tamano",
+          "paginas"
+        ],
+        "title": "Pagina[ModeloCatalogo]"
+      },
+      "Pagina_TipoVehiculoRespuesta_": {
+        "properties": {
+          "elementos": {
+            "items": {
+              "$ref": "#/components/schemas/TipoVehiculoRespuesta"
+            },
+            "type": "array",
+            "title": "Elementos"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamano": {
+            "type": "integer",
+            "title": "Tamano"
+          },
+          "paginas": {
+            "type": "integer",
+            "title": "Paginas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "elementos",
+          "total",
+          "pagina",
+          "tamano",
+          "paginas"
+        ],
+        "title": "Pagina[TipoVehiculoRespuesta]"
       },
       "Pagina_UsuarioRespuesta_": {
         "properties": {
@@ -844,6 +1526,29 @@
         "title": "Rol",
         "description": "Los cuatro roles del SRS. HU-12 nombra tres; el domiciliario lo exigen HU-06 y HU-07."
       },
+      "TipoVehiculoRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "usa_bateria": {
+            "type": "boolean",
+            "title": "Usa Bateria"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre",
+          "usa_bateria"
+        ],
+        "title": "TipoVehiculoRespuesta"
+      },
       "TokenAcceso": {
         "properties": {
           "access_token": {
@@ -873,6 +1578,45 @@
         ],
         "title": "TokenAcceso",
         "description": "Respuesta del inicio de sesión (formato OAuth2, más los datos del usuario)."
+      },
+      "UnidadDisponible": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "ubicacion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ubicacion"
+          },
+          "nivel_bateria": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nivel Bateria",
+            "description": "Porcentaje 0-100. null si no usa batería."
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "ubicacion",
+          "nivel_bateria"
+        ],
+        "title": "UnidadDisponible",
+        "description": "Unidad libre hoy, con su ubicación y batería (SRS 3.1)."
       },
       "UsuarioActualizar": {
         "properties": {
