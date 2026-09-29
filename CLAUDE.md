@@ -254,6 +254,25 @@ condición de carrera.
 Escribe un test que lance dos reservas concurrentes del mismo vehículo y verifique que
 exactamente una gana. Ese test es oro para la sustentación.
 
+**Regla 1: toda operación que toque un vehículo empieza bloqueando su fila.** Alquiler,
+venta y domicilio arrancan con `SELECT ... FOR UPDATE` sobre la fila del vehículo, dentro de
+la misma transacción que hace el cambio. La restricción de exclusión solo compara alquileres
+entre sí: no impide que una venta y un alquiler, o dos ventas, tomen el mismo vehículo al
+mismo tiempo. El bloqueo de fila sí, porque serializa todas las operaciones sobre ese
+vehículo. Con la fila bloqueada, el servicio valida:
+
+- **No vender** un vehículo con alquileres activos o futuros (`pendiente_pago`,
+  `confirmado`, `en_curso`).
+- **No alquilar** un vehículo `vendido` ni uno `reservado` (compra pendiente de pago).
+
+**Regla 2: los pendientes vencidos se expiran antes de operar.** Nada pasa solo de
+`pendiente_pago` a `expirado` cuando vence `expira_en`: una reserva abandonada bloquearía el
+vehículo (y el stock) para siempre. Sin tareas en segundo plano ni Redis, la regla es:
+**antes de crear un alquiler o una venta, en la misma transacción**, se marcan como
+`expirado` los alquileres y `expirada` las ventas en `pendiente_pago` con `expira_en`
+vencido. Una venta que expira **devuelve su stock** y libera sus vehículos (`reservado` →
+`disponible`). Más adelante habrá un script en `scripts/` para hacer ese barrido a mano.
+
 ### 7.2 Los estados de los vehículos y los pedidos
 
 El SRS 3.3.6 exige integridad de estados. Modela las transiciones explícitamente y prohíbe
