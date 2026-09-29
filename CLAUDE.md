@@ -476,12 +476,11 @@ En este orden. No saltes pasos, y para después de cada bloque para que yo revis
    las rutas por rol. **Hecho (HU-12, PR #1).**
 7. Catálogo con filtros, paginación y disponibilidad en tiempo real. **Hecho (HU-02, PR #2).**
 8. Inactivación de unidades con motivo, y que desaparezcan del catálogo público al
-   instante. **Hecho (HU-09, rama `hu-09-inactivacion`).**
-9. Endpoints del portal institucional.
+   instante. **Hecho (HU-09, PR #3).**
+9. Endpoints del portal institucional. **Hecho (HU-01, rama `hu-01-portal`).**
 10. Exportar el OpenAPI y avisarle al frontend que ya puede empezar.
 
 De ahí en adelante seguimos el backlog sprint por sprint.
 
-**El siguiente es el Bloque 1, paso 9** (HU-01, portal institucional), en la rama
-`hu-01-portal` que sale de `main`, y luego el **paso 10** (OpenAPI para el frontend).
-Cuando termines cada paso, muéstrame qué quedó y espera mi confirmación antes de seguir.
+**El siguiente es el Bloque 1, paso 10** (OpenAPI para el frontend). Cuando termines,
+muéstrame qué quedó y espera mi confirmación antes de seguir.
