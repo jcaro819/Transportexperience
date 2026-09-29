@@ -1,7 +1,5 @@
 # TransportExperience — Guía de trabajo para Claude Code
 
-> Guarda este archivo como `CLAUDE.md` en la raíz del repositorio.
-> Claude Code lo lee solo al inicio de cada sesión, así no hay que repetir el contexto.
 > Junto a él van `docs/SRS.pdf` y `docs/plan-desarrollo.pdf`.
 
 ---
@@ -410,7 +408,7 @@ No los dejes para el final, porque son los que el profesor va a revisar contra e
 
 En este orden. No saltes pasos, y para después de cada bloque para que yo revise.
 
-**Bloque 0 — Fundación (hoy)**
+**Bloque 0 — Fundación: completo (29/09/2026)**
 1. Repositorio, venv, estructura de carpetas, `.gitignore`, `.env.example`, `pyproject.toml`
    con ruff y pytest configurados, primer commit.
 2. `docker-compose.yml` con Postgres. Que arranque con un solo comando.
@@ -432,5 +430,6 @@ En este orden. No saltes pasos, y para después de cada bloque para que yo revis
 
 De ahí en adelante seguimos el backlog sprint por sprint.
 
-**Empieza por el bloque 0, paso 1. Cuando lo termines, muéstrame qué quedó y espera mi
-confirmación antes de seguir al paso 2.**
+**El siguiente es el Bloque 1, paso 6** (usuarios, JWT y RBAC), en la rama
+`hu-12-usuarios` que sale de `main`. Cuando lo termines, muéstrame qué quedó y espera mi
+confirmación antes de seguir al paso 7.
