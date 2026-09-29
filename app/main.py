@@ -7,12 +7,14 @@ Documentación interactiva: http://127.0.0.1:8000/docs
 from typing import Annotated, Literal
 
 from fastapi import Depends, FastAPI, Response, status
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.comun.errores import registrar_manejadores
+from app.config import obtener_configuracion
 from app.db import obtener_sesion
 from app.modulos.inventario.rutas import enrutador_catalogo, enrutador_vehiculos
 from app.modulos.portal.rutas import enrutador_portal
@@ -35,6 +37,13 @@ En esta página, usa el botón **Authorize**.
 
 app = FastAPI(title="TransportExperience API", version="0.1.0", description=DESCRIPCION)
 registrar_manejadores(app)
+# El frontend corre en otro puerto: sin esto, el navegador bloquea sus peticiones.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=obtener_configuracion().lista_cors_origenes,
+    allow_methods=["*"],
+    allow_headers=["Authorization", "Content-Type"],
+)
 app.include_router(enrutador_autenticacion)
 app.include_router(enrutador_usuarios)
 app.include_router(enrutador_catalogo)

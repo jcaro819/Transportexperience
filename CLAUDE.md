@@ -477,10 +477,13 @@ En este orden. No saltes pasos, y para después de cada bloque para que yo revis
 7. Catálogo con filtros, paginación y disponibilidad en tiempo real. **Hecho (HU-02, PR #2).**
 8. Inactivación de unidades con motivo, y que desaparezcan del catálogo público al
    instante. **Hecho (HU-09, PR #3).**
-9. Endpoints del portal institucional. **Hecho (HU-01, rama `hu-01-portal`).**
-10. Exportar el OpenAPI y avisarle al frontend que ya puede empezar.
+9. Endpoints del portal institucional. **Hecho (HU-01, PR #4).**
+10. Exportar el OpenAPI y avisarle al frontend que ya puede empezar. **Hecho (rama
+    `paso-10-openapi`: guía en `docs/api/README.md` y CORS).**
 
 De ahí en adelante seguimos el backlog sprint por sprint.
 
-**El siguiente es el Bloque 1, paso 10** (OpenAPI para el frontend). Cuando termines,
-muéstrame qué quedó y espera mi confirmación antes de seguir.
+**Bloque 1 completo** (pendiente del pull request del paso 10). **El siguiente es el
+Sprint 2** (HU-03 alquileres, HU-04 compra, HU-05 pagos), una rama por historia saliendo de
+`main`. Antes de HU-03, revisar sus decisiones pendientes en la sección 4. Espera mi
+confirmación antes de empezar.
