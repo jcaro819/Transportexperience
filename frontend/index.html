@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="TransportExperience - movilidad urbana, alquiler, venta y domicilios." />
+  <title>TransportExperience</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#inicio" data-view-link="inicio" aria-label="Ir al inicio">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 48 48"><path d="M9 27h17l8-12h5L29 33H12a7 7 0 1 1-3-6Zm4 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm24 0a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg>
+      </span>
+      <span>Transport<span>Experience</span></span>
+    </a>
+
+    <button class="menu-toggle" id="menuToggle" aria-label="Abrir menú" aria-expanded="false">☰</button>
+    <nav class="nav" id="mainNav" aria-label="Navegación principal">
+      <a href="#inicio" data-view-link="inicio" class="active">Inicio</a>
+      <a href="#catalogo" data-view-link="catalogo">Catálogo</a>
+      <a href="#como-funciona" data-anchor-link="como-funciona">Cómo funciona</a>
+      <a href="#contacto" data-anchor-link="contacto">Contacto</a>
+    </nav>
+
+    <div class="header-actions">
+      <button class="btn btn-ghost" data-view-button="login">Iniciar sesión</button>
+      <button class="btn btn-primary" data-view-button="catalogo">Ver vehículos</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="view active" id="view-inicio" data-view="inicio">
+      <section class="hero">
+        <div class="hero-content">
+          <span class="eyebrow">MOVILIDAD URBANA SIMPLE</span>
+          <h1>Muévete por la ciudad <span>sin complicaciones.</span></h1>
+          <p>Alquila o compra ciclas, patines y monopatines eléctricos. Elige tu vehículo, revisa su disponibilidad y recíbelo donde lo necesites.</p>
+          <div class="hero-actions">
+            <button class="btn btn-primary btn-lg" data-view-button="catalogo">Explorar catálogo</button>
+            <a class="btn btn-soft btn-lg" href="#como-funciona" data-anchor-link="como-funciona">Cómo funciona</a>
+          </div>
+          <div class="hero-stats" aria-label="Resumen del servicio">
+            <div><strong>15+</strong><span>vehículos demo</span></div>
+            <div><strong>3</strong><span>tipos de movilidad</span></div>
+            <div><strong>7 días</strong><span>de atención</span></div>
+          </div>
+        </div>
+
+        <div class="hero-visual" aria-label="Vista ilustrada de movilidad urbana">
+          <div class="orb orb-one"></div><div class="orb orb-two"></div>
+          <div class="vehicle-card featured">
+            <div class="vehicle-badge">Disponible hoy</div>
+            <div class="vehicle-icon huge">🛴</div>
+            <div class="vehicle-info-row"><div><small>Monopatín eléctrico</small><h3>Volt City S2</h3></div><strong>$18.000<span>/día</span></strong></div>
+            <div class="mini-tags"><span>⚡ 92% batería</span><span>📍 Centro</span></div>
+          </div>
+          <div class="floating-card card-left"><span>⚡</span><div><strong>Rápido</strong><small>Reserva en pocos pasos</small></div></div>
+          <div class="floating-card card-right"><span>🌱</span><div><strong>Sostenible</strong><small>Movilidad de corta distancia</small></div></div>
+        </div>
+      </section>
+
+      <section class="section services" id="servicios">
+        <div class="section-heading">
+          <div><span class="eyebrow">NUESTROS SERVICIOS</span><h2>Una plataforma para moverte y recibir</h2></div>
+          <p>TransportExperience reúne alquiler, venta y domicilios en un solo lugar.</p>
+        </div>
+        <div class="service-grid">
+          <article class="service-card"><span class="service-icon">🚲</span><h3>Alquila</h3><p>Consulta vehículos disponibles y elige el que mejor se ajuste a tu recorrido.</p><button data-view-button="catalogo">Ver alquileres →</button></article>
+          <article class="service-card"><span class="service-icon">🛼</span><h3>Compra</h3><p>Explora dispositivos y accesorios disponibles para venta desde el catálogo.</p><button data-view-button="catalogo">Ver productos →</button></article>
+          <article class="service-card"><span class="service-icon">📦</span><h3>Domicilios</h3><p>Solicita la entrega de un vehículo o producto dentro de las zonas habilitadas.</p><button class="coming-soon">Próximamente</button></article>
+        </div>
+      </section>
+
+      <section class="section steps" id="como-funciona">
+        <div class="section-heading centered"><span class="eyebrow">CÓMO FUNCIONA</span><h2>De la selección al recorrido en 4 pasos</h2></div>
+        <div class="steps-grid">
+          <article><span>01</span><div class="step-icon">🔎</div><h3>Explora</h3><p>Busca por tipo, precio y disponibilidad.</p></article>
+          <article><span>02</span><div class="step-icon">📅</div><h3>Elige</h3><p>Selecciona vehículo, modalidad y fechas.</p></article>
+          <article><span>03</span><div class="step-icon">💳</div><h3>Confirma</h3><p>Revisa el costo y completa tu solicitud.</p></article>
+          <article><span>04</span><div class="step-icon">✨</div><h3>Disfruta</h3><p>Recoge tu vehículo o espera la entrega.</p></article>
+        </div>
+      </section>
+
+      <section class="section institutional">
+        <div class="institutional-card"><span class="eyebrow">MISIÓN</span><h2>Movilidad práctica para recorridos urbanos.</h2><p>Facilitar el acceso a medios de transporte livianos mediante una experiencia digital clara, rápida y confiable.</p></div>
+        <div class="institutional-card dark"><span class="eyebrow">VISIÓN</span><h2>Una ciudad más conectada y sostenible.</h2><p>Convertir TransportExperience en una alternativa accesible para la movilidad de corta distancia y la logística liviana.</p></div>
+      </section>
+
+      <section class="section contact" id="contacto">
+        <div><span class="eyebrow">CONTACTO</span><h2>¿Necesitas ayuda?</h2><p>Esta primera versión usa información de demostración. El contenido institucional real se cargará desde el backend.</p></div>
+        <div class="contact-grid">
+          <div><span>✉️</span><div><small>Correo</small><strong>contacto@transportexperience.co</strong></div></div>
+          <div><span>📞</span><div><small>Teléfono</small><strong>+57 300 000 0000</strong></div></div>
+          <div><span>🕘</span><div><small>Horario demo</small><strong>Lun–Sáb · 7:00–19:00</strong></div></div>
+        </div>
+      </section>
+    </section>
+
+    <section class="view" id="view-catalogo" data-view="catalogo">
+      <section class="page-hero compact">
+        <div><span class="eyebrow">CATÁLOGO</span><h1>Encuentra tu próxima forma de moverte</h1><p>Filtra por tipo, modalidad y tarifa. Los datos mostrados son de demostración para el prototipo visual.</p></div>
+      </section>
+      <section class="catalog-layout section">
+        <aside class="filters">
+          <div class="filter-header"><h3>Filtros</h3><button id="clearFilters">Limpiar</button></div>
+          <label>Tipo de vehículo<select id="typeFilter"><option value="todos">Todos</option><option value="Cicla">Ciclas</option><option value="Patines">Patines</option><option value="Monopatín">Monopatines</option></select></label>
+          <label>Modalidad<select id="modeFilter"><option value="todos">Todas</option><option value="Alquiler">Alquiler</option><option value="Venta">Venta</option></select></label>
+          <label>Tarifa máxima <span id="priceLabel">$80.000</span><input id="priceFilter" type="range" min="10000" max="80000" step="5000" value="80000"></label>
+          <label class="check-row"><input id="availableFilter" type="checkbox"> Solo disponibles hoy</label>
+        </aside>
+        <div class="catalog-content">
+          <div class="catalog-toolbar"><div><strong id="resultCount">6</strong> resultados</div><select aria-label="Ordenar"><option>Recomendados</option><option>Menor precio</option><option>Mayor precio</option></select></div>
+          <div class="catalog-grid" id="catalogGrid"></div>
+          <div class="empty-state" id="emptyState" hidden><div>🔎</div><h3>No encontramos vehículos</h3><p>Prueba quitando algunos filtros.</p></div>
+        </div>
+      </section>
+    </section>
+
+    <section class="view auth-view" id="view-login" data-view="login">
+      <div class="auth-panel">
+        <button class="back-link" data-view-button="inicio">← Volver al inicio</button>
+        <div class="auth-brand"><span class="brand-mark small"><svg viewBox="0 0 48 48"><path d="M9 27h17l8-12h5L29 33H12a7 7 0 1 1-3-6Zm4 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm24 0a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg></span><strong>TransportExperience</strong></div>
+        <span class="eyebrow">BIENVENIDO</span><h1>Inicia sesión</h1><p>Accede para gestionar reservas, consultar tu actividad o entrar al panel operativo.</p>
+        <form id="loginForm">
+          <label>Correo electrónico<input type="email" placeholder="correo@ejemplo.com" value="admin@transportexperience.test" required></label>
+          <label>Contraseña<div class="password-field"><input id="passwordInput" type="password" value="Desarrollo2026!" required><button type="button" id="togglePassword">Mostrar</button></div></label>
+          <div class="form-meta"><label class="check-row"><input type="checkbox"> Recordarme</label><button type="button" class="text-button">¿Olvidaste tu contraseña?</button></div>
+          <button class="btn btn-primary btn-full" type="submit">Entrar</button>
+        </form>
+        <div class="demo-note"><strong>Modo demostración</strong><p>Este formulario no valida credenciales. Al continuar abre una vista simulada del panel administrativo.</p></div>
+      </div>
+      <div class="auth-visual"><div class="auth-quote"><span>“</span><h2>Controla tu movilidad desde un solo lugar.</h2><p>Catálogo, flota, usuarios y mantenimiento listos para conectarse con la API.</p></div></div>
+    </section>
+
+    <section class="view admin-view" id="view-admin" data-view="admin">
+      <aside class="admin-sidebar">
+        <div class="auth-brand"><span class="brand-mark small"><svg viewBox="0 0 48 48"><path d="M9 27h17l8-12h5L29 33H12a7 7 0 1 1-3-6Zm4 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm24 0a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg></span><strong>TransportExperience</strong></div>
+        <nav class="admin-nav"><button class="active" data-admin-tab="resumen">▦ Resumen</button><button data-admin-tab="usuarios">👥 Usuarios</button><button data-admin-tab="flota">🛴 Flota</button><button data-admin-tab="mantenimiento">🛠 Mantenimiento</button><button disabled>📍 Rastreo <span>Próx.</span></button><button disabled>📊 Reportes <span>Próx.</span></button></nav>
+        <button class="logout" data-view-button="inicio">↪ Cerrar demo</button>
+      </aside>
+      <div class="admin-main">
+        <header class="admin-topbar"><div><small>Panel administrativo</small><h2 id="adminTitle">Resumen</h2></div><div class="admin-user"><div class="avatar">AM</div><div><strong>Administrador Demo</strong><small>Administrador</small></div></div></header>
+        <section class="admin-tab active" data-admin-content="resumen">
+          <div class="metric-grid"><article><span>Vehículos disponibles</span><strong>11</strong><small>de 15 unidades</small></article><article><span>En mantenimiento</span><strong>3</strong><small>1 novedad crítica</small></article><article><span>Usuarios activos</span><strong>24</strong><small>4 roles configurados</small></article><article><span>Solicitudes hoy</span><strong>8</strong><small>dato de demostración</small></article></div>
+          <div class="admin-grid two"><article class="panel"><div class="panel-heading"><div><small>FLOTA</small><h3>Estado general</h3></div><button data-admin-tab="flota">Ver flota</button></div><div class="status-list"><div><span><i class="dot available"></i>Disponible</span><strong>11</strong></div><div><span><i class="dot maintenance"></i>Mantenimiento</span><strong>3</strong></div><div><span><i class="dot reserved"></i>Reservado</span><strong>1</strong></div></div></article><article class="panel"><div class="panel-heading"><div><small>ACTIVIDAD</small><h3>Últimos movimientos</h3></div></div><div class="activity-list"><p><span>🛠</span><span><strong>TE-MP-004</strong> pasó a mantenimiento<small>Hace 18 min</small></span></p><p><span>👤</span><span>Nuevo cliente registrado<small>Hace 42 min</small></span></p><p><span>✅</span><span><strong>TE-CI-002</strong> volvió a servicio<small>Hace 1 h</small></span></p></div></article></div>
+        </section>
+
+        <section class="admin-tab" data-admin-content="usuarios"><article class="panel"><div class="panel-heading"><div><small>HU-12</small><h3>Gestión de usuarios y roles</h3></div><button class="btn btn-primary small-btn">+ Nuevo usuario</button></div><div class="table-wrap"><table><thead><tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Acción</th></tr></thead><tbody><tr><td><strong>Ana Morales</strong><small>ana@example.com</small></td><td><span class="role admin">Administrador</span></td><td><span class="status-chip active-chip">Activo</span></td><td><button class="table-action">Editar</button></td></tr><tr><td><strong>Carlos Ruiz</strong><small>carlos@example.com</small></td><td><span class="role client">Cliente</span></td><td><span class="status-chip active-chip">Activo</span></td><td><button class="table-action">Editar</button></td></tr><tr><td><strong>Laura Díaz</strong><small>laura@example.com</small></td><td><span class="role operator">Operador</span></td><td><span class="status-chip active-chip">Activo</span></td><td><button class="table-action">Editar</button></td></tr><tr><td><strong>Mateo Gómez</strong><small>mateo@example.com</small></td><td><span class="role delivery">Domiciliario</span></td><td><span class="status-chip inactive-chip">Inactivo</span></td><td><button class="table-action">Editar</button></td></tr></tbody></table></div></article></section>
+
+        <section class="admin-tab" data-admin-content="flota"><article class="panel"><div class="panel-heading"><div><small>HU-09</small><h3>Gestión de flota</h3></div><div class="inline-actions"><input class="search-input" placeholder="Buscar por código"><button class="btn btn-primary small-btn">+ Registrar</button></div></div><div class="fleet-grid"><article><div class="vehicle-icon">🚲</div><div><small>TE-CI-001</small><h4>Urban Ride 3</h4><span class="status-chip active-chip">Disponible</span></div><button class="outline-danger" data-inactivate="TE-CI-001">Inactivar</button></article><article><div class="vehicle-icon">🛴</div><div><small>TE-MP-004</small><h4>Volt City S2</h4><span class="status-chip maintenance-chip">Mantenimiento</span></div><button class="table-action">Ver novedades</button></article><article><div class="vehicle-icon">🛼</div><div><small>TE-PA-002</small><h4>Street Glide</h4><span class="status-chip active-chip">Disponible</span></div><button class="outline-danger" data-inactivate="TE-PA-002">Inactivar</button></article></div></article></section>
+
+        <section class="admin-tab" data-admin-content="mantenimiento"><article class="panel"><div class="panel-heading"><div><small>MANTENIMIENTO</small><h3>Novedades abiertas</h3></div></div><div class="maintenance-list"><article><span class="warning-icon">!</span><div><small>TE-MP-004 · Crítica</small><h4>Falla de freno trasero</h4><p>Unidad retirada temporalmente del catálogo.</p></div><button class="btn btn-soft">Revisar</button></article><article><span class="warning-icon soft">!</span><div><small>TE-MP-007 · Media</small><h4>Batería con carga irregular</h4><p>Pendiente de diagnóstico del operador.</p></div><button class="btn btn-soft">Revisar</button></article></div></article></section>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer" id="siteFooter"><div><strong>TransportExperience</strong><p>Prototipo frontend v1 · SystemSolutions · 2026</p></div><div><a href="#inicio" data-view-link="inicio">Inicio</a><a href="#catalogo" data-view-link="catalogo">Catálogo</a><a href="#contacto" data-anchor-link="contacto">Contacto</a></div></footer>
+
+  <dialog id="vehicleDialog" class="vehicle-dialog"><button class="dialog-close" id="closeDialog" aria-label="Cerrar">×</button><div id="dialogContent"></div></dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>
