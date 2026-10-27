@@ -5056,7 +5056,7 @@
           "pagos"
         ],
         "summary": "Eventos de Wompi (webhook)",
-        "description": "Lo llama Wompi, no el frontend. Verifica la firma, descarta repetidos y siempre\nresponde 200 (si no, Wompi reintenta). El cuerpo crudo queda guardado.",
+        "description": "Lo llama Wompi, no el frontend. Verifica la firma, descarta repetidos y responde 200\n(si no, Wompi reintenta). El cuerpo crudo queda guardado.\n\nUn cuerpo de más de 64 KiB se rechaza con 413 sin leerlo entero ni guardarlo: un evento\nreal de Wompi pesa unos pocos KiB.",
         "operationId": "webhook_wompi_pagos_webhooks_wompi_post",
         "responses": {
           "200": {
@@ -5065,6 +5065,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/EventoRecibido"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Cuerpo demasiado grande",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
                 }
               }
             }

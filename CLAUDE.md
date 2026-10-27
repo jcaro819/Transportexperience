@@ -697,7 +697,15 @@ No los dejes para el final, porque son los que el profesor va a revisar contra e
 - **Tiempos de respuesta (3.4.1, 3.4.2):** consulta de disponibilidad < 3s, catálogo < 4s.
   Pon índices en la base desde el principio y un test que mida.
 - **Respaldos (3.3.2):** un script de backup de Postgres y su instrucción de restauración.
-  No hace falta más, pero tiene que existir y estar documentado.
+  No hace falta más, pero tiene que existir y estar documentado. **Hecho (Sprint 4):**
+  `python -m scripts.respaldo_bd respaldar|restaurar` (`pg_dump -Fc` y `pg_restore`
+  dentro del contenedor), documentado en el README. Restaurar sobre la base del `.env`
+  exige `--confirmar`; `--base` restaura en otra base para probar un respaldo. Hay un
+  test de ida y vuelta real (respalda la base de pruebas, la restaura en otra y compara).
+- **Límite del cuerpo del webhook de pagos (Sprint 4):** 64 KiB
+  (`pagos.rutas.LIMITE_CUERPO_WEBHOOK`). Se lee por partes y se corta al pasar el
+  límite (`app/comun/peticiones.py`), sin cargar el cuerpo entero a memoria; responde 413
+  con `cuerpo_demasiado_grande` y no guarda el evento.
 - **Registro de fallas (3.3.4):** logging estructurado, y que un error en un pago o una
   reserva conserve el estado anterior.
 

@@ -13,6 +13,7 @@ from sqlalchemy import select
 
 from app.comun.errores import respuestas_error
 from app.comun.paginacion import Pagina, Paginacion
+from app.comun.peticiones import leer_cuerpo_limitado
 from app.config import obtener_configuracion
 from app.db import SesionBD
 from app.modulos.pagos import procesamiento
@@ -29,6 +30,9 @@ from app.modulos.pagos.pasarela import PasarelaPagos, obtener_pasarela
 from app.seguridad import SoloAdministrador, UsuarioActual
 
 enrutador_pagos = APIRouter(prefix="/pagos", tags=["pagos"])
+
+# Un evento real de Wompi pesa unos pocos KiB; 64 KiB deja margen de sobra.
+LIMITE_CUERPO_WEBHOOK = 64 * 1024
 
 Pasarela = Annotated[PasarelaPagos, Depends(obtener_pasarela)]
 
@@ -90,12 +94,16 @@ def devoluciones_pendientes(
     "/webhooks/wompi",
     response_model=EventoRecibido,
     summary="Eventos de Wompi (webhook)",
+    responses=respuestas_error(413),
 )
 async def webhook_wompi(request: Request, sesion: SesionBD) -> EventoRecibido:
-    """Lo llama Wompi, no el frontend. Verifica la firma, descarta repetidos y siempre
-    responde 200 (si no, Wompi reintenta). El cuerpo crudo queda guardado.
+    """Lo llama Wompi, no el frontend. Verifica la firma, descarta repetidos y responde 200
+    (si no, Wompi reintenta). El cuerpo crudo queda guardado.
+
+    Un cuerpo de más de 64 KiB se rechaza con 413 sin leerlo entero ni guardarlo: un evento
+    real de Wompi pesa unos pocos KiB.
     """
-    cuerpo = await request.body()
+    cuerpo = await leer_cuerpo_limitado(request, LIMITE_CUERPO_WEBHOOK)
     secreto = obtener_configuracion().wompi_secreto_eventos
     procesamiento.procesar_evento_wompi(sesion, cuerpo, secreto)
     return EventoRecibido()
