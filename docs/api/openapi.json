@@ -3982,6 +3982,847 @@
         }
       }
     },
+    "/domicilios/zonas": {
+      "get": {
+        "tags": [
+          "domicilios"
+        ],
+        "summary": "Zonas de cobertura",
+        "description": "Polígonos GeoJSON y tarifa de envío de cada zona activa, para dibujarlos en el mapa.",
+        "operationId": "listar_zonas_domicilios_zonas_get",
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Número de página, desde 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Número de página, desde 1."
+          },
+          {
+            "name": "tamano",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Elementos por página (máx. 100).",
+              "default": 20,
+              "title": "Tamano"
+            },
+            "description": "Elementos por página (máx. 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_ZonaRespuesta_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/domicilios/cobertura": {
+      "get": {
+        "tags": [
+          "domicilios"
+        ],
+        "summary": "¿Llegamos a este punto?",
+        "description": "La zona y la tarifa de envío del punto marcado en el mapa. Fuera de cobertura\nresponde 422 con `fuera_de_cobertura`.",
+        "operationId": "cobertura_domicilios_cobertura_get",
+        "parameters": [
+          {
+            "name": "latitud",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "maximum": 90.0,
+                  "minimum": -90.0
+                },
+                {
+                  "type": "string",
+                  "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,6}0*$"
+                }
+              ],
+              "title": "Latitud"
+            }
+          },
+          {
+            "name": "longitud",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "maximum": 180.0,
+                  "minimum": -180.0
+                },
+                {
+                  "type": "string",
+                  "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,6}0*$"
+                }
+              ],
+              "title": "Longitud"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Cobertura"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/domicilios": {
+      "post": {
+        "tags": [
+          "domicilios"
+        ],
+        "summary": "Solicitar domicilio para una reserva o compra",
+        "description": "Solo antes de pagar (`pendiente_pago`). La tarifa de la zona se suma al total de la\noperación (`total_operacion`), que es lo que se paga después.",
+        "operationId": "solicitar_domicilios_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DomicilioCrear"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomicilioRespuesta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto con el estado actual",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "domicilios"
+        ],
+        "summary": "Todos los domicilios",
+        "description": "Para el despacho: con `estado=pendiente`, los que esperan domiciliario.",
+        "operationId": "listar_domicilios_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "estado",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/EstadoDomicilio"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Estado"
+            }
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Número de página, desde 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Número de página, desde 1."
+          },
+          {
+            "name": "tamano",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Elementos por página (máx. 100).",
+              "default": 20,
+              "title": "Tamano"
+            },
+            "description": "Elementos por página (máx. 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_DomicilioRespuesta_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/domicilios/mios": {
+      "get": {
+        "tags": [
+          "domicilios"
+        ],
+        "summary": "Mis domicilios",
+        "operationId": "listar_mios_domicilios_mios_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Número de página, desde 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Número de página, desde 1."
+          },
+          {
+            "name": "tamano",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Elementos por página (máx. 100).",
+              "default": 20,
+              "title": "Tamano"
+            },
+            "description": "Elementos por página (máx. 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_DomicilioRespuesta_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/domicilios/asignados": {
+      "get": {
+        "tags": [
+          "domicilios"
+        ],
+        "summary": "Mis entregas (domiciliario)",
+        "description": "Las entregas en ruta del domiciliario, con la dirección, el contacto del cliente y el\n`vehiculo_transporte` que usa: es el único vehículo sobre el que puede reportar novedades.",
+        "operationId": "listar_asignados_domicilios_asignados_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Número de página, desde 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Número de página, desde 1."
+          },
+          {
+            "name": "tamano",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Elementos por página (máx. 100).",
+              "default": 20,
+              "title": "Tamano"
+            },
+            "description": "Elementos por página (máx. 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_DomicilioRespuesta_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/domicilios/domiciliarios-disponibles": {
+      "get": {
+        "tags": [
+          "domicilios"
+        ],
+        "summary": "Domiciliarios disponibles",
+        "description": "Domiciliarios activos sin entregas en ruta: los que se pueden asignar ahora.",
+        "operationId": "domiciliarios_disponibles_domicilios_domiciliarios_disponibles_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Número de página, desde 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Número de página, desde 1."
+          },
+          {
+            "name": "tamano",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Elementos por página (máx. 100).",
+              "default": 20,
+              "title": "Tamano"
+            },
+            "description": "Elementos por página (máx. 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_PersonaContacto_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/domicilios/{domicilio_id}": {
+      "get": {
+        "tags": [
+          "domicilios"
+        ],
+        "summary": "Ver un domicilio",
+        "description": "El cliente ve los suyos; el domiciliario, los que tiene asignados; el despacho, todos.",
+        "operationId": "ver_domicilios__domicilio_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "domicilio_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Domicilio Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomicilioRespuesta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/domicilios/{domicilio_id}/cancelacion": {
+      "post": {
+        "tags": [
+          "domicilios"
+        ],
+        "summary": "Quitar el domicilio antes de pagar",
+        "description": "El envío sale del total. Para cambiar la dirección: quitar y solicitar de nuevo.",
+        "operationId": "cancelar_domicilios__domicilio_id__cancelacion_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "domicilio_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Domicilio Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomicilioRespuesta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto con el estado actual",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/domicilios/{domicilio_id}/asignacion": {
+      "post": {
+        "tags": [
+          "domicilios"
+        ],
+        "summary": "Asignar el domiciliario",
+        "description": "`pendiente` → `asignado`. Solo con la operación pagada y un domiciliario disponible.\nEl vehículo de transporte es opcional.",
+        "operationId": "asignar_domicilios__domicilio_id__asignacion_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "domicilio_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Domicilio Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AsignacionCrear"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomicilioRespuesta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto con el estado actual",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/salud": {
       "get": {
         "tags": [
@@ -4176,6 +5017,34 @@
           "creado_en"
         ],
         "title": "AlquilerRespuesta"
+      },
+      "AsignacionCrear": {
+        "properties": {
+          "domiciliario_id": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Domiciliario Id",
+            "description": "De `/domicilios/domiciliarios-disponibles`."
+          },
+          "vehiculo_transporte_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vehiculo Transporte Id",
+            "description": "Unidad de la flota que usa el domiciliario (opcional). Queda `asignado_a_domicilio` mientras dura la entrega."
+          }
+        },
+        "type": "object",
+        "required": [
+          "domiciliario_id"
+        ],
+        "title": "AsignacionCrear"
       },
       "BancoPse": {
         "properties": {
@@ -4379,6 +5248,30 @@
           "correo"
         ],
         "title": "ClienteComprobante"
+      },
+      "Cobertura": {
+        "properties": {
+          "zona_id": {
+            "type": "integer",
+            "title": "Zona Id"
+          },
+          "zona": {
+            "type": "string",
+            "title": "Zona"
+          },
+          "tarifa_envio": {
+            "type": "integer",
+            "title": "Tarifa Envio"
+          }
+        },
+        "type": "object",
+        "required": [
+          "zona_id",
+          "zona",
+          "tarifa_envio"
+        ],
+        "title": "Cobertura",
+        "description": "La zona que cubre un punto y lo que cuesta el envío allí."
       },
       "ComprobantePreliminar": {
         "properties": {
@@ -4673,6 +5566,238 @@
         "title": "DisponibilidadRango",
         "description": "Cuántas unidades de un modelo están libres durante todo un rango de fechas."
       },
+      "DomicilioCrear": {
+        "properties": {
+          "alquiler_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alquiler Id"
+          },
+          "venta_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venta Id"
+          },
+          "direccion": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 5,
+            "title": "Direccion",
+            "examples": [
+              "Calle 36 # 19-20, apto 301"
+            ]
+          },
+          "indicaciones": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Indicaciones",
+            "examples": [
+              "Portería del edificio azul."
+            ]
+          },
+          "latitud": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,6}0*$"
+              }
+            ],
+            "title": "Latitud",
+            "description": "Del punto que el cliente marcó en el mapa.",
+            "examples": [
+              "7.119300"
+            ]
+          },
+          "longitud": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,6}0*$"
+              }
+            ],
+            "title": "Longitud",
+            "examples": [
+              "-73.122700"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "direccion",
+          "latitud",
+          "longitud"
+        ],
+        "title": "DomicilioCrear",
+        "description": "Domicilio para un alquiler o una compra que aún no se ha pagado."
+      },
+      "DomicilioRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "codigo_rastreo": {
+            "type": "string",
+            "title": "Codigo Rastreo",
+            "description": "Para seguir el pedido (HU-07)."
+          },
+          "alquiler_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alquiler Id"
+          },
+          "venta_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venta Id"
+          },
+          "estado": {
+            "$ref": "#/components/schemas/EstadoDomicilio"
+          },
+          "zona": {
+            "$ref": "#/components/schemas/ZonaResumen"
+          },
+          "valor_envio": {
+            "type": "integer",
+            "title": "Valor Envio",
+            "description": "Ya sumado al total de la operación."
+          },
+          "total_operacion": {
+            "type": "integer",
+            "title": "Total Operacion",
+            "description": "Total del alquiler o la compra, con el envío."
+          },
+          "direccion": {
+            "type": "string",
+            "title": "Direccion"
+          },
+          "indicaciones": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Indicaciones"
+          },
+          "latitud": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Latitud"
+          },
+          "longitud": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Longitud"
+          },
+          "cliente": {
+            "$ref": "#/components/schemas/PersonaContacto"
+          },
+          "domiciliario": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PersonaContacto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "vehiculo_transporte": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VehiculoTransporte"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "El vehículo que lleva el domiciliario, si usa uno de la flota."
+          },
+          "motivo_cancelacion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo Cancelacion"
+          },
+          "creado_en": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Creado En"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "codigo_rastreo",
+          "alquiler_id",
+          "venta_id",
+          "estado",
+          "zona",
+          "valor_envio",
+          "total_operacion",
+          "direccion",
+          "indicaciones",
+          "latitud",
+          "longitud",
+          "cliente",
+          "domiciliario",
+          "vehiculo_transporte",
+          "motivo_cancelacion",
+          "creado_en"
+        ],
+        "title": "DomicilioRespuesta"
+      },
       "ErrorRespuesta": {
         "properties": {
           "error": {
@@ -4697,6 +5822,19 @@
           "expirado"
         ],
         "title": "EstadoAlquiler"
+      },
+      "EstadoDomicilio": {
+        "type": "string",
+        "enum": [
+          "pendiente",
+          "asignado",
+          "recogido",
+          "en_camino",
+          "entregado",
+          "cancelado"
+        ],
+        "title": "EstadoDomicilio",
+        "description": "Los seis estados del SRS 3.1.7, que cubren los tres de HU-07."
       },
       "EstadoNovedad": {
         "type": "string",
@@ -5406,6 +6544,42 @@
         ],
         "title": "Pagina[AlquilerRespuesta]"
       },
+      "Pagina_DomicilioRespuesta_": {
+        "properties": {
+          "elementos": {
+            "items": {
+              "$ref": "#/components/schemas/DomicilioRespuesta"
+            },
+            "type": "array",
+            "title": "Elementos"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamano": {
+            "type": "integer",
+            "title": "Tamano"
+          },
+          "paginas": {
+            "type": "integer",
+            "title": "Paginas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "elementos",
+          "total",
+          "pagina",
+          "tamano",
+          "paginas"
+        ],
+        "title": "Pagina[DomicilioRespuesta]"
+      },
       "Pagina_ModeloCatalogo_": {
         "properties": {
           "elementos": {
@@ -5513,6 +6687,42 @@
           "paginas"
         ],
         "title": "Pagina[PagoDetalle]"
+      },
+      "Pagina_PersonaContacto_": {
+        "properties": {
+          "elementos": {
+            "items": {
+              "$ref": "#/components/schemas/PersonaContacto"
+            },
+            "type": "array",
+            "title": "Elementos"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamano": {
+            "type": "integer",
+            "title": "Tamano"
+          },
+          "paginas": {
+            "type": "integer",
+            "title": "Paginas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "elementos",
+          "total",
+          "pagina",
+          "tamano",
+          "paginas"
+        ],
+        "title": "Pagina[PersonaContacto]"
       },
       "Pagina_ProductoCatalogo_": {
         "properties": {
@@ -5693,6 +6903,42 @@
           "paginas"
         ],
         "title": "Pagina[VentaRespuesta]"
+      },
+      "Pagina_ZonaRespuesta_": {
+        "properties": {
+          "elementos": {
+            "items": {
+              "$ref": "#/components/schemas/ZonaRespuesta"
+            },
+            "type": "array",
+            "title": "Elementos"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamano": {
+            "type": "integer",
+            "title": "Tamano"
+          },
+          "paginas": {
+            "type": "integer",
+            "title": "Paginas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "elementos",
+          "total",
+          "pagina",
+          "tamano",
+          "paginas"
+        ],
+        "title": "Pagina[ZonaRespuesta]"
       },
       "PagoAlquilerRespuesta": {
         "properties": {
@@ -5977,6 +7223,36 @@
         ],
         "title": "PagoVentaRespuesta",
         "description": "La compra como quedó, el intento de pago y, si hubo que devolver, la devolución."
+      },
+      "PersonaContacto": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nombre_completo": {
+            "type": "string",
+            "title": "Nombre Completo"
+          },
+          "telefono": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telefono"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre_completo",
+          "telefono"
+        ],
+        "title": "PersonaContacto"
       },
       "PortalRespuesta": {
         "properties": {
@@ -6700,6 +7976,24 @@
         "title": "VehiculoGestion",
         "description": "Una unidad vista por el personal: con su estado real, no solo si está libre."
       },
+      "VehiculoTransporte": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "codigo"
+        ],
+        "title": "VehiculoTransporte"
+      },
       "VentaCrear": {
         "properties": {
           "vehiculos": {
@@ -6799,6 +8093,55 @@
           "creado_en"
         ],
         "title": "VentaRespuesta"
+      },
+      "ZonaRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "tarifa_envio": {
+            "type": "integer",
+            "title": "Tarifa Envio",
+            "description": "Pesos por entrega en esta zona."
+          },
+          "poligono": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Poligono",
+            "description": "GeoJSON Polygon, coordenadas `[longitud, latitud]`: se dibuja tal cual."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre",
+          "tarifa_envio",
+          "poligono"
+        ],
+        "title": "ZonaRespuesta"
+      },
+      "ZonaResumen": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre"
+        ],
+        "title": "ZonaResumen"
       }
     },
     "securitySchemes": {
