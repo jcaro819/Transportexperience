@@ -1687,6 +1687,963 @@
         }
       }
     },
+    "/alquileres": {
+      "post": {
+        "tags": [
+          "alquileres"
+        ],
+        "summary": "Reservar un vehículo",
+        "description": "Reserva una unidad libre del modelo en esas fechas y la guarda **15 minutos** mientras\nel cliente paga (`expira_en`). Si no paga a tiempo, la reserva expira y la unidad se\nlibera sola. El precio es la tarifa diaria por los días, contando inicio y fin.",
+        "operationId": "crear_alquileres_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlquilerCrear"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlquilerRespuesta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto con el estado actual",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "alquileres"
+        ],
+        "summary": "Todos los alquileres",
+        "description": "Para el mostrador: buscar el alquiler que se va a entregar o recibir.",
+        "operationId": "listar_alquileres_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "estado",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/EstadoAlquiler"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Estado"
+            }
+          },
+          {
+            "name": "vehiculo_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "exclusiveMinimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Vehiculo Id"
+            }
+          },
+          {
+            "name": "cliente_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "exclusiveMinimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cliente Id"
+            }
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Número de página, desde 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Número de página, desde 1."
+          },
+          {
+            "name": "tamano",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Elementos por página (máx. 100).",
+              "default": 20,
+              "title": "Tamano"
+            },
+            "description": "Elementos por página (máx. 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_AlquilerRespuesta_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/alquileres/mios": {
+      "get": {
+        "tags": [
+          "alquileres"
+        ],
+        "summary": "Mis alquileres",
+        "description": "Los alquileres del cliente con sesión, del más reciente al más antiguo.",
+        "operationId": "listar_mios_alquileres_mios_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "estado",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/EstadoAlquiler"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Estado"
+            }
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Número de página, desde 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Número de página, desde 1."
+          },
+          {
+            "name": "tamano",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Elementos por página (máx. 100).",
+              "default": 20,
+              "title": "Tamano"
+            },
+            "description": "Elementos por página (máx. 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_AlquilerRespuesta_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/alquileres/en-riesgo": {
+      "get": {
+        "tags": [
+          "alquileres"
+        ],
+        "summary": "Alquileres en riesgo",
+        "description": "Alquileres aún no entregados cuya unidad está en mantenimiento: hay que reasignarlos,\nesperar a que la unidad vuelva o cancelarlos con devolución.",
+        "operationId": "listar_en_riesgo_alquileres_en_riesgo_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Número de página, desde 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Número de página, desde 1."
+          },
+          {
+            "name": "tamano",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Elementos por página (máx. 100).",
+              "default": 20,
+              "title": "Tamano"
+            },
+            "description": "Elementos por página (máx. 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_AlquilerRespuesta_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/alquileres/{alquiler_id}": {
+      "get": {
+        "tags": [
+          "alquileres"
+        ],
+        "summary": "Ver un alquiler",
+        "description": "El cliente solo ve los suyos; el administrador y el operador, todos.",
+        "operationId": "ver_alquileres__alquiler_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "alquiler_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Alquiler Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlquilerRespuesta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/alquileres/{alquiler_id}/pago": {
+      "post": {
+        "tags": [
+          "alquileres"
+        ],
+        "summary": "Pagar una reserva",
+        "description": "Cobra el `total` de una reserva en `pendiente_pago`. Revisa `pago.estado`:\n\n- `aprobado`: el alquiler pasa a `confirmado`.\n- `rechazado`: el alquiler sigue pendiente; se puede reintentar antes de `expira_en`.\n- `pendiente`: (desde HU-05, con PSE) la confirmación llega después; consulta el alquiler.\n\nEn desarrollo la pasarela es **falsa**: aprueba al instante y no mueve dinero.",
+        "operationId": "pagar_alquileres__alquiler_id__pago_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "alquiler_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Alquiler Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PagoAlquilerCrear"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagoAlquilerRespuesta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto con el estado actual",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/alquileres/{alquiler_id}/cancelacion": {
+      "post": {
+        "tags": [
+          "alquileres"
+        ],
+        "summary": "Cancelar una reserva sin pagar",
+        "description": "Solo mientras está en `pendiente_pago`. Un alquiler pagado no se cancela desde aquí.",
+        "operationId": "cancelar_alquileres__alquiler_id__cancelacion_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "alquiler_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Alquiler Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelacionAlquiler"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlquilerRespuesta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto con el estado actual",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/alquileres/{alquiler_id}/entrega": {
+      "post": {
+        "tags": [
+          "alquileres"
+        ],
+        "summary": "Entregar el vehículo al cliente",
+        "description": "`confirmado` → `en_curso`, y la unidad pasa a `alquilado`. Solo entre la fecha de\ninicio y la de fin, y si la unidad está disponible (si está en mantenimiento, reasigna).",
+        "operationId": "entregar_alquileres__alquiler_id__entrega_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "alquiler_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Alquiler Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlquilerRespuesta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto con el estado actual",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/alquileres/{alquiler_id}/devolucion": {
+      "post": {
+        "tags": [
+          "alquileres"
+        ],
+        "summary": "Recibir el vehículo de vuelta",
+        "description": "`en_curso` → `finalizado`, y la unidad vuelve a `disponible`. Si entró en\nmantenimiento durante el alquiler, se queda en mantenimiento hasta que el taller cierre\nsu novedad.",
+        "operationId": "recibir_alquileres__alquiler_id__devolucion_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "alquiler_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Alquiler Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlquilerRespuesta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto con el estado actual",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/alquileres/{alquiler_id}/reasignacion": {
+      "post": {
+        "tags": [
+          "alquileres"
+        ],
+        "summary": "Mover el alquiler a otra unidad",
+        "description": "Mueve un alquiler aún no entregado a otra unidad libre del **mismo modelo**, con las\nmismas fechas y el mismo precio. Pensado para los alquileres en riesgo.",
+        "operationId": "reasignar_alquileres__alquiler_id__reasignacion_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "alquiler_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Alquiler Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasignacionAlquiler"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlquilerRespuesta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto con el estado actual",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/salud": {
       "get": {
         "tags": [
@@ -1753,6 +2710,135 @@
         "title": "AlquilerAfectado",
         "description": "Alquiler activo de una unidad que salió de servicio. No se cancela solo."
       },
+      "AlquilerCrear": {
+        "properties": {
+          "modelo_id": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Modelo Id",
+            "description": "El `id` del modelo en `/catalogo/modelos`."
+          },
+          "fecha_inicio": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha Inicio",
+            "description": "Primer día del alquiler (AAAA-MM-DD), desde hoy."
+          },
+          "fecha_fin": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha Fin",
+            "description": "Último día del alquiler, inclusive."
+          }
+        },
+        "type": "object",
+        "required": [
+          "modelo_id",
+          "fecha_inicio",
+          "fecha_fin"
+        ],
+        "title": "AlquilerCrear",
+        "description": "Reserva de un modelo del catálogo. El sistema asigna una unidad libre."
+      },
+      "AlquilerRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "cliente_id": {
+            "type": "integer",
+            "title": "Cliente Id"
+          },
+          "vehiculo": {
+            "$ref": "#/components/schemas/VehiculoDelAlquiler"
+          },
+          "fecha_inicio": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha Inicio"
+          },
+          "fecha_fin": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha Fin"
+          },
+          "dias": {
+            "type": "integer",
+            "title": "Dias",
+            "description": "Días cobrados, contando inicio y fin."
+          },
+          "tarifa_diaria": {
+            "type": "integer",
+            "title": "Tarifa Diaria",
+            "description": "Tarifa del momento de la reserva, en pesos."
+          },
+          "subtotal": {
+            "type": "integer",
+            "title": "Subtotal"
+          },
+          "valor_envio": {
+            "type": "integer",
+            "title": "Valor Envio",
+            "description": "0 si no hay domicilio."
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "Lo que se cobra: subtotal + envío."
+          },
+          "estado": {
+            "$ref": "#/components/schemas/EstadoAlquiler"
+          },
+          "expira_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expira En",
+            "description": "Solo en `pendiente_pago`: hasta cuándo se guarda el vehículo sin pagar (15 min)."
+          },
+          "motivo_cancelacion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo Cancelacion"
+          },
+          "creado_en": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Creado En"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "cliente_id",
+          "vehiculo",
+          "fecha_inicio",
+          "fecha_fin",
+          "dias",
+          "tarifa_diaria",
+          "subtotal",
+          "valor_envio",
+          "total",
+          "estado",
+          "expira_en",
+          "motivo_cancelacion",
+          "creado_en"
+        ],
+        "title": "AlquilerRespuesta"
+      },
       "Body_iniciar_sesion_autenticacion_token_post": {
         "properties": {
           "grant_type": {
@@ -1811,6 +2897,27 @@
           "password"
         ],
         "title": "Body_iniciar_sesion_autenticacion_token_post"
+      },
+      "CancelacionAlquiler": {
+        "properties": {
+          "motivo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo",
+            "examples": [
+              "Cambié de planes."
+            ]
+          }
+        },
+        "type": "object",
+        "title": "CancelacionAlquiler"
       },
       "CierreNovedad": {
         "properties": {
@@ -1961,6 +3068,18 @@
         "title": "ErrorRespuesta",
         "description": "Forma de todas las respuestas de error de la API."
       },
+      "EstadoAlquiler": {
+        "type": "string",
+        "enum": [
+          "pendiente_pago",
+          "confirmado",
+          "en_curso",
+          "finalizado",
+          "cancelado",
+          "expirado"
+        ],
+        "title": "EstadoAlquiler"
+      },
       "EstadoNovedad": {
         "type": "string",
         "enum": [
@@ -1968,6 +3087,17 @@
           "cerrada"
         ],
         "title": "EstadoNovedad"
+      },
+      "EstadoPago": {
+        "type": "string",
+        "enum": [
+          "pendiente",
+          "aprobado",
+          "rechazado",
+          "expirado",
+          "error"
+        ],
+        "title": "EstadoPago"
       },
       "EstadoSalud": {
         "properties": {
@@ -2488,6 +3618,42 @@
         "title": "OperacionVehiculo",
         "description": "Resultado de reportar, inactivar o cerrar: la unidad y la novedad como quedaron."
       },
+      "Pagina_AlquilerRespuesta_": {
+        "properties": {
+          "elementos": {
+            "items": {
+              "$ref": "#/components/schemas/AlquilerRespuesta"
+            },
+            "type": "array",
+            "title": "Elementos"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamano": {
+            "type": "integer",
+            "title": "Tamano"
+          },
+          "paginas": {
+            "type": "integer",
+            "title": "Paginas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "elementos",
+          "total",
+          "pagina",
+          "tamano",
+          "paginas"
+        ],
+        "title": "Pagina[AlquilerRespuesta]"
+      },
       "Pagina_ModeloCatalogo_": {
         "properties": {
           "elementos": {
@@ -2668,6 +3834,71 @@
         ],
         "title": "Pagina[VehiculoGestion]"
       },
+      "PagoAlquilerCrear": {
+        "properties": {
+          "metodo_pago": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Metodo Pago",
+            "description": "Código del método de pago habilitado.",
+            "examples": [
+              "tarjeta",
+              "pse"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "metodo_pago"
+        ],
+        "title": "PagoAlquilerCrear"
+      },
+      "PagoAlquilerRespuesta": {
+        "properties": {
+          "alquiler": {
+            "$ref": "#/components/schemas/AlquilerRespuesta"
+          },
+          "pago": {
+            "$ref": "#/components/schemas/PagoResumen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "alquiler",
+          "pago"
+        ],
+        "title": "PagoAlquilerRespuesta",
+        "description": "El alquiler como quedó y el intento de pago."
+      },
+      "PagoResumen": {
+        "properties": {
+          "referencia": {
+            "type": "string",
+            "title": "Referencia"
+          },
+          "estado": {
+            "$ref": "#/components/schemas/EstadoPago"
+          },
+          "monto": {
+            "type": "integer",
+            "title": "Monto"
+          },
+          "proveedor": {
+            "type": "string",
+            "title": "Proveedor",
+            "description": "`falso` en desarrollo; `wompi` desde HU-05."
+          }
+        },
+        "type": "object",
+        "required": [
+          "referencia",
+          "estado",
+          "monto",
+          "proveedor"
+        ],
+        "title": "PagoResumen"
+      },
       "PortalRespuesta": {
         "properties": {
           "secciones": {
@@ -2694,6 +3925,25 @@
         ],
         "title": "PortalRespuesta",
         "description": "Todo lo que muestra el portal, en una sola petición (HU-01: carga < 2 s)."
+      },
+      "ReasignacionAlquiler": {
+        "properties": {
+          "vehiculo_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vehiculo Id",
+            "description": "Unidad del mismo modelo a la que se mueve el alquiler. Sin este campo, el sistema escoge la primera libre en esas fechas."
+          }
+        },
+        "type": "object",
+        "title": "ReasignacionAlquiler"
       },
       "RegistroCliente": {
         "properties": {
@@ -3135,6 +4385,33 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VehiculoDelAlquiler": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "modelo": {
+            "$ref": "#/components/schemas/ModeloResumen"
+          },
+          "estado": {
+            "$ref": "#/components/schemas/EstadoVehiculo",
+            "description": "Estado físico actual de la unidad."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "codigo",
+          "modelo",
+          "estado"
+        ],
+        "title": "VehiculoDelAlquiler"
       },
       "VehiculoGestion": {
         "properties": {
