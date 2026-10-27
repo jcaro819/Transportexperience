@@ -533,7 +533,7 @@ De ahí en adelante seguimos el backlog sprint por sprint.
 **Bloque 1 completo.** **Sprint 2 en curso** (una rama por historia saliendo de `main`):
 
 11. HU-03 alquileres. **Hecho (PR #7).**
-12. HU-04 compra. **Hecho (rama `hu-04-compra`, PR en revisión).**
+12. HU-04 compra. **Hecho (rama `hu-04-compra`, PR #8 en revisión).**
 13. HU-05 pagos. Antes de empezar, revisar los "Pendientes para HU-05" (sección 4).
 
 Espera mi confirmación antes de empezar cada historia.
