@@ -4115,6 +4115,59 @@
         }
       }
     },
+    "/domicilios/rastreo/{codigo}": {
+      "get": {
+        "tags": [
+          "domicilios"
+        ],
+        "summary": "Seguir un pedido por su código",
+        "description": "Público, sin iniciar sesión (SRS 3.6.4): el estado actual y la hora de cada cambio.\nNo muestra dirección ni datos personales. El código no distingue mayúsculas.",
+        "operationId": "rastreo_domicilios_rastreo__codigo__get",
+        "parameters": [
+          {
+            "name": "codigo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Codigo"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RastreoPublico"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/domicilios": {
       "post": {
         "tags": [
@@ -4823,6 +4876,202 @@
         }
       }
     },
+    "/domicilios/{domicilio_id}/estado": {
+      "post": {
+        "tags": [
+          "domicilios"
+        ],
+        "summary": "Avanzar el estado de la entrega",
+        "description": "El domiciliario asignado (o el administrador u operador, para corregir) marca\n`recogido`, `en_camino` o `entregado`, sin saltar pasos. Al entregar un alquiler, este\npasa a `en_curso` (igual que la entrega en el local) y el vehículo de transporte vuelve a\nla flota.",
+        "operationId": "avanzar_estado_domicilios__domicilio_id__estado_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "domicilio_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Domicilio Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CambioDeEstado"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomicilioRespuesta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto con el estado actual",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/domicilios/{domicilio_id}/cancelacion-por-despacho": {
+      "post": {
+        "tags": [
+          "domicilios"
+        ],
+        "summary": "Cancelar una entrega pagada",
+        "description": "Para entregas pagadas, asignadas o en ruta. Registra la devolución del envío\n(`devolucion`); la reserva o la compra sigue vigente y se recoge en el local.",
+        "operationId": "cancelar_por_despacho_domicilios__domicilio_id__cancelacion_por_despacho_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "domicilio_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Domicilio Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelacionPorDespacho"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancelacionDomicilioRespuesta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto con el estado actual",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/salud": {
       "get": {
         "tags": [
@@ -5123,6 +5372,44 @@
         ],
         "title": "Body_iniciar_sesion_autenticacion_token_post"
       },
+      "CambioDeEstado": {
+        "properties": {
+          "estado": {
+            "type": "string",
+            "enum": [
+              "recogido",
+              "en_camino",
+              "entregado"
+            ],
+            "title": "Estado"
+          }
+        },
+        "type": "object",
+        "required": [
+          "estado"
+        ],
+        "title": "CambioDeEstado",
+        "description": "Avance de la entrega, sin saltar pasos: asignado → recogido → en_camino → entregado."
+      },
+      "CambioRastreo": {
+        "properties": {
+          "estado": {
+            "$ref": "#/components/schemas/EstadoDomicilio"
+          },
+          "en": {
+            "type": "string",
+            "format": "date-time",
+            "title": "En"
+          }
+        },
+        "type": "object",
+        "required": [
+          "estado",
+          "en"
+        ],
+        "title": "CambioRastreo",
+        "description": "Un cambio de estado en el rastreo público: solo el estado y la hora."
+      },
       "CancelacionAlquiler": {
         "properties": {
           "motivo": {
@@ -5168,7 +5455,15 @@
             "$ref": "#/components/schemas/AlquilerRespuesta"
           },
           "devolucion": {
-            "$ref": "#/components/schemas/PagoResumen"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PagoResumen"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null si ya se había devuelto todo (p. ej., el envío y luego el resto)."
           }
         },
         "type": "object",
@@ -5177,6 +5472,48 @@
           "devolucion"
         ],
         "title": "CancelacionConDevolucionRespuesta"
+      },
+      "CancelacionDomicilioRespuesta": {
+        "properties": {
+          "domicilio": {
+            "$ref": "#/components/schemas/DomicilioRespuesta"
+          },
+          "devolucion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PagoResumen"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Devolución del valor del envío, si la operación estaba pagada."
+          }
+        },
+        "type": "object",
+        "required": [
+          "domicilio",
+          "devolucion"
+        ],
+        "title": "CancelacionDomicilioRespuesta"
+      },
+      "CancelacionPorDespacho": {
+        "properties": {
+          "motivo": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 5,
+            "title": "Motivo",
+            "examples": [
+              "El cliente no estaba en la dirección y pidió recoger en el local."
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "motivo"
+        ],
+        "title": "CancelacionPorDespacho"
       },
       "CancelacionVenta": {
         "properties": {
@@ -7391,6 +7728,32 @@
           "banco"
         ],
         "title": "PseCrear"
+      },
+      "RastreoPublico": {
+        "properties": {
+          "codigo_rastreo": {
+            "type": "string",
+            "title": "Codigo Rastreo"
+          },
+          "estado": {
+            "$ref": "#/components/schemas/EstadoDomicilio"
+          },
+          "cambios": {
+            "items": {
+              "$ref": "#/components/schemas/CambioRastreo"
+            },
+            "type": "array",
+            "title": "Cambios"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo_rastreo",
+          "estado",
+          "cambios"
+        ],
+        "title": "RastreoPublico",
+        "description": "Lo que ve cualquiera con el código (SRS 3.6.4). Sin dirección ni datos personales."
       },
       "ReasignacionAlquiler": {
         "properties": {

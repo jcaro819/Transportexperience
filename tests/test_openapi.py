@@ -88,6 +88,13 @@ RUTAS_HU_06 = {
     ("post", "/domicilios/{domicilio_id}/asignacion"),
 }
 
+# Lo que HU-07 (Sprint 3) promete al frontend.
+RUTAS_HU_07 = {
+    ("post", "/domicilios/{domicilio_id}/estado"),
+    ("post", "/domicilios/{domicilio_id}/cancelacion-por-despacho"),
+    ("get", "/domicilios/rastreo/{codigo}"),
+}
+
 # Códigos que no vienen de una clase ErrorDeNegocio sino de los manejadores globales.
 CODIGOS_GENERALES = {
     "datos_invalidos",
@@ -123,6 +130,11 @@ def test_openapi_exportado_esta_actualizado() -> None:
 def test_el_contrato_incluye_todas_las_rutas_del_sprint_1() -> None:
     faltantes = RUTAS_SPRINT_1 - _operaciones()
     assert not faltantes, f"Rutas del Sprint 1 que no están en el contrato: {sorted(faltantes)}"
+
+
+def test_el_contrato_incluye_todas_las_rutas_de_hu_07() -> None:
+    faltantes = RUTAS_HU_07 - _operaciones()
+    assert not faltantes, f"Rutas de HU-07 que no están en el contrato: {sorted(faltantes)}"
 
 
 def test_el_contrato_incluye_todas_las_rutas_de_hu_06() -> None:

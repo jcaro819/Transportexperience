@@ -2,7 +2,7 @@
 
 Todo lo necesario para consumir el backend del **Sprint 1** (HU-12, HU-02, HU-09, HU-01) y
 del **Sprint 2** (alquileres, compras y pagos: HU-03, HU-04, HU-05) y los
-domicilios del Sprint 3 (HU-06).
+domicilios del Sprint 3 (HU-06, HU-07).
 El contrato completo y exacto (esquemas, campos, ejemplos) está en
 [`openapi.json`](openapi.json), que se genera desde el código. La forma más cómoda de
 explorarlo es la documentación interactiva: **http://127.0.0.1:8000/docs**.
@@ -377,7 +377,7 @@ apartada para compra no se puede alquilar.
   **devolución** (`tipo: "compensacion"`) y el administrador la ve en
   `/pagos/devoluciones-pendientes`.
 
-### Domicilios (HU-06)
+### Domicilios (HU-06, HU-07)
 
 | Método | Ruta | Quién | Para qué |
 |---|---|---|---|
@@ -391,6 +391,9 @@ apartada para compra no se puede alquilar.
 | `GET` | `/domicilios/domiciliarios-disponibles` | Administrador, operador | Domiciliarios activos sin entregas en ruta |
 | `POST` | `/domicilios/{domicilio_id}/asignacion` | Administrador, operador | Asignar `domiciliario_id` y, si usa uno, `vehiculo_transporte_id` |
 | `GET` | `/domicilios/asignados` | Domiciliario | Mis entregas en ruta, con dirección, contacto del cliente y vehículo |
+| `POST` | `/domicilios/{domicilio_id}/estado` | Domiciliario asignado; administrador u operador para corregir | Avanzar: `{"estado": "recogido" \| "en_camino" \| "entregado"}`, sin saltar pasos |
+| `POST` | `/domicilios/{domicilio_id}/cancelacion-por-despacho` | Administrador, operador | Cancelar una entrega pagada (`motivo`); devuelve el envío |
+| `GET` | `/domicilios/rastreo/{codigo}` | Público | Seguir el pedido: estado y hora de cada cambio, sin datos personales |
 
 **Flujo del cliente.**
 
@@ -403,8 +406,10 @@ apartada para compra no se puede alquilar.
    Con un pago en curso no se puede (`pago_en_curso`).
 5. Si la reserva o la compra expira o se cancela, su domicilio se cancela solo.
 
-Cada domicilio trae un `codigo_rastreo` (p. ej. `TX-7KQ2M9PA`); la consulta pública por
-código llega con HU-07.
+Cada domicilio trae un `codigo_rastreo` (p. ej. `TX-7KQ2M9PA`). Con él, cualquiera
+consulta `GET /domicilios/rastreo/{codigo}` sin iniciar sesión: responde solo
+`{codigo_rastreo, estado, cambios: [{estado, en}]}`, sin dirección ni datos personales
+(SRS 3.6.4). El código no distingue mayúsculas.
 
 **Despacho.** Con la operación pagada, el administrador o el operador elige un domiciliario
 de `/domicilios/domiciliarios-disponibles` y lo asigna (no hay asignación automática).
@@ -413,6 +418,24 @@ El vehículo de transporte es opcional; si se usa, debe estar disponible y libre
 **Domiciliario.** `/domicilios/asignados` le muestra sus entregas y el
 `vehiculo_transporte`: es el único vehículo sobre el que puede reportar novedades
 (`POST /vehiculos/{vehiculo_id}/novedades`).
+
+**Estado de la entrega (HU-07).** `asignado → recogido → en_camino → entregado`, con
+`POST /domicilios/{id}/estado`. Lo hace el domiciliario asignado; el administrador y el
+operador también, para corregir. Al marcar `entregado`:
+- si es un **alquiler**, este pasa a `en_curso` y la unidad a `alquilado`, con las mismas
+  reglas que la entrega en el local (entre `fecha_inicio` y `fecha_fin`; si no se puede,
+  responde el error y nada cambia);
+- el vehículo de transporte vuelve a la flota.
+
+Un alquiler con domicilio vigente no se entrega en el local
+(`vehiculo_no_listo_para_entrega`).
+
+**Cancelar una entrega.** Antes de pagar la quita el cliente
+(`/domicilios/{id}/cancelacion`). Después, solo el administrador o el operador, con
+`/domicilios/{id}/cancelacion-por-despacho` y un `motivo`: se registra la devolución del
+**envío** (`devolucion`) y la reserva o la compra sigue vigente (se recoge en el local).
+Nunca se devuelve más de lo cobrado: si después se cancela el alquiler con devolución, se
+descuenta lo ya devuelto.
 
 ### Sistema
 
