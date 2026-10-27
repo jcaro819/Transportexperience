@@ -363,6 +363,52 @@ Los 5 puntos de "Cómo quedó HU-06" quedaron **aprobados**.
   entrega), la operación y el domicilio.
 - **Sin cambios en las tablas.**
 
+### Decisiones de HU-08 (27/10/2026)
+
+HU-07 quedó **aprobada**.
+
+1. **Las posiciones llegan por HTTP** a un endpoint del backend, autenticadas con una
+   **clave propia de cada vehículo** (no con el JWT de usuarios). La clave se guarda
+   cifrada (hash), nunca en claro.
+2. **El simulador es un programa aparte** (`python -m simulador_gps`) que mueve vehículos
+   por calles de Bucaramanga con velocidades realistas y envía posiciones cada 5 segundos
+   por el **mismo endpoint** que usaría un GPS real. `GPS_FUENTE` en el `.env` decide si se
+   usa.
+3. **El mapa de la flota es solo para administrador y operador.** El cliente sigue viendo
+   solo el estado de su domicilio.
+4. **Indicador en tiempo real**: un vehículo sin posición hace más de 30 segundos aparece
+   "sin señal" (umbral configurable en base de datos).
+5. **7 días de historial**, con un script de limpieza en `scripts/`; la consulta de "última
+   posición de cada vehículo" debe ser rápida (índice adecuado). Precisión: 6 decimales.
+6. **Consulta cada 5 segundos desde el frontend**, no WebSocket.
+
+### Cómo quedó HU-08 (27/10/2026)
+
+- **Clave GPS**: `POST /rastreo/vehiculos/{id}/clave` (solo administrador) genera
+  `gps_` + 256 bits aleatorios, la muestra una vez y guarda su **SHA-256** en
+  `vehiculos.hash_clave_gps` (único). SHA-256 y no bcrypt: la clave es aleatoria (no hay
+  diccionario que probar) y bcrypt costaría ~0,25 s de CPU en cada posición. Emitir otra
+  revoca la anterior. Cada clave se emite para una `fuente` (`simulador` o `dispositivo`).
+- **`POST /rastreo/posiciones`** con `X-Clave-Gps`: solo acepta la fuente de `GPS_FUENTE`
+  (así, con `dispositivo`, el simulador queda fuera aunque tenga clave). Redondea a 6
+  decimales; rechaza horas futuras (> 1 min) o de más de 7 días. **No toca la fila del
+  vehículo**, para no competir cada 5 s con los bloqueos de reservas y ventas.
+- **Mapa** `GET /rastreo/flota`: `LATERAL ... ORDER BY registrado_en DESC LIMIT 1` por
+  vehículo, sobre el índice `(vehiculo_id, registrado_en DESC)`. Verificado con `EXPLAIN`:
+  un Index Scan de una fila por vehículo, 0,12 ms con 345.600 posiciones (20 vehículos × 1
+  día cada 5 s). Hay un test que lo mide. La señal usa la hora de **llegada** al servidor,
+  no el reloj del dispositivo. Umbral: parámetro `segundos_sin_senal` = 30.
+- **Recorrido** `GET /rastreo/vehiculos/{id}/recorrido` (última hora por defecto).
+- **Limpieza**: `python -m scripts.limpiar_posiciones_gps [--dias 7]`.
+- **Simulador** (`simulador_gps/`): `rutas.py` (5 recorridos aproximados por calles reales
+  de Bucaramanga), `movimiento.py` (lógica pura: haversine, ida y vuelta, velocidad por
+  tipo, paradas, error del GPS de 3-8 m, batería) y `simulador.py` (cliente HTTP: inicia
+  sesión como administrador, emite claves de fuente `simulador` y reporta). Se prueba de
+  punta a punta contra la API con el cliente de pruebas, y se corrió de verdad contra
+  uvicorn en una base temporal.
+- **Modelo de datos**: `vehiculos.hash_clave_gps`, `fuente_gps`, `clave_gps_emitida_en` y
+  el parámetro `segundos_sin_senal` (migración `845c1b8b60d3`).
+
 ---
 
 ## 5. Stack
@@ -653,8 +699,12 @@ De ahí en adelante seguimos el backlog sprint por sprint.
 **Sprint 2 completo.** **Sprint 3 en curso** (HU-06, HU-07, HU-08):
 
 14. HU-06 domicilios. **Hecho (PR #10).**
-15. HU-07 estado del domicilio y rastreo. **Hecho (rama `hu-07-estado-domicilio`, PR #11
-    en revisión).**
-16. HU-08 rastreo GPS (simulador, consulta cada 5 s).
+15. HU-07 estado del domicilio y rastreo. **Hecho (PR #11).**
+16. HU-08 rastreo GPS (simulador, consulta cada 5 s). **Hecho (rama
+    `hu-08-rastreo-gps`, PR en revisión).**
+
+**Sprint 3 completo** al unir HU-08. El siguiente es el **Sprint 4** (HU-10 inventario
+y alertas de bajo stock, HU-11 reportes). Pendiente menor del Sprint 3: limitar el
+tamaño del cuerpo del webhook de pagos.
 
 Espera mi confirmación antes de empezar cada historia.
