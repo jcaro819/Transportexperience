@@ -172,29 +172,41 @@ correspondiente, y si el equipo corrige el SRS, actualiza este archivo.
 3. **Los alquileres vigentes de una unidad que sale de servicio no se cancelan solos.** La
    respuesta los informa en `alquileres_afectados`.
 
-### Decisiones pendientes para HU-03
+### Decisiones del Sprint 2 (27/10/2026)
 
-1. **Máximo de días por alquiler.** Hay que definir cuántos días puede durar como máximo un
-   alquiler. Va **configurable en base de datos** por el administrador, no como constante en
-   el código (SRS 3.5.3).
-2. **Vehículo que pasa a mantenimiento durante un alquiler en curso.** La devolución debe
-   finalizar el alquiler **sin intentar pasar el vehículo a `disponible`**: se queda en
-   `mantenimiento` hasta que el taller cierre su novedad.
-3. **Alquileres afectados por una unidad que sale de servicio (propuesta, sin implementar):**
-   - Reasignación **asistida por el administrador**: un endpoint para mover el alquiler a
-     otra unidad libre del mismo modelo en esas fechas, con el mismo precio, bloqueando las
-     dos unidades en la misma transacción.
-   - Si no hay unidad libre, el administrador decide entre esperar a que la unidad vuelva o
-     cancelar con devolución (pago de compensación, sección 7.3).
-   - Consulta de **"alquileres en riesgo"**: alquileres futuros de unidades en
-     mantenimiento, para que nadie los olvide.
-   - La reasignación automática queda para después.
+1. **Máximo de días por alquiler: 30**, configurable en base de datos (tabla
+   `parametros_sistema`, clave `max_dias_alquiler`; SRS 3.5.3). Se lee en cada reserva.
+2. **Vehículo reservado para compra que pasa a mantenimiento y luego se aprueba el pago:**
+   la venta **no se completa**, se registra un pago de compensación (devolución) y se avisa
+   al administrador. *Se implementa con HU-04 y HU-05.*
+3. **Alquileres afectados por mantenimiento:** reasignación **asistida por el
+   administrador** (`POST /alquileres/{id}/reasignacion`: otra unidad libre del mismo
+   modelo, mismas fechas y precio, las dos unidades bloqueadas en la misma transacción) y
+   la consulta de **alquileres en riesgo** (`GET /alquileres/en-riesgo`). **Sin
+   reasignación automática.** Si no hay unidad libre, el administrador decide entre esperar
+   o cancelar con devolución (llega con HU-05).
+4. **El cliente solo cancela un alquiler mientras está en `pendiente_pago`.** Uno pagado se
+   cancela con devolución, por el administrador (HU-05).
+5. **Devolución de un vehículo que entró en mantenimiento durante el alquiler:** el alquiler
+   se finaliza y el vehículo **se queda en `mantenimiento`** hasta que el taller cierre su
+   novedad. *Implementado en HU-03.*
 
-### Decisiones pendientes para HU-04 y HU-05
+### Cómo quedó HU-03 (27/10/2026)
 
-1. **Vehículo reservado para compra que pasa a mantenimiento y luego se aprueba el pago.**
-   Opciones: devolver el dinero con un pago de compensación, o impedir la inactivación
-   mientras haya una compra pendiente. **Se decide al llegar a HU-04.**
+- **El cliente reserva un modelo, no una unidad**: el sistema asigna la primera unidad
+  libre en esas fechas (el catálogo muestra modelos, no unidades).
+- **Crear una reserva bloquea todas las unidades del modelo**, siempre en orden de `id`:
+  serializa las reservas de un mismo modelo y evita *deadlocks*. La reasignación usa el
+  mismo orden.
+- **Pago con la pasarela falsa** (`app/modulos/pagos/pasarela.py`): interfaz
+  `PasarelaPagos` + `PasarelaFalsa`. `POST /alquileres/{id}/pago` cobra y, si se aprueba,
+  confirma. HU-05 agrega Wompi y el webhook, que llamará a `alquileres.servicio.confirmar_pago`.
+- **Pendientes vencidos:** se expiran al reservar (los de las unidades del modelo) y al
+  intentar pagar o cancelar. Las consultas muestran `expirado` sin escribir en la base.
+- **Pendiente para HU-04:** el barrido previo a reservar también debe expirar las ventas
+  vencidas (devolviendo stock), cuando existan.
+- **Sin endpoint** para que el administrador edite `parametros_sistema`; por ahora se
+  cambia en la base (adminer). *Pendiente de decidir con el equipo si se agrega.*
 
 ### Casos pendientes para HU-06
 
@@ -483,7 +495,10 @@ En este orden. No saltes pasos, y para después de cada bloque para que yo revis
 
 De ahí en adelante seguimos el backlog sprint por sprint.
 
-**Bloque 1 completo** (pendiente del pull request del paso 10). **El siguiente es el
-Sprint 2** (HU-03 alquileres, HU-04 compra, HU-05 pagos), una rama por historia saliendo de
-`main`. Antes de HU-03, revisar sus decisiones pendientes en la sección 4. Espera mi
-confirmación antes de empezar.
+**Bloque 1 completo.** **Sprint 2 en curso** (una rama por historia saliendo de `main`):
+
+11. HU-03 alquileres. **Hecho (rama `hu-03-alquileres`, PR en revisión).**
+12. HU-04 compra. Antes de empezar, revisar la decisión 2 del Sprint 2 (sección 4).
+13. HU-05 pagos.
+
+Espera mi confirmación antes de empezar cada historia.
