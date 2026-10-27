@@ -11,12 +11,17 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_vali
 
 from app.modulos.domicilios.modelos import Domicilio, EstadoDomicilio
 from app.modulos.pagos.esquemas import PagoResumen
+from app.modulos.reportes.esquemas import ActaCrear
 
 
 class CambioDeEstado(BaseModel):
-    """Avance de la entrega, sin saltar pasos: asignado → recogido → en_camino → entregado."""
+    """Avance de la entrega, sin saltar pasos: asignado → recogido → en_camino → entregado.
+
+    Con `entregado`, `acta` (opcional) anota el estado de la unidad en el acta de entrega.
+    """
 
     estado: Literal["recogido", "en_camino", "entregado"]
+    acta: ActaCrear | None = None
 
 
 class CancelacionPorDespacho(BaseModel):
