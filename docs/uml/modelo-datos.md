@@ -12,6 +12,9 @@ HU-05 agregó `pagos.url_redireccion` y `pagos.bloqueo_original_hasta`, y el par
 HU-08 agregó a `vehiculos` la clave GPS (`hash_clave_gps`, `fuente_gps`,
 `clave_gps_emitida_en`) y el parámetro `segundos_sin_senal` = 30
 (`alembic/versions/2026_10_27_0658-845c1b8b60d3_clave_gps_de_los_vehiculos.py`).
+El arreglo de HU-11 agregó `actas.instantanea` (JSONB): la copia de lo que dice el acta,
+de la que sale siempre su PDF
+(`alembic/versions/2026_10_27_0946-ce778c5c8489_instantanea_de_las_actas.py`).
 El diagrama de abajo se genera desde los modelos con `python -m scripts.generar_diagrama_er`;
 no se edita a mano.
 
@@ -104,6 +107,7 @@ erDiagram
         integer conforme_por_id FK
         timestamptz conforme_en
         varchar hash_pdf
+        jsonb instantanea
     }
     alquileres {
         integer id PK

@@ -1,5 +1,8 @@
 """Registro de actas de entrega y recepción (HU-11). Pieza de bajo nivel, solo modelos.
 
+Al registrar el acta se guarda su instantánea (``documentos.instantanea``): la copia de lo
+que dice, de la que sale siempre el PDF.
+
 La llaman, dentro de su misma transacción, la entrega y la recepción en el local
 (alquileres) y la entrega por domicilio (domicilios). Si la operación falla, el acta
 tampoco queda. Vive aparte del servicio para no crear imports circulares.
@@ -11,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.modulos.inventario.excepciones import BateriaNoAplica
 from app.modulos.inventario.modelos import Vehiculo
+from app.modulos.reportes.documentos import instantanea
 from app.modulos.reportes.modelos import Acta, TipoActa
 from app.modulos.usuarios.modelos import Usuario
 
@@ -51,5 +55,9 @@ def registrar_acta(
         registrada_por_id=usuario.id,
     )
     sesion.add(acta)
+    sesion.flush()
+    # La instantánea necesita el número (id) y la fecha (la pone la base al insertar).
+    sesion.refresh(acta, ["creado_en"])
+    acta.instantanea = instantanea(acta)
     sesion.flush()
     return acta

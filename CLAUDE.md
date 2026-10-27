@@ -464,9 +464,12 @@ Los 5 puntos de "Cómo quedó HU-10" quedaron **aprobados**, incluido el resumen
 - **PDF determinista** (`reportes/documentos.py`, ReportLab con `invariant=True`): la misma
   acta produce los mismos bytes, así que su SHA-256 es la huella. La conformidad la da el
   cliente de la operación, una sola vez; `/verificacion` regenera el PDF y compara.
-  **Limitación conocida:** el PDF incluye los nombres del cliente y de quien registró; si
-  alguno cambia su nombre después, la verificación de un acta ya conformada dará "no
-  coincide".
+  **Instantánea (arreglo posterior, rama `hu-11-actas-instantanea`):** al crear el acta
+  se guarda en `actas.instantanea` (JSONB) la copia de lo que dice, ya formateada
+  (nombres, vehículo, fechas...), y el PDF se arma **solo desde ahí**. Si alguien cambia
+  su nombre o se edita el modelo después, el PDF y su SHA-256 no cambian (hay un test).
+  Las actas anteriores a la columna no la tienen y se arman con los datos actuales; el
+  PDF es idéntico mientras nada haya cambiado, así que sus huellas no se rompen.
 - **Exportación** a Excel (openpyxl, una fila por acta, con filtros) y a PDF (tabla
   horizontal), por rango de días de Colombia (por defecto 30, máximo 92).
 - **Sin cambios en las tablas** (`actas` ya existía); solo relaciones ORM nuevas en `Acta` y
@@ -776,9 +779,13 @@ De ahí en adelante seguimos el backlog sprint por sprint.
 **Sprint 3 completo.** **Sprint 4 en curso**:
 
 17. HU-10 inventario y alertas de bajo stock. **Hecho (PR #13).**
-18. HU-11 actas de entrega y recepción, PDF y Excel. **Hecho (rama `hu-11-actas`, PR #14 en
-    revisión).**
+18. HU-11 actas de entrega y recepción, PDF y Excel. **Hecho (PR #14).** Arreglo de la
+    instantánea del acta: rama `hu-11-actas-instantanea`, PR #16 en revisión.
 19. Requisitos no funcionales: script de respaldo y restauración (SRS 3.3.2) y límite
-    del tamaño del cuerpo del webhook de pagos.
+    del tamaño del cuerpo del webhook de pagos. **Hecho (PR #15).**
+
+**Backlog del MVP completo** (100 SP, HU-01 a HU-12 sin HU-13 ni HU-14). Pendientes que
+no son del backlog: probar Wompi contra el sandbox real cuando estén las llaves, y que
+el equipo confirme el mecanismo de conformidad de las actas (contradicción 6).
 
 Espera mi confirmación antes de empezar cada historia.
