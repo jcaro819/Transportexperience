@@ -322,9 +322,46 @@ de la devolución ejecutada) quedaron **aprobadas**.
   su `vehiculo_transporte`, y `reportar_novedad` ahora rechaza al domiciliario si la unidad
   no es la de una entrega suya en ruta.
 - **Sin cambios en las tablas** (solo relaciones ORM nuevas en `Domicilio`).
-- **Para HU-07**: los cambios `asignado → recogido → en_camino → entregado`, la cancelación
-  de una entrega asignada (liberando el vehículo de transporte), qué pasa con el alquiler
-  al entregar (¿`en_curso`?) y la consulta pública por código de rastreo.
+- **Para HU-07** (resuelto, ver abajo): los cambios de estado de la entrega, la
+  cancelación de una entrega asignada, el alquiler al entregar y el rastreo público.
+
+### Decisiones de HU-07 (27/10/2026)
+
+Los 5 puntos de "Cómo quedó HU-06" quedaron **aprobados**.
+
+1. **Los cambios de estado (recogido, en_camino, entregado) los hace el domiciliario
+   asignado**; el administrador y el operador también pueden, para corregir.
+2. **Al entregar el domicilio de un alquiler, el alquiler pasa a `en_curso` y el vehículo
+   a `alquilado`**, igual que la entrega en el local.
+3. **Un domicilio asignado o en ruta solo lo cancela el administrador u operador, con
+   motivo.** El cliente solo cancela antes de pagar.
+4. **Si un domicilio pagado se cancela, se registra la devolución del valor del envío**
+   con el mecanismo de devoluciones de HU-05; la reserva o compra sigue vigente.
+5. **Consulta pública por código de rastreo: solo estado y hora de cada cambio**, sin
+   dirección ni datos personales.
+
+### Cómo quedó HU-07 (27/10/2026)
+
+- `POST /domicilios/{id}/estado` con `recogido`, `en_camino` o `entregado`, sin saltar
+  pasos. Un domiciliario que no es el asignado recibe 404 (no se revela la entrega).
+- **Entregar** reutiliza `alquileres.servicio.poner_en_curso`, el mismo núcleo de la
+  entrega en el local: si el alquiler no se puede entregar (fuera de fechas, unidad en
+  mantenimiento), nada cambia. El vehículo de transporte vuelve a `disponible` (si entró
+  en mantenimiento en la ruta, se queda). Se guarda `entregado_en`.
+- **La entrega en el local se rechaza si el alquiler tiene un domicilio vigente**, para
+  no entregar dos veces.
+- `POST /domicilios/{id}/cancelacion-por-despacho` (motivo): solo con la operación
+  pagada; libera el vehículo de transporte y registra la devolución del envío.
+- **Nunca se devuelve más de lo cobrado**: `pagos.servicio.registrar_devolucion`
+  descuenta las devoluciones anteriores del mismo cobro (p. ej., envío devuelto y luego
+  `cancelacion-con-devolucion` del alquiler devuelve solo el resto). Si no queda nada,
+  no registra nada.
+- `GET /domicilios/rastreo/{codigo}`: público; solo `codigo_rastreo`, `estado` y
+  `cambios` (`estado`, `en`). Hay un test que verifica que no aparezcan la dirección, el
+  teléfono, el correo ni las coordenadas.
+- **Orden de bloqueo** al avanzar o cancelar: las unidades (transporte y lo que se
+  entrega), la operación y el domicilio.
+- **Sin cambios en las tablas.**
 
 ---
 
@@ -615,8 +652,9 @@ De ahí en adelante seguimos el backlog sprint por sprint.
 
 **Sprint 2 completo.** **Sprint 3 en curso** (HU-06, HU-07, HU-08):
 
-14. HU-06 domicilios. **Hecho (rama `hu-06-domicilios`, PR #10 en revisión).**
-15. HU-07 estado del domicilio y rastreo. Antes, revisar "Para HU-07" en "Cómo quedó HU-06".
+14. HU-06 domicilios. **Hecho (PR #10).**
+15. HU-07 estado del domicilio y rastreo. **Hecho (rama `hu-07-estado-domicilio`, PR en
+    revisión).**
 16. HU-08 rastreo GPS (simulador, consulta cada 5 s).
 
 Espera mi confirmación antes de empezar cada historia.
