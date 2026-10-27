@@ -61,6 +61,8 @@ from app.modulos.inventario.servicio import (
 from app.modulos.pagos import servicio as pagos
 from app.modulos.pagos.excepciones import PagoEnCurso
 from app.modulos.pagos.modelos import Pago
+from app.modulos.reportes.modelos import TipoActa
+from app.modulos.reportes.registro import DatosActa, registrar_acta
 from app.modulos.usuarios.modelos import Rol, Usuario
 from app.modulos.ventas import servicio as ventas
 from app.modulos.ventas.modelos import EstadoVenta, ItemVenta, Venta
@@ -523,11 +525,15 @@ def avanzar_estado(
     domicilio_id: int,
     usuario: Usuario,
     nuevo: EstadoDomicilio,
+    acta: DatosActa | None = None,
     *,
     hoy: date | None = None,
     momento: datetime | None = None,
 ) -> DomicilioConTotales:
     """``asignado → recogido → en_camino → entregado``, sin saltar pasos (decisión 1).
+
+    Al entregar queda un acta de entrega (HU-11) por cada unidad entregada: la alquilada,
+    o cada unidad comprada (una compra solo de accesorios no lleva acta).
 
     Al entregar: el domicilio guarda ``entregado_en``, el vehículo de transporte vuelve a la
     flota y, si es un alquiler, este pasa a ``en_curso`` y la unidad a ``alquilado``
@@ -549,8 +555,30 @@ def avanzar_estado(
     validar_transicion(domicilio.estado, nuevo)
 
     if nuevo == EstadoDomicilio.ENTREGADO:
-        if isinstance(entrega.operacion, Alquiler):
-            alquileres.poner_en_curso(sesion, entrega.operacion, usuario, hoy)
+        operacion = entrega.operacion
+        if isinstance(operacion, Alquiler):
+            alquileres.poner_en_curso(sesion, operacion, usuario, hoy)
+            registrar_acta(
+                sesion,
+                TipoActa.ENTREGA,
+                operacion.vehiculo,
+                usuario,
+                acta,
+                alquiler_id=operacion.id,
+                domicilio_id=domicilio.id,
+            )
+        else:
+            for item in operacion.items:
+                if item.vehiculo_id is not None:
+                    registrar_acta(
+                        sesion,
+                        TipoActa.ENTREGA,
+                        entrega.vehiculos[item.vehiculo_id],
+                        usuario,
+                        acta,
+                        venta_id=operacion.id,
+                        domicilio_id=domicilio.id,
+                    )
         domicilio.entregado_en = momento
         _liberar_transporte(sesion, entrega, usuario)
     cambiar_estado_domicilio(sesion, domicilio, nuevo, usuario.id)

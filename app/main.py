@@ -23,6 +23,7 @@ from app.modulos.inventario.rutas_gestion import enrutador_inventario
 from app.modulos.pagos.rutas import enrutador_pagos
 from app.modulos.portal.rutas import enrutador_portal
 from app.modulos.rastreo.rutas import enrutador_rastreo
+from app.modulos.reportes.rutas import enrutador_actas
 from app.modulos.usuarios.rutas import enrutador_autenticacion, enrutador_usuarios
 from app.modulos.ventas.rutas import enrutador_ventas
 
@@ -61,6 +62,7 @@ app.include_router(enrutador_ventas)
 app.include_router(enrutador_pagos)
 app.include_router(enrutador_domicilios)
 app.include_router(enrutador_rastreo)
+app.include_router(enrutador_actas)
 
 
 class EstadoSalud(BaseModel):

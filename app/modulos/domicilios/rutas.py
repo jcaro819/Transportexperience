@@ -232,10 +232,11 @@ def avanzar_estado(
     """El domiciliario asignado (o el administrador u operador, para corregir) marca
     `recogido`, `en_camino` o `entregado`, sin saltar pasos. Al entregar un alquiler, este
     pasa a `en_curso` (igual que la entrega en el local) y el vehículo de transporte vuelve a
-    la flota.
+    la flota. Al entregar queda el **acta de entrega** (HU-11).
     """
     estado = EstadoDomicilio(datos.estado)
-    return _respuesta(servicio.avanzar_estado(sesion, domicilio_id, usuario, estado))
+    acta = datos.acta.datos() if datos.acta else None
+    return _respuesta(servicio.avanzar_estado(sesion, domicilio_id, usuario, estado, acta))
 
 
 @enrutador_domicilios.post(

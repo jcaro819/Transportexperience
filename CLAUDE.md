@@ -103,10 +103,10 @@ correspondiente, y si el equipo corrige el SRS, actualiza este archivo.
    y la documentación.
 5. **La numeración de secciones del SRS no coincide con su tabla de contenido.** No afecta
    el código, pero conviene arreglarlo antes de entregar.
-6. **HU-11 pide "firma digital de conformidad"** en el plan. Propuesta: registro de
-   conformidad con usuario, fecha y hash del PDF. La tabla `actas` ya existe con esos
-   campos (`conforme_por_id`, `conforme_en`, `hash_pdf`), pero **sigue pendiente de
-   confirmar con el equipo**.
+6. **HU-11 pide "firma digital de conformidad"** en el plan. **Se decidió** (Sprint 4)
+   implementarla como registro de conformidad con usuario, fecha y hash del PDF, en la
+   tabla `actas` (`conforme_por_id`, `conforme_en`, `hash_pdf`). **Pendiente de
+   confirmación del equipo.** Ver "Cómo quedó HU-11".
 7. **Estados del domicilio:** HU-07 lista tres y el SRS 3.1.7 seis. Se usan los seis del
    SRS, que cubren los de HU-07.
 8. **Autenticación:** el SRS 3.9.4 dice OAuth y el backlog JWT. Se usa el flujo OAuth2
@@ -445,6 +445,33 @@ Los 4 puntos de "Cómo quedó HU-08" quedaron **aprobados**. Sprint 3 cerrado.
   alerta). `Producto.bajo_stock` es una propiedad, no una columna.
 - **Sin cambios en las tablas.**
 
+### Cómo quedó HU-11 (27/10/2026)
+
+Los 5 puntos de "Cómo quedó HU-10" quedaron **aprobados**, incluido el resumen.
+
+- **Firma de conformidad: se decidió como registro de usuario, fecha y hash (SHA-256) del
+  PDF del acta** (tabla `actas`: `conforme_por_id`, `conforme_en`, `hash_pdf`). *Decidido
+  así para implementar HU-11; sigue **pendiente de confirmación del equipo**.* No es una
+  firma digital con certificado.
+- **Las actas nacen solas** (`reportes/registro.py`), en la misma transacción de la
+  operación: entrega y recepción en el local (`/alquileres/{id}/entrega` y `/devolucion`)
+  y entrega por domicilio (al marcar `entregado`; una compra lleva un acta por unidad, los
+  accesorios no). Si la operación falla, no queda acta. Cuerpo opcional
+  `{estado_vehiculo, nivel_bateria}`; sin él, "Sin observaciones.".
+- **No hay actas** de la entrega de una compra en el local (no existe ese flujo: una compra
+  pagada se recoge sin registro) ni de recepción por domicilio (no existe recogida a
+  domicilio). *Si el equipo las quiere, son historias nuevas.*
+- **PDF determinista** (`reportes/documentos.py`, ReportLab con `invariant=True`): la misma
+  acta produce los mismos bytes, así que su SHA-256 es la huella. La conformidad la da el
+  cliente de la operación, una sola vez; `/verificacion` regenera el PDF y compara.
+  **Limitación conocida:** el PDF incluye los nombres del cliente y de quien registró; si
+  alguno cambia su nombre después, la verificación de un acta ya conformada dará "no
+  coincide".
+- **Exportación** a Excel (openpyxl, una fila por acta, con filtros) y a PDF (tabla
+  horizontal), por rango de días de Colombia (por defecto 30, máximo 92).
+- **Sin cambios en las tablas** (`actas` ya existía); solo relaciones ORM nuevas en `Acta` y
+  `Alquiler.cliente`. Nueva dependencia: `openpyxl`.
+
 ---
 
 ## 5. Stack
@@ -740,9 +767,9 @@ De ahí en adelante seguimos el backlog sprint por sprint.
 
 **Sprint 3 completo.** **Sprint 4 en curso**:
 
-17. HU-10 inventario y alertas de bajo stock. **Hecho (rama `hu-10-inventario`, PR #13
-    en revisión).**
-18. HU-11 actas de entrega y recepción, PDF y Excel (ver la decisión 2 del Sprint 4).
+17. HU-10 inventario y alertas de bajo stock. **Hecho (PR #13).**
+18. HU-11 actas de entrega y recepción, PDF y Excel. **Hecho (rama `hu-11-actas`, PR #14 en
+    revisión).**
 19. Requisitos no funcionales: script de respaldo y restauración (SRS 3.3.2) y límite
     del tamaño del cuerpo del webhook de pagos.
 

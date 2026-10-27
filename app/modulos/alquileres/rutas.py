@@ -26,6 +26,7 @@ from app.modulos.alquileres.modelos import Alquiler, EstadoAlquiler
 from app.modulos.pagos import procesamiento
 from app.modulos.pagos.esquemas import PagoCrear, PagoResumen
 from app.modulos.pagos.pasarela import PasarelaPagos, obtener_pasarela
+from app.modulos.reportes.esquemas import ActaCrear
 from app.modulos.usuarios.modelos import Rol, Usuario
 from app.seguridad import AdministradorUOperador, SoloAdministrador, UsuarioActual, requiere_roles
 
@@ -214,12 +215,19 @@ def cancelar_con_devolucion(
     responses=respuestas_error(401, 403, 404, 409),
 )
 def entregar(
-    sesion: SesionBD, usuario: AdministradorUOperador, alquiler_id: int
+    sesion: SesionBD,
+    usuario: AdministradorUOperador,
+    alquiler_id: int,
+    acta: ActaCrear | None = None,
 ) -> AlquilerRespuesta:
     """`confirmado` → `en_curso`, y la unidad pasa a `alquilado`. Solo entre la fecha de
     inicio y la de fin, y si la unidad está disponible (si está en mantenimiento, reasigna).
+
+    Queda el **acta de entrega** (HU-11). El cuerpo es opcional: `estado_vehiculo` y
+    `nivel_bateria` medidos al entregar.
     """
-    return _respuesta(servicio.entregar_vehiculo(sesion, alquiler_id, usuario))
+    datos = acta.datos() if acta else None
+    return _respuesta(servicio.entregar_vehiculo(sesion, alquiler_id, usuario, datos))
 
 
 @enrutador_alquileres.post(
@@ -229,13 +237,20 @@ def entregar(
     responses=respuestas_error(401, 403, 404, 409),
 )
 def recibir(
-    sesion: SesionBD, usuario: AdministradorUOperador, alquiler_id: int
+    sesion: SesionBD,
+    usuario: AdministradorUOperador,
+    alquiler_id: int,
+    acta: ActaCrear | None = None,
 ) -> AlquilerRespuesta:
     """`en_curso` → `finalizado`, y la unidad vuelve a `disponible`. Si entró en
     mantenimiento durante el alquiler, se queda en mantenimiento hasta que el taller cierre
     su novedad.
+
+    Queda el **acta de recepción** (HU-11) con el estado en que volvió la unidad (cuerpo
+    opcional, igual que en la entrega).
     """
-    return _respuesta(servicio.recibir_vehiculo(sesion, alquiler_id, usuario))
+    datos = acta.datos() if acta else None
+    return _respuesta(servicio.recibir_vehiculo(sesion, alquiler_id, usuario, datos))
 
 
 @enrutador_alquileres.post(

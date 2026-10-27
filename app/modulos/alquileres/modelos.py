@@ -25,6 +25,7 @@ from app.db import Base
 
 if TYPE_CHECKING:
     from app.modulos.inventario.modelos import Vehiculo
+    from app.modulos.usuarios.modelos import Usuario
 
 
 class EstadoAlquiler(StrEnum):
@@ -92,6 +93,7 @@ class Alquiler(ConMarcasDeTiempo, Base):
     motivo_cancelacion: Mapped[str | None] = mapped_column(Text)
 
     vehiculo: Mapped["Vehiculo"] = relationship()
+    cliente: Mapped["Usuario"] = relationship()
 
     @property
     def dias(self) -> int:

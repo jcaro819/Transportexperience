@@ -23,6 +23,8 @@ dependencies = [
     "httpx>=0.27",
     # Comprobantes de pago en PDF (HU-05).
     "reportlab>=4.2",
+    # Exportación de actas a Excel (HU-11).
+    "openpyxl>=3.1",
 ]
 
 [project.optional-dependencies]
