@@ -108,6 +108,12 @@ class Pago(ConMarcasDeTiempo, Base):
     pago_compensado_id: Mapped[int | None] = mapped_column(ForeignKey("pagos.id"))
     aprobado_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     detalle_error: Mapped[str | None] = mapped_column(Text)
+    # PSE: la página del banco a la que se envía al cliente para pagar.
+    url_redireccion: Mapped[str | None] = mapped_column(String(500))
+    # Vencimiento de 15 minutos que tenía la operación al empezar este cobro. Mientras el
+    # cobro está pendiente, el bloqueo se extiende; si falla, se vuelve a este plazo
+    # (decisión 1 de HU-05). Así nadie retiene un vehículo encadenando pagos fallidos.
+    bloqueo_original_hasta: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class EventoPago(Base):

@@ -6,6 +6,9 @@
 (`alembic/versions/2026_10_27_0447-1211e36c3ef7_parametros_del_sistema.py`).
 HU-04 agregó la columna `ventas.motivo_cancelacion`
 (`alembic/versions/2026_10_27_0519-c74d60acf0af_motivo_de_cancelacion_de_ventas.py`).
+HU-05 agregó `pagos.url_redireccion` y `pagos.bloqueo_original_hasta`, y el parámetro
+`max_minutos_pago_pendiente` = 60
+(`alembic/versions/2026_10_27_0543-7f6b572858d8_pagos_pendientes_y_pse.py`).
 El diagrama de abajo se genera desde los modelos con `python -m scripts.generar_diagrama_er`;
 no se edita a mano.
 
@@ -234,6 +237,8 @@ erDiagram
         integer pago_compensado_id FK
         timestamptz aprobado_en
         text detalle_error
+        varchar url_redireccion
+        timestamptz bloqueo_original_hasta
         timestamptz creado_en
         timestamptz actualizado_en
     }
