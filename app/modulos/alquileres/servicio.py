@@ -56,6 +56,8 @@ from app.modulos.pagos import servicio as pagos
 from app.modulos.pagos.excepciones import PagoEnCurso
 from app.modulos.pagos.modelos import EstadoPago, Pago
 from app.modulos.pagos.pasarela import ResultadoCobro
+from app.modulos.reportes.modelos import TipoActa
+from app.modulos.reportes.registro import DatosActa, registrar_acta
 from app.modulos.usuarios.modelos import Rol, Usuario
 from app.modulos.ventas.liberacion import bloquear_y_expirar
 from app.parametros import MAX_DIAS_ALQUILER, MAX_MINUTOS_PAGO_PENDIENTE, obtener_entero
@@ -518,12 +520,18 @@ def obtener_alquiler(sesion: Session, alquiler_id: int, usuario: Usuario) -> Alq
 
 
 def entregar_vehiculo(
-    sesion: Session, alquiler_id: int, usuario: Usuario, *, hoy: date | None = None
+    sesion: Session,
+    alquiler_id: int,
+    usuario: Usuario,
+    acta: DatosActa | None = None,
+    *,
+    hoy: date | None = None,
 ) -> Alquiler:
     """El operador entrega la unidad al cliente en el local: ``confirmado`` → ``en_curso``.
 
-    Si el alquiler tiene un domicilio vigente, la entrega la registra el domiciliario al
-    marcar el domicilio como entregado (HU-07), no el mostrador.
+    Queda el acta de entrega (HU-11) con el estado de la unidad. Si el alquiler tiene un
+    domicilio vigente, la entrega la registra el domiciliario al marcar el domicilio como
+    entregado (HU-07), no el mostrador.
     """
     _exigir_rol(usuario, ROLES_DE_MOSTRADOR)
     alquiler = _bloquear_alquiler(sesion, alquiler_id)
@@ -533,6 +541,9 @@ def entregar_vehiculo(
             "domicilio como entregado, o cancela primero el domicilio."
         )
     poner_en_curso(sesion, alquiler, usuario, hoy or fechas.hoy())
+    registrar_acta(
+        sesion, TipoActa.ENTREGA, alquiler.vehiculo, usuario, acta, alquiler_id=alquiler.id
+    )
     sesion.commit()
     return alquiler
 
@@ -569,8 +580,12 @@ def poner_en_curso(sesion: Session, alquiler: Alquiler, usuario: Usuario, hoy: d
     _cambiar_estado(sesion, alquiler, EstadoAlquiler.EN_CURSO, usuario)
 
 
-def recibir_vehiculo(sesion: Session, alquiler_id: int, usuario: Usuario) -> Alquiler:
+def recibir_vehiculo(
+    sesion: Session, alquiler_id: int, usuario: Usuario, acta: DatosActa | None = None
+) -> Alquiler:
     """El operador recibe la unidad de vuelta: ``en_curso`` → ``finalizado``.
+
+    Queda el acta de recepción (HU-11) con el estado en que volvió la unidad.
 
     Si la unidad sigue ``alquilado``, vuelve a ``disponible``. Si entró en mantenimiento
     durante el alquiler (una novedad crítica), el alquiler se finaliza igual pero la unidad
@@ -584,6 +599,7 @@ def recibir_vehiculo(sesion: Session, alquiler_id: int, usuario: Usuario) -> Alq
         motivo = f"Devolución del alquiler #{alquiler.id}"
         cambiar_estado_vehiculo(sesion, vehiculo, EstadoVehiculo.DISPONIBLE, usuario, motivo)
     _cambiar_estado(sesion, alquiler, EstadoAlquiler.FINALIZADO, usuario)
+    registrar_acta(sesion, TipoActa.RECEPCION, vehiculo, usuario, acta, alquiler_id=alquiler.id)
     sesion.commit()
     return alquiler
 

@@ -8,12 +8,19 @@ digital" del plan (usuario, fecha y hash del PDF). *Pendiente de confirmar con e
 
 from datetime import datetime
 from enum import StrEnum
+from typing import TYPE_CHECKING
 
 from sqlalchemy import CheckConstraint, DateTime, ForeignKey, SmallInteger, String, Text, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.comun.modelos import tipo_estado
 from app.db import Base
+
+if TYPE_CHECKING:
+    from app.modulos.alquileres.modelos import Alquiler
+    from app.modulos.inventario.modelos import Vehiculo
+    from app.modulos.usuarios.modelos import Usuario
+    from app.modulos.ventas.modelos import Venta
 
 
 class TipoActa(StrEnum):
@@ -46,3 +53,18 @@ class Acta(Base):
     conforme_por_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"))
     conforme_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     hash_pdf: Mapped[str | None] = mapped_column(String(64))
+
+    vehiculo: Mapped["Vehiculo"] = relationship()
+    alquiler: Mapped["Alquiler | None"] = relationship()
+    venta: Mapped["Venta | None"] = relationship()
+    registrada_por: Mapped["Usuario"] = relationship(foreign_keys=[registrada_por_id])
+    conforme_por: Mapped["Usuario | None"] = relationship(foreign_keys=[conforme_por_id])
+
+    @property
+    def numero(self) -> str:
+        return f"ACT-{self.id:06d}"
+
+    @property
+    def cliente_id(self) -> int:
+        """El cliente de la operación: el dueño del alquiler o de la compra."""
+        return self.alquiler.cliente_id if self.alquiler else self.venta.cliente_id
