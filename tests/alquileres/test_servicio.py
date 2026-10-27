@@ -29,6 +29,8 @@ from app.modulos.inventario import servicio as inventario
 from app.modulos.inventario.esquemas import NovedadCrear
 from app.modulos.inventario.excepciones import ModeloNoSeAlquila
 from app.modulos.inventario.modelos import EstadoVehiculo, TipoNovedad
+from app.modulos.pagos import procesamiento
+from app.modulos.pagos.esquemas import PagoCrear
 from app.modulos.pagos.excepciones import MetodoDePagoNoDisponible
 from app.modulos.pagos.modelos import EstadoPago, MetodoPago, Pago
 from app.modulos.pagos.pasarela import PasarelaFalsa
@@ -80,8 +82,15 @@ def _reservar(sesion, cliente, modelo, inicio=INICIO, fin=FIN, momento=MOMENTO) 
 
 
 def _pagar(sesion, alquiler, cliente, *, aprueba=True, metodo="tarjeta", momento=MOMENTO):
-    pasarela = PasarelaFalsa(aprueba=aprueba)
-    return servicio.pagar_alquiler(sesion, alquiler.id, cliente, metodo, pasarela, momento=momento)
+    pasarela = PasarelaFalsa(EstadoPago.APROBADO if aprueba else EstadoPago.RECHAZADO)
+    return procesamiento.pagar(
+        sesion,
+        cliente,
+        PagoCrear(metodo_pago=metodo),
+        pasarela,
+        alquiler_id=alquiler.id,
+        momento=momento,
+    )
 
 
 def _auditoria(sesion, alquiler: Alquiler) -> list[RegistroAuditoria]:
@@ -227,8 +236,8 @@ def test_pago_aprobado_confirma_el_alquiler(sesion, fabrica, modelo, cliente) ->
 
     resultado = _pagar(sesion, alquiler, cliente)
 
-    assert resultado.alquiler.estado == EstadoAlquiler.CONFIRMADO
-    assert resultado.alquiler.expira_en is None
+    assert alquiler.estado == EstadoAlquiler.CONFIRMADO
+    assert alquiler.expira_en is None
     pago = resultado.pago
     assert (pago.estado, pago.monto, pago.proveedor) == (EstadoPago.APROBADO, 120_000, "falso")
     assert pago.alquiler_id == alquiler.id

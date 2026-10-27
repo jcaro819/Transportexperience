@@ -13,14 +13,14 @@ from app.comun import fechas
 from app.comun.errores import respuestas_error
 from app.comun.paginacion import Pagina, Paginacion, ResultadoPagina
 from app.db import SesionBD
-from app.modulos.pagos.esquemas import PagoResumen
+from app.modulos.pagos import procesamiento
+from app.modulos.pagos.esquemas import PagoCrear, PagoResumen
 from app.modulos.pagos.pasarela import PasarelaPagos, obtener_pasarela
 from app.modulos.usuarios.modelos import Rol, Usuario
 from app.modulos.ventas import servicio
 from app.modulos.ventas.esquemas import (
     CancelacionVenta,
     ComprobantePreliminar,
-    PagoVentaCrear,
     PagoVentaRespuesta,
     VentaCrear,
     VentaRespuesta,
@@ -133,20 +133,24 @@ def pagar(
     cliente: SoloCliente,
     pasarela: Pasarela,
     venta_id: int,
-    datos: PagoVentaCrear,
+    datos: PagoCrear,
 ) -> PagoVentaRespuesta:
     """Cobra el `total` de una compra en `pendiente_pago`. Revisa `pago.estado` y `venta.estado`:
 
     - `aprobado` y venta `pagada`: compra completa; las unidades quedan vendidas.
     - `aprobado` y venta `cancelada`: una unidad entró en mantenimiento antes del pago; la
       compra no se completa y `devolucion` trae la devolución del dinero.
-    - `rechazado`: la compra sigue pendiente; se puede reintentar antes de `expira_en`.
+    - `rechazado` o `error`: la compra sigue pendiente hasta su `expira_en` original.
+    - `pendiente` (PSE): envía al cliente a `pago.url_redireccion` y consulta
+      `GET /pagos/{referencia}`. Mientras tanto la compra no vence (máximo 60 minutos).
 
-    En desarrollo la pasarela es **falsa**: aprueba al instante y no mueve dinero.
+    Con Wompi, envía `acepta_terminos: true` y `tarjeta` o `pse`. Con la pasarela **falsa**
+    (desarrollo) basta `metodo_pago`: aprueba al instante y no mueve dinero.
     """
-    resultado = servicio.pagar_venta(sesion, venta_id, cliente, datos.metodo_pago, pasarela)
+    resultado = procesamiento.pagar(sesion, cliente, datos, pasarela, venta_id=venta_id)
+    venta = servicio.obtener_venta(sesion, venta_id, cliente)
     return PagoVentaRespuesta(
-        venta=_respuesta(resultado.venta),
+        venta=_respuesta(venta),
         pago=PagoResumen.model_validate(resultado.pago),
         devolucion=PagoResumen.model_validate(resultado.devolucion)
         if resultado.devolucion

@@ -1,21 +1,25 @@
-"""Reglas de negocio de los pagos (HU-05).
+"""Reglas de negocio de los pagos (HU-05, CLAUDE.md 7.3).
 
-Por ahora el cobro de alquileres (HU-03) y ventas (HU-04) con la pasarela que se le pase,
-y el registro de devoluciones como pagos de compensación. Los webhooks, Wompi y los
-comprobantes PDF llegan con HU-05.
+Piezas de bajo nivel que usan los alquileres y las ventas. La orquestación del cobro (las
+dos fases, el webhook y la consulta de respaldo) está en ``procesamiento.py``.
+
+- Un cobro se **guarda como pendiente y se confirma en la base antes** de llamar a la
+  pasarela (decisión 2 de HU-05): nunca queda un cobro en la pasarela sin registro aquí.
+- Un pago que ya salió de ``pendiente`` no se modifica: los avisos repetidos se ignoran
+  (idempotencia) y un aprobado solo se compensa con otro registro.
 """
 
 import logging
 import secrets
 from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.auditoria import registrar_auditoria
 from app.modulos.pagos.excepciones import MetodoDePagoNoDisponible
 from app.modulos.pagos.modelos import EstadoPago, MetodoPago, Pago, TipoPago
-from app.modulos.pagos.pasarela import PasarelaPagos
+from app.modulos.pagos.pasarela import ResultadoCobro
 
 registro = logging.getLogger(__name__)
 
@@ -30,48 +34,88 @@ def obtener_metodo_activo(sesion: Session, codigo: str) -> MetodoPago:
     return metodo
 
 
-def cobrar(
+def hay_cobro_pendiente(
+    sesion: Session, *, alquiler_id: int | None = None, venta_id: int | None = None
+) -> bool:
+    """Si la operación tiene un cobro esperando respuesta de la pasarela."""
+    operacion = Pago.alquiler_id == alquiler_id if alquiler_id else Pago.venta_id == venta_id
+    return bool(
+        sesion.scalar(
+            select(func.count()).where(
+                operacion, Pago.tipo == TipoPago.COBRO, Pago.estado == EstadoPago.PENDIENTE
+            )
+        )
+    )
+
+
+def crear_cobro_pendiente(
     sesion: Session,
-    pasarela: PasarelaPagos,
     monto: int,
     metodo: MetodoPago,
-    momento: datetime,
+    proveedor: str,
+    bloqueo_original_hasta: datetime | None,
     *,
     alquiler_id: int | None = None,
     venta_id: int | None = None,
 ) -> Pago:
-    """Inicia el cobro de un alquiler o una venta y guarda el pago con el resultado.
-
-    No hace commit: el pago se confirma en la misma transacción que actualiza la operación.
-    """
+    """Registra un cobro en ``pendiente``, antes de llamar a la pasarela. No hace commit."""
     prefijo = "ALQ" if alquiler_id is not None else "VEN"
-    referencia = f"{prefijo}-{alquiler_id or venta_id}-{secrets.token_hex(4).upper()}"
-    resultado = pasarela.cobrar(referencia, monto, metodo.codigo)
     pago = Pago(
-        referencia=referencia,
+        referencia=f"{prefijo}-{alquiler_id or venta_id}-{secrets.token_hex(4).upper()}",
         tipo=TipoPago.COBRO,
         alquiler_id=alquiler_id,
         venta_id=venta_id,
         metodo_pago_id=metodo.id,
         monto=monto,
-        estado=resultado.estado,
-        proveedor=pasarela.nombre,
-        id_transaccion_pasarela=resultado.id_transaccion,
-        aprobado_en=momento if resultado.estado == EstadoPago.APROBADO else None,
-        detalle_error=resultado.detalle,
+        estado=EstadoPago.PENDIENTE,
+        proveedor=proveedor,
+        bloqueo_original_hasta=bloqueo_original_hasta,
     )
     sesion.add(pago)
     sesion.flush()
-    registro.info(
-        "Cobro",
-        extra={
-            "referencia": referencia,
-            "alquiler_id": alquiler_id,
-            "venta_id": venta_id,
-            "estado": pago.estado.value,
-        },
-    )
     return pago
+
+
+def bloquear_pago(sesion: Session, pago_id: int) -> Pago:
+    """``FOR UPDATE`` sobre el pago. Va después de bloquear su operación (orden global)."""
+    return sesion.scalars(
+        select(Pago)
+        .where(Pago.id == pago_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    ).one()
+
+
+def registrar_resultado(pago: Pago, resultado: ResultadoCobro, momento: datetime) -> bool:
+    """Aplica al pago lo que reporta la pasarela. Devuelve ``True`` si salió de ``pendiente``.
+
+    Idempotente: si el pago ya estaba resuelto, no cambia nada (un webhook repetido, o el
+    webhook y la consulta de respaldo diciendo lo mismo). La fila debe estar bloqueada.
+    """
+    if pago.estado != EstadoPago.PENDIENTE:
+        if resultado.estado != pago.estado:
+            registro.warning(
+                "La pasarela reporta otro estado para un pago ya resuelto; se ignora",
+                extra={
+                    "referencia": pago.referencia,
+                    "guardado": pago.estado.value,
+                    "reportado": resultado.estado.value,
+                },
+            )
+        return False
+    pago.id_transaccion_pasarela = resultado.id_transaccion or pago.id_transaccion_pasarela
+    pago.url_redireccion = resultado.url_redireccion or pago.url_redireccion
+    if resultado.estado == EstadoPago.PENDIENTE:
+        return False
+    pago.estado = resultado.estado
+    if resultado.estado == EstadoPago.APROBADO:
+        pago.aprobado_en = momento
+    else:
+        pago.detalle_error = resultado.detalle
+    registro.info(
+        "Pago resuelto", extra={"referencia": pago.referencia, "estado": pago.estado.value}
+    )
+    return True
 
 
 def registrar_devolucion(
@@ -80,7 +124,7 @@ def registrar_devolucion(
     """Registra la devolución de un cobro aprobado con un pago de compensación (CLAUDE.md 7.3).
 
     El cobro aprobado no se toca: la compensación es otro registro que lo referencia. Queda
-    ``pendiente`` hasta que se ejecute en la pasarela (llega con HU-05). No hace commit.
+    ``pendiente`` hasta que el administrador la ejecute en Wompi y la marque. No hace commit.
     """
     devolucion = Pago(
         referencia=f"DEV-{cobro.id}-{secrets.token_hex(4).upper()}",
@@ -104,4 +148,20 @@ def registrar_devolucion(
         entidad_id=cobro.id,
         despues={"devolucion_id": devolucion.id, "monto": cobro.monto, "motivo": motivo},
     )
+    registro.warning(
+        "Devolución pendiente: el administrador debe atenderla",
+        extra={"cobro": cobro.referencia, "devolucion": devolucion.referencia},
+    )
     return devolucion
+
+
+def cobro_aprobado(
+    sesion: Session, *, alquiler_id: int | None = None, venta_id: int | None = None
+) -> Pago | None:
+    """El cobro aprobado de la operación, si existe (hay a lo sumo uno)."""
+    operacion = Pago.alquiler_id == alquiler_id if alquiler_id else Pago.venta_id == venta_id
+    return sesion.scalars(
+        select(Pago).where(
+            operacion, Pago.tipo == TipoPago.COBRO, Pago.estado == EstadoPago.APROBADO
+        )
+    ).one_or_none()

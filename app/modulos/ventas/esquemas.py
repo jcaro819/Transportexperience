@@ -44,14 +44,6 @@ class VentaCrear(BaseModel):
         return self
 
 
-class PagoVentaCrear(BaseModel):
-    metodo_pago: Annotated[
-        str,
-        StringConstraints(strip_whitespace=True, to_lower=True, min_length=1, max_length=20),
-        Field(description="Código del método de pago habilitado.", examples=["tarjeta", "pse"]),
-    ]
-
-
 class CancelacionVenta(BaseModel):
     motivo: Annotated[
         str | None,
@@ -131,8 +123,8 @@ class PagoVentaRespuesta(BaseModel):
     devolucion: PagoResumen | None = Field(
         None,
         description=(
-            "Solo si el pago se aprobó pero una unidad entró en mantenimiento antes: la "
-            "compra se cancela y se registra la devolución del dinero."
+            "Solo si el pago se aprobó pero la compra no pudo completarse (una unidad entró "
+            "en mantenimiento, o la compra ya había expirado): se registra la devolución."
         ),
     )
 
