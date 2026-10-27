@@ -2,8 +2,8 @@
 
 Todo lo necesario para consumir el backend del **Sprint 1** (HU-12, HU-02, HU-09, HU-01) y
 del **Sprint 2** (alquileres, compras y pagos: HU-03, HU-04, HU-05) y los
-domicilios y el rastreo GPS del Sprint 3 (HU-06, HU-07, HU-08) y la gestión del
-inventario del Sprint 4 (HU-10).
+domicilios y el rastreo GPS del Sprint 3 (HU-06, HU-07, HU-08) y el inventario y las
+actas del Sprint 4 (HU-10, HU-11).
 El contrato completo y exacto (esquemas, campos, ejemplos) está en
 [`openapi.json`](openapi.json), que se genera desde el código. La forma más cómoda de
 explorarlo es la documentación interactiva: **http://127.0.0.1:8000/docs**.
@@ -133,6 +133,7 @@ Toda respuesta de error, sin excepción, tiene esta estructura:
 | `novedad_no_encontrada` | 404 | La novedad no existe o es de otra unidad |
 | `tipo_no_encontrado` | 404 | El tipo de vehículo no existe |
 | `alquiler_no_encontrado` | 404 | El alquiler no existe o es de otro cliente |
+| `acta_no_encontrada` | 404 | El acta no existe o no es tuya |
 | `venta_no_encontrada` | 404 | La compra no existe o es de otro cliente |
 | `domicilio_no_encontrado` | 404 | El domicilio no existe o no es tuyo |
 | `pago_no_encontrado` | 404 | El pago no existe o es de otro cliente |
@@ -145,6 +146,7 @@ Toda respuesta de error, sin excepción, tiene esta estructura:
 | `transicion_invalida` | 409 | La unidad no puede pasar a ese estado |
 | `no_puede_volver_a_servicio` | 409 | La unidad aún no puede volver (el `mensaje` dice por qué) |
 | `novedad_ya_cerrada` | 409 | La novedad ya estaba cerrada |
+| `conformidad_ya_registrada` | 409 | El acta ya tiene la conformidad |
 | `nombre_duplicado` | 409 | Ya existe un tipo de vehículo con ese nombre |
 | `codigo_duplicado` | 409 | Ya existe una unidad o un producto con ese código |
 | `ajuste_de_stock_invalido` | 409 | El ajuste dejaría el stock en negativo |
@@ -173,6 +175,7 @@ Toda respuesta de error, sin excepción, tiene esta estructura:
 | `bateria_no_aplica` | 422 | Se envió `nivel_bateria` para un tipo que no usa batería |
 | `modelo_sin_precio` | 422 | Un modelo debe conservar tarifa diaria, precio de venta o ambos |
 | `fechas_invalidas` | 422 | Fecha de inicio en el pasado o fin antes del inicio |
+| `rango_de_reporte_invalido` | 422 | `desde` posterior a `hasta`, o más de 92 días |
 | `fuera_de_cobertura` | 422 | El punto marcado está fuera de las zonas de entrega |
 | `duracion_excedida` | 422 | El alquiler supera el máximo de días (hoy, 30) |
 | `metodo_de_pago_no_disponible` | 422 | El método de pago no existe o está deshabilitado |
@@ -277,8 +280,8 @@ operador.
 | `POST` | `/alquileres/{alquiler_id}/pago` | Cliente | Pagar la reserva (ver **Pagos**) |
 | `POST` | `/alquileres/{alquiler_id}/cancelacion` | Cliente | Cancelar una reserva **sin pagar** (`motivo` opcional) |
 | `GET` | `/alquileres` | Administrador, operador | Todos los alquileres; filtros `estado`, `vehiculo_id`, `cliente_id` |
-| `POST` | `/alquileres/{alquiler_id}/entrega` | Administrador, operador | Entregar el vehículo: `confirmado` → `en_curso` |
-| `POST` | `/alquileres/{alquiler_id}/devolucion` | Administrador, operador | Recibir el vehículo: `en_curso` → `finalizado` |
+| `POST` | `/alquileres/{alquiler_id}/entrega` | Administrador, operador | Entregar el vehículo: `confirmado` → `en_curso`; genera el acta de entrega |
+| `POST` | `/alquileres/{alquiler_id}/devolucion` | Administrador, operador | Recibir el vehículo: `en_curso` → `finalizado`; genera el acta de recepción |
 | `GET` | `/alquileres/en-riesgo` | Administrador, operador | Alquileres sin entregar cuya unidad está en mantenimiento |
 | `POST` | `/alquileres/{alquiler_id}/cancelacion-con-devolucion` | Administrador | Cancelar un alquiler pagado y sin entregar (`motivo`) y registrar la devolución |
 | `POST` | `/alquileres/{alquiler_id}/reasignacion` | Administrador | Mover el alquiler a otra unidad libre del mismo modelo (`vehiculo_id` opcional) |
@@ -448,6 +451,36 @@ Un alquiler con domicilio vigente no se entrega en el local
 **envío** (`devolucion`) y la reserva o la compra sigue vigente (se recoge en el local).
 Nunca se devuelve más de lo cobrado: si después se cancela el alquiler con devolución, se
 descuenta lo ya devuelto.
+
+### Actas de entrega y recepción (HU-11)
+
+Las actas **no se crean a mano**: nacen solas al entregar o recibir un vehículo, en el
+local (`/alquileres/{id}/entrega` y `/devolucion`) y por domicilio (al marcar
+`entregado`). Una compra entregada a domicilio lleva un acta por cada unidad (los
+accesorios no llevan acta).
+
+| Método | Ruta | Quién | Para qué |
+|---|---|---|---|
+| `GET` | `/actas` | Administrador, operador | Todas; filtros `tipo` (`entrega`/`recepcion`), `vehiculo_id`, `desde`, `hasta` |
+| `GET` | `/actas/mias` | Cliente | Las actas de mis alquileres y compras |
+| `GET` | `/actas/{acta_id}` | Cliente (las suyas), administrador, operador | Ver un acta, con su `conformidad` |
+| `GET` | `/actas/{acta_id}/pdf` | Cliente (las suyas), administrador, operador | El acta en PDF |
+| `POST` | `/actas/{acta_id}/conformidad` | Cliente de la operación | Dar la conformidad (una sola vez) |
+| `GET` | `/actas/{acta_id}/verificacion` | Cliente (las suyas), administrador, operador | ¿El PDF de hoy es el que se aceptó? |
+| `GET` | `/actas/exportacion/excel` | Administrador, operador | Reporte en Excel (`desde`, `hasta`, `tipo`; por defecto, 30 días; máximo 92) |
+| `GET` | `/actas/exportacion/pdf` | Administrador, operador | El mismo reporte en PDF |
+
+**Anotar el estado al entregar o recibir.** `POST /alquileres/{id}/entrega` y
+`/devolucion` aceptan un cuerpo **opcional**
+`{"estado_vehiculo": "Sin rayones.", "nivel_bateria": 90}`; sin cuerpo, el acta dice
+"Sin observaciones.". Al marcar un domicilio `entregado`, lo mismo va en
+`{"estado": "entregado", "acta": {...}}`. `nivel_bateria` solo para vehículos con batería.
+
+**Conformidad del cliente** *(mecanismo pendiente de confirmación del equipo)*. El cliente
+ve el PDF y pulsa "Estoy conforme" → `POST /actas/{id}/conformidad`. Queda su usuario, la
+fecha y la **huella SHA-256 del PDF** (`conformidad.hash_pdf`). El PDF de un acta es
+siempre idéntico, así que cualquiera puede verificarlo: calcula el SHA-256 del archivo
+(`crypto.subtle.digest("SHA-256", ...)`) y lo compara, o usa `/verificacion`.
 
 ### Gestión del inventario (HU-10)
 

@@ -3871,7 +3871,7 @@
           "alquileres"
         ],
         "summary": "Entregar el vehículo al cliente",
-        "description": "`confirmado` → `en_curso`, y la unidad pasa a `alquilado`. Solo entre la fecha de\ninicio y la de fin, y si la unidad está disponible (si está en mantenimiento, reasigna).",
+        "description": "`confirmado` → `en_curso`, y la unidad pasa a `alquilado`. Solo entre la fecha de\ninicio y la de fin, y si la unidad está disponible (si está en mantenimiento, reasigna).\n\nQueda el **acta de entrega** (HU-11). El cuerpo es opcional: `estado_vehiculo` y\n`nivel_bateria` medidos al entregar.",
         "operationId": "entregar_alquileres__alquiler_id__entrega_post",
         "security": [
           {
@@ -3889,6 +3889,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ActaCrear"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Acta"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -3959,7 +3976,7 @@
           "alquileres"
         ],
         "summary": "Recibir el vehículo de vuelta",
-        "description": "`en_curso` → `finalizado`, y la unidad vuelve a `disponible`. Si entró en\nmantenimiento durante el alquiler, se queda en mantenimiento hasta que el taller cierre\nsu novedad.",
+        "description": "`en_curso` → `finalizado`, y la unidad vuelve a `disponible`. Si entró en\nmantenimiento durante el alquiler, se queda en mantenimiento hasta que el taller cierre\nsu novedad.\n\nQueda el **acta de recepción** (HU-11) con el estado en que volvió la unidad (cuerpo\nopcional, igual que en la entrega).",
         "operationId": "recibir_alquileres__alquiler_id__devolucion_post",
         "security": [
           {
@@ -3977,6 +3994,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ActaCrear"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Acta"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -6188,7 +6222,7 @@
           "domicilios"
         ],
         "summary": "Avanzar el estado de la entrega",
-        "description": "El domiciliario asignado (o el administrador u operador, para corregir) marca\n`recogido`, `en_camino` o `entregado`, sin saltar pasos. Al entregar un alquiler, este\npasa a `en_curso` (igual que la entrega en el local) y el vehículo de transporte vuelve a\nla flota.",
+        "description": "El domiciliario asignado (o el administrador u operador, para corregir) marca\n`recogido`, `en_camino` o `entregado`, sin saltar pasos. Al entregar un alquiler, este\npasa a `en_curso` (igual que la entrega en el local) y el vehículo de transporte vuelve a\nla flota. Al entregar queda el **acta de entrega** (HU-11).",
         "operationId": "avanzar_estado_domicilios__domicilio_id__estado_post",
         "security": [
           {
@@ -6785,6 +6819,785 @@
         }
       }
     },
+    "/actas": {
+      "get": {
+        "tags": [
+          "actas"
+        ],
+        "summary": "Actas",
+        "description": "Todas las actas, de la más reciente a la más antigua.",
+        "operationId": "listar_actas_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tipo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/TipoActa"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tipo"
+            }
+          },
+          {
+            "name": "vehiculo_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "exclusiveMinimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Vehiculo Id"
+            }
+          },
+          {
+            "name": "desde",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Primer día (AAAA-MM-DD).",
+              "title": "Desde"
+            },
+            "description": "Primer día (AAAA-MM-DD)."
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Último día, inclusive.",
+              "title": "Hasta"
+            },
+            "description": "Último día, inclusive."
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Número de página, desde 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Número de página, desde 1."
+          },
+          {
+            "name": "tamano",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Elementos por página (máx. 100).",
+              "default": 20,
+              "title": "Tamano"
+            },
+            "description": "Elementos por página (máx. 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_ActaRespuesta_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/actas/mias": {
+      "get": {
+        "tags": [
+          "actas"
+        ],
+        "summary": "Mis actas",
+        "description": "Las actas de los alquileres y compras del cliente con sesión.",
+        "operationId": "listar_mias_actas_mias_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Número de página, desde 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Número de página, desde 1."
+          },
+          {
+            "name": "tamano",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Elementos por página (máx. 100).",
+              "default": 20,
+              "title": "Tamano"
+            },
+            "description": "Elementos por página (máx. 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_ActaRespuesta_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/actas/exportacion/excel": {
+      "get": {
+        "tags": [
+          "actas"
+        ],
+        "summary": "Exportar actas a Excel",
+        "description": "Una fila por acta del rango (por defecto, los últimos 30 días; máximo 92).",
+        "operationId": "exportar_excel_actas_exportacion_excel_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "desde",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Primer día (AAAA-MM-DD).",
+              "title": "Desde"
+            },
+            "description": "Primer día (AAAA-MM-DD)."
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Último día, inclusive.",
+              "title": "Hasta"
+            },
+            "description": "Último día, inclusive."
+          },
+          {
+            "name": "tipo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/TipoActa"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tipo"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "El reporte en Excel",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {}
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/actas/exportacion/pdf": {
+      "get": {
+        "tags": [
+          "actas"
+        ],
+        "summary": "Exportar actas a PDF",
+        "description": "Las actas del rango en una tabla (por defecto, los últimos 30 días; máximo 92).",
+        "operationId": "exportar_pdf_actas_exportacion_pdf_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "desde",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Primer día (AAAA-MM-DD).",
+              "title": "Desde"
+            },
+            "description": "Primer día (AAAA-MM-DD)."
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Último día, inclusive.",
+              "title": "Hasta"
+            },
+            "description": "Último día, inclusive."
+          },
+          {
+            "name": "tipo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/TipoActa"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tipo"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "El documento en PDF",
+            "content": {
+              "application/pdf": {}
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/actas/{acta_id}": {
+      "get": {
+        "tags": [
+          "actas"
+        ],
+        "summary": "Ver un acta",
+        "description": "El cliente ve las suyas; el administrador y el operador, todas.",
+        "operationId": "ver_actas__acta_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "acta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Acta Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActaRespuesta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/actas/{acta_id}/pdf": {
+      "get": {
+        "tags": [
+          "actas"
+        ],
+        "summary": "Acta en PDF",
+        "description": "Siempre el mismo PDF para la misma acta: su SHA-256 es la huella de la conformidad.",
+        "operationId": "descargar_pdf_actas__acta_id__pdf_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "acta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Acta Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "El documento en PDF",
+            "content": {
+              "application/pdf": {}
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/actas/{acta_id}/conformidad": {
+      "post": {
+        "tags": [
+          "actas"
+        ],
+        "summary": "Dar la conformidad (cliente)",
+        "description": "El cliente de la operación acepta el acta tal como está en su PDF. Queda su usuario, la\nfecha y el SHA-256 del PDF. Solo una vez. *(Mecanismo pendiente de confirmación del equipo.)*",
+        "operationId": "dar_conformidad_actas__acta_id__conformidad_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "acta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Acta Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActaRespuesta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto con el estado actual",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/actas/{acta_id}/verificacion": {
+      "get": {
+        "tags": [
+          "actas"
+        ],
+        "summary": "¿El PDF sigue siendo el que se aceptó?",
+        "description": "Regenera el PDF y compara su SHA-256 con el guardado en la conformidad.",
+        "operationId": "verificar_actas__acta_id__verificacion_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "acta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Acta Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificacionActa"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/salud": {
       "get": {
         "tags": [
@@ -6820,6 +7633,162 @@
   },
   "components": {
     "schemas": {
+      "ActaCrear": {
+        "properties": {
+          "estado_vehiculo": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 3,
+            "title": "Estado Vehiculo",
+            "default": "Sin observaciones.",
+            "examples": [
+              "Sin rayones. Frenos y luces funcionando. Incluye casco."
+            ]
+          },
+          "nivel_bateria": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nivel Bateria",
+            "description": "Porcentaje medido al entregar o recibir (si usa batería)."
+          }
+        },
+        "type": "object",
+        "title": "ActaCrear",
+        "description": "Lo que anota quien entrega o recibe la unidad. Todo es opcional."
+      },
+      "ActaRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "numero": {
+            "type": "string",
+            "title": "Numero",
+            "examples": [
+              "ACT-000042"
+            ]
+          },
+          "tipo": {
+            "$ref": "#/components/schemas/TipoActa"
+          },
+          "creado_en": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Creado En"
+          },
+          "vehiculo_id": {
+            "type": "integer",
+            "title": "Vehiculo Id"
+          },
+          "vehiculo_codigo": {
+            "type": "string",
+            "title": "Vehiculo Codigo"
+          },
+          "modelo": {
+            "type": "string",
+            "title": "Modelo"
+          },
+          "alquiler_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alquiler Id"
+          },
+          "venta_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venta Id"
+          },
+          "domicilio_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domicilio Id"
+          },
+          "cliente_id": {
+            "type": "integer",
+            "title": "Cliente Id"
+          },
+          "cliente": {
+            "type": "string",
+            "title": "Cliente"
+          },
+          "estado_vehiculo": {
+            "type": "string",
+            "title": "Estado Vehiculo"
+          },
+          "nivel_bateria": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nivel Bateria"
+          },
+          "registrada_por": {
+            "type": "string",
+            "title": "Registrada Por"
+          },
+          "conformidad": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Conformidad"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "numero",
+          "tipo",
+          "creado_en",
+          "vehiculo_id",
+          "vehiculo_codigo",
+          "modelo",
+          "alquiler_id",
+          "venta_id",
+          "domicilio_id",
+          "cliente_id",
+          "cliente",
+          "estado_vehiculo",
+          "nivel_bateria",
+          "registrada_por",
+          "conformidad"
+        ],
+        "title": "ActaRespuesta"
+      },
       "AjusteStock": {
         "properties": {
           "cantidad": {
@@ -7125,6 +8094,16 @@
               "entregado"
             ],
             "title": "Estado"
+          },
+          "acta": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActaCrear"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -7132,7 +8111,7 @@
           "estado"
         ],
         "title": "CambioDeEstado",
-        "description": "Avance de la entrega, sin saltar pasos: asignado → recogido → en_camino → entregado."
+        "description": "Avance de la entrega, sin saltar pasos: asignado → recogido → en_camino → entregado.\n\nCon `entregado`, `acta` (opcional) anota el estado de la unidad en el acta de entrega."
       },
       "CambioRastreo": {
         "properties": {
@@ -7568,6 +8547,37 @@
         ],
         "title": "ConfiguracionPagos",
         "description": "Lo que el frontend necesita antes de cobrar."
+      },
+      "Conformidad": {
+        "properties": {
+          "conforme_por_id": {
+            "type": "integer",
+            "title": "Conforme Por Id"
+          },
+          "conforme_por": {
+            "type": "string",
+            "title": "Conforme Por"
+          },
+          "conforme_en": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Conforme En"
+          },
+          "hash_pdf": {
+            "type": "string",
+            "title": "Hash Pdf",
+            "description": "SHA-256 del PDF del acta. Para verificar un PDF, calcula su SHA-256 y compáralo: si no coincide, el documento no es el que se aceptó."
+          }
+        },
+        "type": "object",
+        "required": [
+          "conforme_por_id",
+          "conforme_por",
+          "conforme_en",
+          "hash_pdf"
+        ],
+        "title": "Conformidad",
+        "description": "Firma de conformidad: quién, cuándo y la huella (SHA-256) del PDF que aceptó."
       },
       "CuerpoError": {
         "properties": {
@@ -8938,6 +9948,42 @@
         ],
         "title": "OperacionVehiculo",
         "description": "Resultado de reportar, inactivar o cerrar: la unidad y la novedad como quedaron."
+      },
+      "Pagina_ActaRespuesta_": {
+        "properties": {
+          "elementos": {
+            "items": {
+              "$ref": "#/components/schemas/ActaRespuesta"
+            },
+            "type": "array",
+            "title": "Elementos"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamano": {
+            "type": "integer",
+            "title": "Tamano"
+          },
+          "paginas": {
+            "type": "integer",
+            "title": "Paginas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "elementos",
+          "total",
+          "pagina",
+          "tamano",
+          "paginas"
+        ],
+        "title": "Pagina[ActaRespuesta]"
       },
       "Pagina_AlquilerRespuesta_": {
         "properties": {
@@ -10684,6 +11730,14 @@
         ],
         "title": "TarjetaCrear"
       },
+      "TipoActa": {
+        "type": "string",
+        "enum": [
+          "entrega",
+          "recepcion"
+        ],
+        "title": "TipoActa"
+      },
       "TipoNovedad": {
         "type": "string",
         "enum": [
@@ -11472,6 +12526,44 @@
           "creado_en"
         ],
         "title": "VentaRespuesta"
+      },
+      "VerificacionActa": {
+        "properties": {
+          "con_conformidad": {
+            "type": "boolean",
+            "title": "Con Conformidad"
+          },
+          "coincide": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coincide",
+            "description": "true: el PDF de hoy es el que se aceptó. null: aún no hay conformidad."
+          },
+          "hash_pdf": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hash Pdf"
+          }
+        },
+        "type": "object",
+        "required": [
+          "con_conformidad",
+          "coincide",
+          "hash_pdf"
+        ],
+        "title": "VerificacionActa"
       },
       "ZonaRespuesta": {
         "properties": {
