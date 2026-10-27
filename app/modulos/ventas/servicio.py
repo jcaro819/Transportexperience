@@ -253,6 +253,20 @@ def crear_venta(
     return venta
 
 
+def bloquear_del_cliente(
+    sesion: Session, venta_id: int, cliente: Usuario, momento: datetime
+) -> Venta:
+    """Bloquea una compra del cliente para modificarla (p. ej., agregarle el domicilio).
+
+    Si es una pendiente vencida, la expira (devuelve lo apartado) y avisa con ``VentaExpirada``.
+    """
+    venta, vehiculos, productos = _bloquear_venta(sesion, venta_id)
+    _del_cliente(venta, cliente)
+    if esta_vencida(venta, momento):
+        _expirar_y_avisar(sesion, venta, vehiculos, productos)
+    return venta
+
+
 def preparar_pago(
     sesion: Session,
     venta_id: int,

@@ -42,6 +42,8 @@ from app.modulos.alquileres.excepciones import (
     VehiculoNoListoParaEntrega,
 )
 from app.modulos.alquileres.modelos import Alquiler, EstadoAlquiler
+from app.modulos.domicilios.liberacion import cancelar_domicilio_pendiente, domicilio_vigente
+from app.modulos.domicilios.modelos import EstadoDomicilio
 from app.modulos.inventario.excepciones import FechasInvalidas, ModeloNoSeAlquila
 from app.modulos.inventario.modelos import EstadoVehiculo, Vehiculo
 from app.modulos.inventario.servicio import (
@@ -141,6 +143,13 @@ def _cambiar_estado(
         antes={"estado": anterior.value},
         despues=despues,
     )
+    if nuevo in (EstadoAlquiler.EXPIRADO, EstadoAlquiler.CANCELADO):
+        cancelar_domicilio_pendiente(
+            sesion,
+            f"El alquiler quedó '{nuevo.value}'.",
+            usuario.id if usuario else None,
+            alquiler_id=alquiler.id,
+        )
 
 
 def expirar_vencidos(
@@ -302,6 +311,20 @@ def crear_alquiler(
     return alquiler
 
 
+def bloquear_del_cliente(
+    sesion: Session, alquiler_id: int, cliente: Usuario, momento: datetime
+) -> Alquiler:
+    """Bloquea un alquiler del cliente para modificarlo (p. ej., agregarle el domicilio).
+
+    Si es un pendiente vencido, lo marca expirado y avisa con ``ReservaExpirada``.
+    """
+    alquiler = _bloquear_alquiler(sesion, alquiler_id)
+    _del_cliente(alquiler, cliente)
+    if esta_vencido(alquiler, momento):
+        _expirar_y_avisar(sesion, alquiler)
+    return alquiler
+
+
 def preparar_pago(
     sesion: Session,
     alquiler_id: int,
@@ -425,6 +448,12 @@ def cancelar_con_devolucion(
     if alquiler.estado != EstadoAlquiler.CONFIRMADO:
         raise AlquilerNoCancelable(
             "Solo se cancela con devolución un alquiler pagado y aún no entregado."
+        )
+    domicilio = domicilio_vigente(sesion, alquiler_id=alquiler.id)
+    if domicilio is not None and domicilio.estado != EstadoDomicilio.PENDIENTE:
+        raise AlquilerNoCancelable(
+            f"El alquiler tiene un domicilio en estado '{domicilio.estado.value}'. Cancela "
+            "primero la entrega."
         )
     cobro = pagos.cobro_aprobado(sesion, alquiler_id=alquiler.id)
     if cobro is None:  # datos viejos sin pago registrado: no hay nada que devolver

@@ -17,6 +17,7 @@ from app.comun.errores import registrar_manejadores
 from app.config import obtener_configuracion
 from app.db import obtener_sesion
 from app.modulos.alquileres.rutas import enrutador_alquileres
+from app.modulos.domicilios.rutas import enrutador_domicilios
 from app.modulos.inventario.rutas import enrutador_catalogo, enrutador_vehiculos
 from app.modulos.pagos.rutas import enrutador_pagos
 from app.modulos.portal.rutas import enrutador_portal
@@ -55,6 +56,7 @@ app.include_router(enrutador_portal)
 app.include_router(enrutador_alquileres)
 app.include_router(enrutador_ventas)
 app.include_router(enrutador_pagos)
+app.include_router(enrutador_domicilios)
 
 
 class EstadoSalud(BaseModel):

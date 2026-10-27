@@ -29,7 +29,10 @@ from app.modulos.alquileres.consultas import (
     consulta_vehiculos_ocupados,
 )
 from app.modulos.alquileres.modelos import Alquiler
-from app.modulos.domicilios.servicio import consulta_domicilios_sin_finalizar
+from app.modulos.domicilios.consultas import (
+    consulta_domicilios_sin_finalizar,
+    consulta_vehiculo_en_ruta_de,
+)
 from app.modulos.inventario.esquemas import CierreNovedad, FiltrosCatalogo, Modalidad, NovedadCrear
 from app.modulos.inventario.estados import es_transicion_valida, validar_transicion
 from app.modulos.inventario.excepciones import (
@@ -380,12 +383,20 @@ def reportar_novedad(
 ) -> ResultadoOperacion:
     """Registra una novedad. Si es crítica, la unidad pasa a mantenimiento automáticamente.
 
-    Pueden reportar el administrador, el operador y el domiciliario. Los alquileres
+    Pueden reportar el administrador, el operador y el domiciliario (este, solo sobre el
+    vehículo de un domicilio que tenga asignado: no ve la flota). Los alquileres
     vigentes de la unidad NO se cancelan: se devuelven en ``alquileres_afectados`` para que
     el personal decida qué hacer con cada uno.
     """
     _exigir_rol(usuario, ROLES_QUE_REPORTAN)
     vehiculo = bloquear_vehiculo(sesion, vehiculo_id)
+    if usuario.rol == Rol.DOMICILIARIO:
+        # El domiciliario no ve la flota: solo reporta sobre el vehículo que lleva.
+        en_ruta = consulta_vehiculo_en_ruta_de(usuario.id, vehiculo.id)
+        if sesion.scalars(en_ruta).first() is None:
+            raise PermisoDenegado(
+                "Solo puedes reportar novedades del vehículo de un domicilio que tengas asignado."
+            )
     if vehiculo.estado == EstadoVehiculo.VENDIDO:
         raise VehiculoVendido()
 

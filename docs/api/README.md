@@ -1,7 +1,8 @@
 # API de TransportExperience: guía para el frontend
 
 Todo lo necesario para consumir el backend del **Sprint 1** (HU-12, HU-02, HU-09, HU-01) y
-del **Sprint 2**: alquileres, compras y pagos (HU-03, HU-04, HU-05).
+del **Sprint 2** (alquileres, compras y pagos: HU-03, HU-04, HU-05) y los
+domicilios del Sprint 3 (HU-06).
 El contrato completo y exacto (esquemas, campos, ejemplos) está en
 [`openapi.json`](openapi.json), que se genera desde el código. La forma más cómoda de
 explorarlo es la documentación interactiva: **http://127.0.0.1:8000/docs**.
@@ -128,6 +129,7 @@ Toda respuesta de error, sin excepción, tiene esta estructura:
 | `novedad_no_encontrada` | 404 | La novedad no existe o es de otra unidad |
 | `alquiler_no_encontrado` | 404 | El alquiler no existe o es de otro cliente |
 | `venta_no_encontrada` | 404 | La compra no existe o es de otro cliente |
+| `domicilio_no_encontrado` | 404 | El domicilio no existe o no es tuyo |
 | `pago_no_encontrado` | 404 | El pago no existe o es de otro cliente |
 | `producto_no_encontrado` | 404 | El accesorio o repuesto no existe o ya no se vende |
 | `metodo_no_permitido` | 405 | La dirección no admite ese método |
@@ -151,10 +153,17 @@ Toda respuesta de error, sin excepción, tiene esta estructura:
 | `venta_expirada` | 409 | Pasaron los 15 minutos sin pagar la compra; hay que comprar de nuevo |
 | `transicion_de_venta_invalida` | 409 | La compra no está en el estado que la acción necesita (p. ej., pagar una ya pagada) |
 | `venta_no_cancelable` | 409 | Solo se cancelan compras en `pendiente_pago` |
-| `pago_en_curso` | 409 | Ya hay un pago esperando respuesta del banco: no se puede pagar otra vez ni cancelar |
+| `pago_en_curso` | 409 | Ya hay un pago esperando respuesta del banco: no se puede pagar otra vez, cancelar ni cambiar el domicilio |
+| `ya_tiene_domicilio` | 409 | La reserva o compra ya tiene un domicilio |
+| `operacion_no_admite_domicilio` | 409 | El domicilio solo se agrega o se quita antes de pagar |
+| `transicion_de_domicilio_invalida` | 409 | El domicilio no está en el estado que la acción necesita |
+| `domicilio_sin_pagar` | 409 | No se asigna un domicilio cuya operación no está pagada |
+| `domiciliario_no_disponible` | 409 | El domiciliario tiene una entrega en ruta, está inactivo o no es domiciliario |
+| `vehiculo_de_transporte_no_disponible` | 409 | La unidad elegida como transporte no se puede usar (el `mensaje` dice por qué) |
 | `devolucion_no_pendiente` | 409 | Ese pago no es una devolución pendiente |
 | `rango_de_tarifa_invalido` | 422 | `tarifa_min` es mayor que `tarifa_max` |
 | `fechas_invalidas` | 422 | Fecha de inicio en el pasado o fin antes del inicio |
+| `fuera_de_cobertura` | 422 | El punto marcado está fuera de las zonas de entrega |
 | `duracion_excedida` | 422 | El alquiler supera el máximo de días (hoy, 30) |
 | `metodo_de_pago_no_disponible` | 422 | El método de pago no existe o está deshabilitado |
 | `terminos_no_aceptados` | 422 | Con Wompi, falta `acepta_terminos: true` |
@@ -368,6 +377,43 @@ apartada para compra no se puede alquilar.
   **devolución** (`tipo: "compensacion"`) y el administrador la ve en
   `/pagos/devoluciones-pendientes`.
 
+### Domicilios (HU-06)
+
+| Método | Ruta | Quién | Para qué |
+|---|---|---|---|
+| `GET` | `/domicilios/zonas` | Público | Zonas de cobertura: `poligono` (GeoJSON) y `tarifa_envio`, para dibujarlas en el mapa |
+| `GET` | `/domicilios/cobertura` | Público | Zona y tarifa del punto marcado (`latitud`, `longitud`); fuera de cobertura, `fuera_de_cobertura` |
+| `POST` | `/domicilios` | Cliente | Agregar el domicilio a una reserva o compra **sin pagar** (`alquiler_id` o `venta_id`, `direccion`, `indicaciones`, `latitud`, `longitud`) |
+| `GET` | `/domicilios/mios` | Cliente | Mis domicilios |
+| `POST` | `/domicilios/{domicilio_id}/cancelacion` | Cliente | Quitar el domicilio antes de pagar (el envío sale del total) |
+| `GET` | `/domicilios/{domicilio_id}` | Cliente (los suyos), domiciliario (los asignados), administrador, operador | Ver un domicilio |
+| `GET` | `/domicilios` | Administrador, operador | Todos; con `estado=pendiente`, los que esperan domiciliario |
+| `GET` | `/domicilios/domiciliarios-disponibles` | Administrador, operador | Domiciliarios activos sin entregas en ruta |
+| `POST` | `/domicilios/{domicilio_id}/asignacion` | Administrador, operador | Asignar `domiciliario_id` y, si usa uno, `vehiculo_transporte_id` |
+| `GET` | `/domicilios/asignados` | Domiciliario | Mis entregas en ruta, con dirección, contacto del cliente y vehículo |
+
+**Flujo del cliente.**
+
+1. Muestra el mapa con `/domicilios/zonas`. El cliente marca el punto; el frontend envía
+   `latitud` y `longitud` (GeoJSON usa `[longitud, latitud]`: ¡ojo con el orden al dibujar!).
+2. `GET /domicilios/cobertura` dice la zona y la tarifa antes de confirmar.
+3. Después de `POST /alquileres` o `POST /ventas`, y **antes de pagar**, `POST /domicilios`.
+   La respuesta trae `valor_envio` y `total_operacion`: ese total es el que se paga.
+4. Para cambiar la dirección: `POST /domicilios/{id}/cancelacion` y solicitar de nuevo.
+   Con un pago en curso no se puede (`pago_en_curso`).
+5. Si la reserva o la compra expira o se cancela, su domicilio se cancela solo.
+
+Cada domicilio trae un `codigo_rastreo` (p. ej. `TX-7KQ2M9PA`); la consulta pública por
+código llega con HU-07.
+
+**Despacho.** Con la operación pagada, el administrador o el operador elige un domiciliario
+de `/domicilios/domiciliarios-disponibles` y lo asigna (no hay asignación automática).
+El vehículo de transporte es opcional; si se usa, debe estar disponible y libre hoy.
+
+**Domiciliario.** `/domicilios/asignados` le muestra sus entregas y el
+`vehiculo_transporte`: es el único vehículo sobre el que puede reportar novedades
+(`POST /vehiculos/{vehiculo_id}/novedades`).
+
 ### Sistema
 
 | Método | Ruta | Quién | Para qué |
@@ -378,8 +424,5 @@ apartada para compra no se puede alquilar.
 
 ## 8. Preguntas abiertas para el frontend
 
-1. **Rastreo GPS (HU-08, Sprint 3): ¿consulta cada 5 segundos o WebSocket?** La propuesta
-   del backend es que el mapa **consulte la API cada 5 segundos** (más simple de construir y
-   de probar). Necesitamos tu confirmación antes de empezar ese módulo.
-2. **Puerto del frontend**: si no es 5173, 3000 ni 4200, dinos cuál para dejarlo en
+1. **Puerto del frontend**: si no es 5173, 3000 ni 4200, dinos cuál para dejarlo en
    `.env.example`.
