@@ -1,7 +1,7 @@
 # API de TransportExperience: guía para el frontend
 
 Todo lo necesario para consumir el backend del **Sprint 1** (HU-12, HU-02, HU-09, HU-01) y
-de los **alquileres** del Sprint 2 (HU-03).
+de los **alquileres** y las **compras** del Sprint 2 (HU-03, HU-04).
 El contrato completo y exacto (esquemas, campos, ejemplos) está en
 [`openapi.json`](openapi.json), que se genera desde el código. La forma más cómoda de
 explorarlo es la documentación interactiva: **http://127.0.0.1:8000/docs**.
@@ -36,7 +36,8 @@ uvicorn app.main:app --reload    # API en http://127.0.0.1:8000
 ```
 
 **Al actualizar el repositorio**, vuelve a correr `alembic upgrade head`: HU-03 agregó la
-tabla `parametros_sistema` (máximo de días por alquiler).
+tabla `parametros_sistema` (máximo de días por alquiler) y HU-04 la columna
+`ventas.motivo_cancelacion`.
 
 Si todo va bien, `http://127.0.0.1:8000/salud` responde
 `{"estado": "ok", "base_datos": "ok"}`.
@@ -125,6 +126,8 @@ Toda respuesta de error, sin excepción, tiene esta estructura:
 | `vehiculo_no_encontrado` | 404 | La unidad no existe |
 | `novedad_no_encontrada` | 404 | La novedad no existe o es de otra unidad |
 | `alquiler_no_encontrado` | 404 | El alquiler no existe o es de otro cliente |
+| `venta_no_encontrada` | 404 | La compra no existe o es de otro cliente |
+| `producto_no_encontrado` | 404 | El accesorio o repuesto no existe o ya no se vende |
 | `metodo_no_permitido` | 405 | La dirección no admite ese método |
 | `correo_ya_registrado` | 409 | Ya hay una cuenta con ese correo |
 | `cambio_sobre_si_mismo` | 409 | Un administrador intenta desactivarse o quitarse el rol |
@@ -140,6 +143,12 @@ Toda respuesta de error, sin excepción, tiene esta estructura:
 | `fuera_de_las_fechas_del_alquiler` | 409 | Se intenta entregar fuera de las fechas del alquiler |
 | `vehiculo_no_listo_para_entrega` | 409 | La unidad está en mantenimiento o sigue con otro cliente (el `mensaje` dice cuál) |
 | `reasignacion_invalida` | 409 | No se puede mover el alquiler a esa unidad |
+| `modelo_no_se_vende` | 409 | El modelo solo se alquila |
+| `sin_unidades_para_venta` | 409 | No hay suficientes unidades disponibles para la venta (el `mensaje` dice cuántas hay) |
+| `stock_insuficiente` | 409 | No alcanza el stock del producto (el `mensaje` dice cuánto queda) |
+| `venta_expirada` | 409 | Pasaron los 15 minutos sin pagar la compra; hay que comprar de nuevo |
+| `transicion_de_venta_invalida` | 409 | La compra no está en el estado que la acción necesita (p. ej., pagar una ya pagada) |
+| `venta_no_cancelable` | 409 | Solo se cancelan compras en `pendiente_pago` |
 | `rango_de_tarifa_invalido` | 422 | `tarifa_min` es mayor que `tarifa_max` |
 | `fechas_invalidas` | 422 | Fecha de inicio en el pasado o fin antes del inicio |
 | `duracion_excedida` | 422 | El alquiler supera el máximo de días (hoy, 30) |
@@ -206,6 +215,7 @@ espera y ejemplos de respuesta.
 | `GET` | `/catalogo/modelos` | Público | Catálogo con `disponibles_hoy`; filtros `tipo_id`, `tarifa_min`, `tarifa_max`, `modalidad` (`alquiler`/`venta`), `solo_disponibles` |
 | `GET` | `/catalogo/modelos/{modelo_id}` | Público | Ficha del modelo con cada unidad libre hoy (código, ubicación, batería) |
 | `GET` | `/catalogo/modelos/{modelo_id}/disponibilidad` | Público | Unidades libres entre `fecha_inicio` y `fecha_fin` |
+| `GET` | `/catalogo/productos` | Público | Accesorios y repuestos con precio y `stock`; filtros `categoria` (`accesorio`/`repuesto`), `solo_disponibles` |
 
 ### Gestión de la flota (HU-09)
 
@@ -271,6 +281,39 @@ el cliente la tiene, la devolución finaliza el alquiler y la unidad se queda en
 mantenimiento.
 
 Cada alquiler trae su `vehiculo` con `codigo`, `modelo` y `estado` físico actual.
+
+### Compras (HU-04)
+
+| Método | Ruta | Quién | Para qué |
+|---|---|---|---|
+| `POST` | `/ventas` | Cliente | Comprar: `vehiculos` (`modelo_id`, `cantidad`) y `productos` (`producto_id`, `cantidad`) |
+| `GET` | `/ventas/mias` | Cliente | Mis compras; filtro `estado` |
+| `GET` | `/ventas/{venta_id}` | Cliente (solo las suyas), administrador, operador | Ver una compra |
+| `POST` | `/ventas/{venta_id}/pago` | Cliente | Pagar la compra (`{"metodo_pago": "tarjeta"}`) |
+| `POST` | `/ventas/{venta_id}/cancelacion` | Cliente | Cancelar una compra **sin pagar** (`motivo` opcional) |
+| `GET` | `/ventas/{venta_id}/comprobante` | Cliente (solo las suyas), administrador, operador | Comprobante preliminar (JSON) |
+| `GET` | `/ventas` | Administrador, operador | Todas las ventas; filtros `estado`, `cliente_id` |
+| `GET` | `/ventas/devoluciones-pendientes` | Administrador | Compras pagadas que no se completaron y cuyo dinero hay que devolver |
+
+**Flujo del cliente.**
+
+1. Arma el carrito con `/catalogo/modelos?modalidad=venta` (vehículos) y
+   `/catalogo/productos` (accesorios y repuestos). Ejemplo de cuerpo:
+   `{"vehiculos": [{"modelo_id": 3, "cantidad": 1}], "productos": [{"producto_id": 7, "cantidad": 2}]}`.
+   Cada modelo o producto va una sola vez; para más unidades, usa `cantidad`.
+2. `POST /ventas`: el sistema asigna las unidades, descuenta el stock y **guarda todo
+   15 minutos** (`expira_en`). Cada ítem trae `tipo` (`vehiculo`/`producto`), `descripcion`
+   y `codigo`.
+3. `POST /ventas/{id}/pago`. Revisa `venta.estado`:
+   - `pagada`: compra completa.
+   - `pendiente_pago` (con `pago.estado` = `rechazado`): puede reintentar antes de `expira_en`.
+   - `cancelada` con `devolucion`: una unidad entró en mantenimiento antes del pago; la
+     compra no se completa y se le devolverá el dinero. Muestra `motivo_cancelacion`.
+4. `GET /ventas/{id}/comprobante`: comprobante **preliminar** (no es factura). El PDF llega
+   con HU-05.
+
+Una unidad con alquileres pendientes, confirmados o en curso no se vende. Una unidad
+apartada para compra no se puede alquilar.
 
 ### Sistema
 

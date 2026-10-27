@@ -1,4 +1,4 @@
-"""Fábrica de datos de prueba del inventario y los alquileres. Úsala con el fixture ``fabrica``."""
+"""Fábrica de datos de prueba: inventario, productos y alquileres. Úsala con ``fabrica``."""
 
 from datetime import date, datetime
 from itertools import count
@@ -6,7 +6,14 @@ from itertools import count
 from sqlalchemy.orm import Session
 
 from app.modulos.alquileres.modelos import Alquiler, EstadoAlquiler
-from app.modulos.inventario.modelos import EstadoVehiculo, ModeloVehiculo, TipoVehiculo, Vehiculo
+from app.modulos.inventario.modelos import (
+    CategoriaProducto,
+    EstadoVehiculo,
+    ModeloVehiculo,
+    Producto,
+    TipoVehiculo,
+    Vehiculo,
+)
 from app.modulos.usuarios.modelos import Rol, Usuario
 
 
@@ -53,6 +60,27 @@ class Fabrica:
         codigo = datos.pop("codigo", None) or f"VEH-{next(self._numeros):04d}"
         return self._guardar(
             Vehiculo(codigo=codigo, modelo=modelo or self.modelo(), estado=estado, **datos)
+        )
+
+    def producto(
+        self,
+        *,
+        stock: int = 10,
+        precio_venta: int = 100_000,
+        categoria: CategoriaProducto = CategoriaProducto.ACCESORIO,
+        activo: bool = True,
+        nombre: str | None = None,
+    ) -> Producto:
+        n = next(self._numeros)
+        return self._guardar(
+            Producto(
+                codigo=f"PRD-{n:04d}",
+                nombre=nombre or f"Producto {n}",
+                categoria=categoria,
+                precio_venta=precio_venta,
+                stock=stock,
+                activo=activo,
+            )
         )
 
     def cliente(self) -> Usuario:

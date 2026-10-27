@@ -20,6 +20,7 @@ from app.modulos.alquileres.rutas import enrutador_alquileres
 from app.modulos.inventario.rutas import enrutador_catalogo, enrutador_vehiculos
 from app.modulos.portal.rutas import enrutador_portal
 from app.modulos.usuarios.rutas import enrutador_autenticacion, enrutador_usuarios
+from app.modulos.ventas.rutas import enrutador_ventas
 
 DESCRIPCION = """
 Backend del MVP de TransportExperience: alquiler, venta y domicilio de ciclas, patines y
@@ -51,6 +52,7 @@ app.include_router(enrutador_catalogo)
 app.include_router(enrutador_vehiculos)
 app.include_router(enrutador_portal)
 app.include_router(enrutador_alquileres)
+app.include_router(enrutador_ventas)
 
 
 class EstadoSalud(BaseModel):
