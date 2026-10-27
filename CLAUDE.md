@@ -768,7 +768,7 @@ De ahí en adelante seguimos el backlog sprint por sprint.
 **Sprint 3 completo.** **Sprint 4 en curso**:
 
 17. HU-10 inventario y alertas de bajo stock. **Hecho (PR #13).**
-18. HU-11 actas de entrega y recepción, PDF y Excel. **Hecho (rama `hu-11-actas`, PR en
+18. HU-11 actas de entrega y recepción, PDF y Excel. **Hecho (rama `hu-11-actas`, PR #14 en
     revisión).**
 19. Requisitos no funcionales: script de respaldo y restauración (SRS 3.3.2) y límite
     del tamaño del cuerpo del webhook de pagos.
