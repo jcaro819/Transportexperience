@@ -12,6 +12,7 @@ Qué significa "disponible" (CLAUDE.md 7.2):
 Los modelos o tipos inactivos no aparecen en el catálogo.
 """
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date, datetime
 
@@ -44,15 +45,18 @@ from app.modulos.inventario.excepciones import (
     VehiculoVendido,
 )
 from app.modulos.inventario.modelos import (
+    CategoriaProducto,
     EstadoNovedad,
     EstadoVehiculo,
     ModeloVehiculo,
     NovedadVehiculo,
+    Producto,
     TipoNovedad,
     TipoVehiculo,
     Vehiculo,
 )
 from app.modulos.usuarios.modelos import Rol, Usuario
+from app.modulos.ventas.consultas import consulta_compra_pendiente_de_vehiculo
 
 # Estados temporales: la unidad vuelve a estar libre cuando termina lo que la ocupa.
 _RESERVABLES_A_FUTURO = (
@@ -222,6 +226,21 @@ def consultar_disponibilidad(
     )
 
 
+def listar_productos(
+    sesion: Session,
+    parametros: ParametrosPagina,
+    categoria: CategoriaProducto | None = None,
+    solo_disponibles: bool = False,
+) -> ResultadoPagina:
+    """Accesorios y repuestos activos, para comprar (HU-04). Ordenados por nombre."""
+    consulta = select(Producto).where(Producto.activo).order_by(Producto.nombre, Producto.id)
+    if categoria is not None:
+        consulta = consulta.where(Producto.categoria == categoria)
+    if solo_disponibles:
+        consulta = consulta.where(Producto.stock > 0)
+    return paginar(sesion, consulta, parametros)
+
+
 # --- Gestión de la flota (HU-09, SRS 3.1.8) -----------------------------------------------
 #
 # Cada operación empieza bloqueando la fila del vehículo (CLAUDE.md 7.1, regla 1), valida
@@ -258,6 +277,33 @@ def bloquear_vehiculo(sesion: Session, vehiculo_id: int) -> Vehiculo:
     if vehiculo is None:
         raise VehiculoNoEncontrado()
     return vehiculo
+
+
+def bloquear_inventario(
+    sesion: Session, vehiculo_ids: Iterable[int], producto_ids: Iterable[int] = ()
+) -> tuple[dict[int, Vehiculo], dict[int, Producto]]:
+    """``FOR UPDATE`` sobre varias unidades y productos, en el orden global del sistema.
+
+    El orden es siempre el mismo: primero los vehículos por ``id``, luego los productos por
+    ``id``, y solo después las filas de la operación (alquiler, venta). Dos transacciones
+    que bloquean en el mismo orden nunca quedan esperándose la una a la otra (*deadlock*).
+    Por eso una operación debe pedir aquí, de una vez, todo lo que va a tocar.
+    """
+    vehiculos = sesion.scalars(
+        select(Vehiculo)
+        .where(Vehiculo.id.in_(sorted(set(vehiculo_ids))))
+        .order_by(Vehiculo.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    ).all()
+    productos = sesion.scalars(
+        select(Producto)
+        .where(Producto.id.in_(sorted(set(producto_ids))))
+        .order_by(Producto.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    ).all()
+    return {v.id: v for v in vehiculos}, {p.id: p for p in productos}
 
 
 def cambiar_estado_vehiculo(
@@ -413,6 +459,13 @@ def _verificar_que_puede_volver(
         )
     if sesion.scalars(consulta_domicilios_sin_finalizar(vehiculo.id)).first() is not None:
         raise NoPuedeVolverAServicio("La unidad participa en un domicilio sin finalizar.")
+    compra = consulta_compra_pendiente_de_vehiculo(vehiculo.id, fechas.ahora())
+    if sesion.scalars(compra).first() is not None:
+        # Si volviera a "disponible", otro cliente podría tomarla mientras se paga la compra.
+        raise NoPuedeVolverAServicio(
+            "La unidad está apartada por una compra pendiente de pago. Espera a que se pague "
+            "o expire (máximo 15 minutos)."
+        )
 
 
 def cerrar_novedad(

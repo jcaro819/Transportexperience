@@ -1,6 +1,7 @@
 """Rutas del inventario.
 
-- ``/catalogo``: catálogo público (HU-02). No requiere iniciar sesión.
+- ``/catalogo``: catálogo público de vehículos (HU-02) y de accesorios y repuestos (HU-04).
+  No requiere iniciar sesión.
 - ``/vehiculos``: gestión de la flota (HU-09). Solo administrador y operador.
 """
 
@@ -23,10 +24,11 @@ from app.modulos.inventario.esquemas import (
     NovedadCrear,
     NovedadRespuesta,
     OperacionVehiculo,
+    ProductoCatalogo,
     TipoVehiculoRespuesta,
     VehiculoGestion,
 )
-from app.modulos.inventario.modelos import EstadoNovedad, EstadoVehiculo
+from app.modulos.inventario.modelos import CategoriaProducto, EstadoNovedad, EstadoVehiculo
 from app.modulos.usuarios.modelos import Usuario
 from app.seguridad import AdministradorUOperador, requiere_roles
 
@@ -95,6 +97,25 @@ def consultar_disponibilidad(
     """Unidades libres durante todo el rango. Del 5 al 7 son 3 días (fechas inclusivas)."""
     resultado = servicio.consultar_disponibilidad(sesion, modelo_id, fecha_inicio, fecha_fin)
     return DisponibilidadRango.model_validate(resultado)
+
+
+@enrutador_catalogo.get(
+    "/productos",
+    response_model=Pagina[ProductoCatalogo],
+    summary="Accesorios y repuestos",
+    responses=respuestas_error(422),
+)
+def listar_productos(
+    sesion: SesionBD,
+    parametros: Paginacion,
+    categoria: Annotated[
+        CategoriaProducto | None, Query(description="`accesorio` o `repuesto`.")
+    ] = None,
+    solo_disponibles: Annotated[bool, Query(description="Solo los que tienen stock.")] = False,
+) -> Pagina[ProductoCatalogo]:
+    """Cascos, cargadores, repuestos... con su precio y el stock disponible (HU-04)."""
+    resultado = servicio.listar_productos(sesion, parametros, categoria, solo_disponibles)
+    return Pagina[ProductoCatalogo].model_validate(resultado)
 
 
 # --- Gestión de la flota (HU-09) --------------------------------------------------------
