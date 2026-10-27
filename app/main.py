@@ -21,6 +21,7 @@ from app.modulos.domicilios.rutas import enrutador_domicilios
 from app.modulos.inventario.rutas import enrutador_catalogo, enrutador_vehiculos
 from app.modulos.pagos.rutas import enrutador_pagos
 from app.modulos.portal.rutas import enrutador_portal
+from app.modulos.rastreo.rutas import enrutador_rastreo
 from app.modulos.usuarios.rutas import enrutador_autenticacion, enrutador_usuarios
 from app.modulos.ventas.rutas import enrutador_ventas
 
@@ -57,6 +58,7 @@ app.include_router(enrutador_alquileres)
 app.include_router(enrutador_ventas)
 app.include_router(enrutador_pagos)
 app.include_router(enrutador_domicilios)
+app.include_router(enrutador_rastreo)
 
 
 class EstadoSalud(BaseModel):
