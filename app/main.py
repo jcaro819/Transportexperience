@@ -19,6 +19,7 @@ from app.db import obtener_sesion
 from app.modulos.alquileres.rutas import enrutador_alquileres
 from app.modulos.domicilios.rutas import enrutador_domicilios
 from app.modulos.inventario.rutas import enrutador_catalogo, enrutador_vehiculos
+from app.modulos.inventario.rutas_gestion import enrutador_inventario
 from app.modulos.pagos.rutas import enrutador_pagos
 from app.modulos.portal.rutas import enrutador_portal
 from app.modulos.rastreo.rutas import enrutador_rastreo
@@ -53,6 +54,7 @@ app.include_router(enrutador_autenticacion)
 app.include_router(enrutador_usuarios)
 app.include_router(enrutador_catalogo)
 app.include_router(enrutador_vehiculos)
+app.include_router(enrutador_inventario)
 app.include_router(enrutador_portal)
 app.include_router(enrutador_alquileres)
 app.include_router(enrutador_ventas)

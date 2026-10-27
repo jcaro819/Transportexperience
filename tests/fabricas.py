@@ -38,9 +38,11 @@ class Fabrica:
         self.sesion.flush()
         return objeto
 
-    def tipo(self, nombre: str | None = None, *, activo: bool = True) -> TipoVehiculo:
+    def tipo(
+        self, nombre: str | None = None, *, activo: bool = True, usa_bateria: bool = True
+    ) -> TipoVehiculo:
         nombre = nombre or f"Tipo {next(self._numeros)}"
-        return self._guardar(TipoVehiculo(nombre=nombre, usa_bateria=True, activo=activo))
+        return self._guardar(TipoVehiculo(nombre=nombre, usa_bateria=usa_bateria, activo=activo))
 
     def modelo(
         self,

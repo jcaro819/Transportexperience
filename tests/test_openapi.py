@@ -103,6 +103,24 @@ RUTAS_HU_08 = {
     ("post", "/rastreo/vehiculos/{vehiculo_id}/clave"),
 }
 
+# Lo que HU-10 (Sprint 4) promete al frontend.
+RUTAS_HU_10 = {
+    ("get", "/inventario/resumen"),
+    ("get", "/inventario/alertas-stock"),
+    ("get", "/inventario/tipos"),
+    ("post", "/inventario/tipos"),
+    ("patch", "/inventario/tipos/{tipo_id}"),
+    ("get", "/inventario/modelos"),
+    ("post", "/inventario/modelos"),
+    ("patch", "/inventario/modelos/{modelo_id}"),
+    ("post", "/inventario/unidades"),
+    ("patch", "/inventario/unidades/{vehiculo_id}"),
+    ("get", "/inventario/productos"),
+    ("post", "/inventario/productos"),
+    ("patch", "/inventario/productos/{producto_id}"),
+    ("post", "/inventario/productos/{producto_id}/ajustes"),
+}
+
 # Códigos que no vienen de una clase ErrorDeNegocio sino de los manejadores globales.
 CODIGOS_GENERALES = {
     "datos_invalidos",
@@ -138,6 +156,11 @@ def test_openapi_exportado_esta_actualizado() -> None:
 def test_el_contrato_incluye_todas_las_rutas_del_sprint_1() -> None:
     faltantes = RUTAS_SPRINT_1 - _operaciones()
     assert not faltantes, f"Rutas del Sprint 1 que no están en el contrato: {sorted(faltantes)}"
+
+
+def test_el_contrato_incluye_todas_las_rutas_de_hu_10() -> None:
+    faltantes = RUTAS_HU_10 - _operaciones()
+    assert not faltantes, f"Rutas de HU-10 que no están en el contrato: {sorted(faltantes)}"
 
 
 def test_el_contrato_incluye_todas_las_rutas_de_hu_08() -> None:

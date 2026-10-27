@@ -2,7 +2,8 @@
 
 Todo lo necesario para consumir el backend del **Sprint 1** (HU-12, HU-02, HU-09, HU-01) y
 del **Sprint 2** (alquileres, compras y pagos: HU-03, HU-04, HU-05) y los
-domicilios y el rastreo GPS del Sprint 3 (HU-06, HU-07, HU-08).
+domicilios y el rastreo GPS del Sprint 3 (HU-06, HU-07, HU-08) y la gestión del
+inventario del Sprint 4 (HU-10).
 El contrato completo y exacto (esquemas, campos, ejemplos) está en
 [`openapi.json`](openapi.json), que se genera desde el código. La forma más cómoda de
 explorarlo es la documentación interactiva: **http://127.0.0.1:8000/docs**.
@@ -130,6 +131,7 @@ Toda respuesta de error, sin excepción, tiene esta estructura:
 | `modelo_no_encontrado` | 404 | El modelo no existe o salió del catálogo |
 | `vehiculo_no_encontrado` | 404 | La unidad no existe |
 | `novedad_no_encontrada` | 404 | La novedad no existe o es de otra unidad |
+| `tipo_no_encontrado` | 404 | El tipo de vehículo no existe |
 | `alquiler_no_encontrado` | 404 | El alquiler no existe o es de otro cliente |
 | `venta_no_encontrada` | 404 | La compra no existe o es de otro cliente |
 | `domicilio_no_encontrado` | 404 | El domicilio no existe o no es tuyo |
@@ -143,6 +145,9 @@ Toda respuesta de error, sin excepción, tiene esta estructura:
 | `transicion_invalida` | 409 | La unidad no puede pasar a ese estado |
 | `no_puede_volver_a_servicio` | 409 | La unidad aún no puede volver (el `mensaje` dice por qué) |
 | `novedad_ya_cerrada` | 409 | La novedad ya estaba cerrada |
+| `nombre_duplicado` | 409 | Ya existe un tipo de vehículo con ese nombre |
+| `codigo_duplicado` | 409 | Ya existe una unidad o un producto con ese código |
+| `ajuste_de_stock_invalido` | 409 | El ajuste dejaría el stock en negativo |
 | `sin_unidades_disponibles` | 409 | No hay unidades libres de ese modelo en esas fechas |
 | `reserva_expirada` | 409 | Pasaron los 15 minutos sin pagar; hay que reservar de nuevo |
 | `transicion_de_alquiler_invalida` | 409 | El alquiler no está en el estado que la acción necesita (p. ej., pagar uno ya pagado) |
@@ -165,6 +170,8 @@ Toda respuesta de error, sin excepción, tiene esta estructura:
 | `vehiculo_de_transporte_no_disponible` | 409 | La unidad elegida como transporte no se puede usar (el `mensaje` dice por qué) |
 | `devolucion_no_pendiente` | 409 | Ese pago no es una devolución pendiente |
 | `rango_de_tarifa_invalido` | 422 | `tarifa_min` es mayor que `tarifa_max` |
+| `bateria_no_aplica` | 422 | Se envió `nivel_bateria` para un tipo que no usa batería |
+| `modelo_sin_precio` | 422 | Un modelo debe conservar tarifa diaria, precio de venta o ambos |
 | `fechas_invalidas` | 422 | Fecha de inicio en el pasado o fin antes del inicio |
 | `fuera_de_cobertura` | 422 | El punto marcado está fuera de las zonas de entrega |
 | `duracion_excedida` | 422 | El alquiler supera el máximo de días (hoy, 30) |
@@ -441,6 +448,38 @@ Un alquiler con domicilio vigente no se entrega en el local
 **envío** (`devolucion`) y la reserva o la compra sigue vigente (se recoge en el local).
 Nunca se devuelve más de lo cobrado: si después se cancela el alquiler con devolución, se
 descuenta lo ya devuelto.
+
+### Gestión del inventario (HU-10)
+
+Consultar: administrador y operador. Crear, editar y ajustar: solo el administrador. Todo
+cambio queda en auditoría con el antes y el después.
+
+| Método | Ruta | Quién | Para qué |
+|---|---|---|---|
+| `GET` | `/inventario/resumen` | Administrador, operador | Unidades por estado y cuántos productos están en alerta |
+| `GET` | `/inventario/alertas-stock` | Administrador, operador | Productos activos en o bajo su `stock_minimo`, los más urgentes primero |
+| `GET` | `/inventario/tipos` | Administrador, operador | Tipos de vehículo, activos o no |
+| `POST` | `/inventario/tipos` | Administrador | Crear un tipo (`nombre`, `usa_bateria`) |
+| `PATCH` | `/inventario/tipos/{tipo_id}` | Administrador | Editar; `{"activo": false}` lo oculta del catálogo con sus modelos |
+| `GET` | `/inventario/modelos` | Administrador, operador | Modelos con sus tarifas, activos o no; filtros `tipo_id`, `activo` |
+| `POST` | `/inventario/modelos` | Administrador | Crear un modelo (`tarifa_diaria`, `precio_venta` o ambos) |
+| `PATCH` | `/inventario/modelos/{modelo_id}` | Administrador | Editar la ficha, la tarifa o el precio |
+| `POST` | `/inventario/unidades` | Administrador | Registrar una unidad (`codigo`, `modelo_id`, `nivel_bateria`...); entra `disponible` |
+| `PATCH` | `/inventario/unidades/{vehiculo_id}` | Administrador | Editar batería, ubicación u observaciones |
+| `GET` | `/inventario/productos` | Administrador, operador | Productos, activos o no; filtros `categoria`, `activo`, `solo_bajo_stock` |
+| `POST` | `/inventario/productos` | Administrador | Crear un producto con su stock inicial y su `stock_minimo` |
+| `PATCH` | `/inventario/productos/{producto_id}` | Administrador | Editar nombre, precio, mínimo, activo... (no el stock) |
+| `POST` | `/inventario/productos/{producto_id}/ajustes` | Administrador | Entrada o salida de stock: `{"cantidad": 5, "motivo": "..."}` (negativa para restar) |
+
+- En los `PATCH`, **solo cambia lo que envías**; omitir un campo es no tocarlo.
+- **El stock no se edita**: se ajusta con `/ajustes`, que suma o resta sobre el valor más
+  reciente aunque haya compras al mismo tiempo. Nunca deja el stock en negativo.
+- **El estado de una unidad no se edita aquí**: cambia con sus flujos (alquiler, venta,
+  mantenimiento). Tampoco el código ni el modelo de una unidad, que son su identidad.
+- Cambiar la tarifa o el precio aplica a operaciones nuevas; las hechas conservan el suyo.
+- Los códigos se guardan en mayúsculas (`mon-0010` → `MON-0010`).
+- **Alertas de bajo stock**: el frontend consulta `/inventario/alertas-stock` (o el número
+  en `/inventario/resumen`); no se envía correo ni SMS (HU-14 está fuera del MVP).
 
 ### Rastreo GPS (HU-08)
 
