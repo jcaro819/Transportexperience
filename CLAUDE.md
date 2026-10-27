@@ -130,8 +130,8 @@ correspondiente, y si el equipo corrige el SRS, actualiza este archivo.
 5. **Zonas de cobertura como polígonos guardados en la base.** El cliente marca el punto en
    el mapa, el frontend envía latitud y longitud, y el backend valida que esté dentro.
    Sin Google Maps.
-6. **Rastreo GPS por consulta cada 5 segundos** (HU-08), no WebSocket. *Pendiente de
-   confirmar con Julián (frontend).*
+6. **Rastreo GPS por consulta cada 5 segundos** (HU-08), no WebSocket. *Confirmado en
+   las decisiones del Sprint 3.*
 
 ### Decisiones tomadas en la revisión del modelo de datos (29/09/2026)
 
@@ -284,12 +284,47 @@ se escriben en el código.**
   documentación de Wompi no corresponde a su propia cadena (ver `tests/pagos/test_wompi.py`):
   hay que confirmar la firma con un evento real.
 
-### Casos pendientes para HU-06
+### Decisiones del Sprint 3 (27/10/2026)
 
-1. **El vehículo del domiciliario sale de su domicilio asignado.** El domiciliario no puede
-   listar la flota (`GET /vehiculos` es solo del taller), así que el vehículo que usa y sobre
-   el que puede reportar novedades lo debe obtener de su domicilio asignado
-   (`domicilios.vehiculo_transporte_id`).
+Las dos cosas extra de HU-05 (cancelación con devolución por el administrador y registro
+de la devolución ejecutada) quedaron **aprobadas**.
+
+1. **El domicilio se agrega a un alquiler o compra mientras está en `pendiente_pago`**,
+   antes de pagar; el total se recalcula con la tarifa de la zona. Dirección fuera de
+   cobertura: **se bloquea**.
+2. **La asignación del domiciliario la hace el administrador u operador a mano**, con una
+   lista de domiciliarios disponibles. **Sin asignación automática.**
+3. **El código de rastreo permite una consulta pública** que muestra solo el estado y las
+   horas de cada cambio, sin dirección ni datos personales (SRS 3.6.4). *(HU-07)*
+4. **GPS: consulta cada 5 segundos**, con el simulador sobre Bucaramanga (sección 8).
+   *(HU-08)*
+5. **Pendiente menor para el Sprint 4:** limitar el tamaño del cuerpo del webhook de pagos.
+
+### Cómo quedó HU-06 (27/10/2026)
+
+- **Punto dentro de polígono** propio (`domicilios/geometria.py`): trazado de rayos, el
+  borde cuenta como adentro, soporta huecos y MultiPolygon. En un borde compartido entre
+  dos zonas se cobra la tarifa más baja.
+- **Solicitud** (`POST /domicilios`): solo con la operación en `pendiente_pago`, vigente y
+  sin un pago en curso (si no, el total cambiaría bajo un cobro ya enviado). Suma
+  `valor_envio` y recalcula `total`. Un solo domicilio vigente por operación; para cambiar
+  la dirección se cancela y se pide otro.
+- **Si la operación expira o se cancela**, su domicilio pendiente se cancela con ella
+  (`domicilios/liberacion.py`, llamado desde el cambio de estado de alquileres y ventas).
+  `cancelacion-con-devolucion` se rechaza si el domicilio ya está asignado: primero hay que
+  cancelar la entrega (HU-07).
+- **Asignación** (`/domicilios/{id}/asignacion`): operación pagada; domiciliario activo y
+  **sin entregas en ruta** ("disponible"); vehículo de transporte opcional, `disponible`,
+  sin alquiler hoy y distinto de la unidad que se entrega. Orden de bloqueo: vehículo,
+  domiciliario, domicilio. Tests de concurrencia: la misma moto o el mismo domiciliario
+  en cuatro asignaciones simultáneas quedan en una sola.
+- **Nota del vehículo del domiciliario, resuelta**: `GET /domicilios/asignados` le muestra
+  su `vehiculo_transporte`, y `reportar_novedad` ahora rechaza al domiciliario si la unidad
+  no es la de una entrega suya en ruta.
+- **Sin cambios en las tablas** (solo relaciones ORM nuevas en `Domicilio`).
+- **Para HU-07**: los cambios `asignado → recogido → en_camino → entregado`, la cancelación
+  de una entrega asignada (liberando el vehículo de transporte), qué pasa con el alquiler
+  al entregar (¿`en_curso`?) y la consulta pública por código de rastreo.
 
 ---
 
@@ -575,11 +610,13 @@ De ahí en adelante seguimos el backlog sprint por sprint.
 
 11. HU-03 alquileres. **Hecho (PR #7).**
 12. HU-04 compra. **Hecho (PR #8).**
-13. HU-05 pagos. **Hecho (rama `hu-05-pagos`, PR #9 en revisión).** Falta probarlo contra el
-    sandbox real cuando estén las llaves (ver "Cómo quedó HU-05").
+13. HU-05 pagos. **Hecho (PR #9).** Falta probarlo contra el sandbox real cuando estén
+    las llaves (ver "Cómo quedó HU-05").
 
-**Sprint 2 completo** al unir HU-05. El siguiente es el **Sprint 3** (HU-06 domicilio,
-HU-07 estado del domicilio, HU-08 rastreo GPS); antes de HU-06, revisar sus casos
-pendientes y la decisión 6 del 29/09 (GPS por consulta cada 5 s, pendiente con Julián).
+**Sprint 2 completo.** **Sprint 3 en curso** (HU-06, HU-07, HU-08):
+
+14. HU-06 domicilios. **Hecho (rama `hu-06-domicilios`, PR en revisión).**
+15. HU-07 estado del domicilio y rastreo. Antes, revisar "Para HU-07" en "Cómo quedó HU-06".
+16. HU-08 rastreo GPS (simulador, consulta cada 5 s).
 
 Espera mi confirmación antes de empezar cada historia.
