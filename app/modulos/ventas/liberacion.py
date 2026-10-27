@@ -15,6 +15,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.auditoria import registrar_auditoria
+from app.modulos.domicilios.liberacion import cancelar_domicilio_pendiente
 from app.modulos.inventario.modelos import EstadoVehiculo, Producto, Vehiculo
 from app.modulos.inventario.servicio import bloquear_inventario, cambiar_estado_vehiculo
 from app.modulos.usuarios.modelos import Usuario
@@ -47,6 +48,13 @@ def cambiar_estado_venta(
         antes={"estado": anterior.value},
         despues=despues,
     )
+    if nuevo in (EstadoVenta.EXPIRADA, EstadoVenta.CANCELADA):
+        cancelar_domicilio_pendiente(
+            sesion,
+            f"La compra quedó '{nuevo.value}'.",
+            usuario.id if usuario else None,
+            venta_id=venta.id,
+        )
 
 
 def liberar_venta(

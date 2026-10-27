@@ -1,11 +1,13 @@
 """Fábrica de datos de prueba: inventario, productos y alquileres. Úsala con ``fabrica``."""
 
 from datetime import date, datetime
+from decimal import Decimal
 from itertools import count
 
 from sqlalchemy.orm import Session
 
 from app.modulos.alquileres.modelos import Alquiler, EstadoAlquiler
+from app.modulos.domicilios.modelos import Domicilio, EstadoDomicilio, ZonaCobertura
 from app.modulos.inventario.modelos import (
     CategoriaProducto,
     EstadoVehiculo,
@@ -15,6 +17,14 @@ from app.modulos.inventario.modelos import (
     Vehiculo,
 )
 from app.modulos.usuarios.modelos import Rol, Usuario
+
+# GeoJSON: [longitud, latitud]. Cubre el centro de Bucaramanga.
+ZONA_DE_PRUEBA = {
+    "type": "Polygon",
+    "coordinates": [
+        [[-73.14, 7.14], [-73.10, 7.14], [-73.10, 7.10], [-73.14, 7.10], [-73.14, 7.14]]
+    ],
+}
 
 
 class Fabrica:
@@ -118,5 +128,39 @@ class Fabrica:
                 total=subtotal,
                 estado=estado,
                 expira_en=expira_en,
+            )
+        )
+
+    def zona(self, *, tarifa_envio: int = 5_000, poligono: dict | None = None) -> ZonaCobertura:
+        """Zona cuadrada alrededor del centro de Bucaramanga (lat 7.10-7.14, lng -73.14--73.10)."""
+        return self._guardar(
+            ZonaCobertura(
+                nombre=f"Zona {next(self._numeros)}",
+                tarifa_envio=tarifa_envio,
+                poligono=poligono or ZONA_DE_PRUEBA,
+            )
+        )
+
+    def domicilio(
+        self,
+        alquiler: Alquiler,
+        estado: EstadoDomicilio = EstadoDomicilio.PENDIENTE,
+        *,
+        domiciliario: Usuario | None = None,
+        vehiculo_transporte: Vehiculo | None = None,
+    ) -> Domicilio:
+        """Domicilio de un alquiler, directo en la base (sin pasar por el servicio)."""
+        return self._guardar(
+            Domicilio(
+                codigo_rastreo=f"TXPRUEBA{next(self._numeros):04d}",
+                cliente_id=alquiler.cliente_id,
+                alquiler_id=alquiler.id,
+                zona_id=self.zona().id,
+                direccion="Calle 36 # 19-20",
+                latitud=Decimal("7.1193"),
+                longitud=Decimal("-73.1227"),
+                estado=estado,
+                domiciliario_id=domiciliario.id if domiciliario else None,
+                vehiculo_transporte_id=vehiculo_transporte.id if vehiculo_transporte else None,
             )
         )
