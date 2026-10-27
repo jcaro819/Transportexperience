@@ -8,6 +8,8 @@ Decisiones del Sprint 3:
 2. **La asignación la hace el administrador o el operador a mano**, eligiendo de la lista
    de domiciliarios disponibles (sin entregas en ruta). Sin asignación automática.
 
+HU-07 (estado de la entrega, cancelación por el despacho y rastreo público) está al final.
+
 La zona se decide con ``geometria.punto_en_poligono`` (función propia, sin PostGIS). Si un
 punto cae en el borde entre dos zonas, se cobra la tarifa más baja.
 
@@ -38,6 +40,7 @@ from app.modulos.domicilios.excepciones import (
     DomicilioSinPagar,
     FueraDeCobertura,
     OperacionNoAdmiteDomicilio,
+    TransicionDeDomicilioInvalida,
     VehiculoDeTransporteNoDisponible,
     YaTieneDomicilio,
 )
@@ -49,13 +52,18 @@ from app.modulos.domicilios.modelos import (
     HistorialEstadoDomicilio,
     ZonaCobertura,
 )
-from app.modulos.inventario.modelos import EstadoVehiculo
-from app.modulos.inventario.servicio import bloquear_vehiculo, cambiar_estado_vehiculo
+from app.modulos.inventario.modelos import EstadoVehiculo, Vehiculo
+from app.modulos.inventario.servicio import (
+    bloquear_inventario,
+    bloquear_vehiculo,
+    cambiar_estado_vehiculo,
+)
 from app.modulos.pagos import servicio as pagos
 from app.modulos.pagos.excepciones import PagoEnCurso
+from app.modulos.pagos.modelos import Pago
 from app.modulos.usuarios.modelos import Rol, Usuario
 from app.modulos.ventas import servicio as ventas
-from app.modulos.ventas.modelos import EstadoVenta, Venta
+from app.modulos.ventas.modelos import EstadoVenta, ItemVenta, Venta
 
 ROLES_DE_DESPACHO = frozenset({Rol.ADMINISTRADOR, Rol.OPERADOR})
 
@@ -420,3 +428,194 @@ def _validar_vehiculo_de_transporte(
             raise VehiculoDeTransporteNoDisponible(
                 "Esa es la unidad que se entrega, no puede ser también el transporte."
             )
+
+
+# --- HU-07: estado de la entrega, cancelación por el despacho y rastreo ---------------------
+#
+# Decisiones de HU-07:
+# 1. Los cambios recogido, en_camino y entregado los hace el domiciliario asignado; el
+#    administrador y el operador también, para corregir.
+# 2. Al entregar el domicilio de un alquiler, el alquiler pasa a en_curso y la unidad a
+#    alquilado, con las mismas reglas que la entrega en el local.
+# 3. Una entrega ya pagada solo la cancela el despacho, con motivo (antes de pagar la
+#    quita el cliente).
+# 4. Si se cancela una entrega pagada, se registra la devolución del envío; la reserva o la
+#    compra sigue vigente.
+# 5. El rastreo público muestra solo el estado y la hora de cada cambio.
+
+_AVANCES = (EstadoDomicilio.RECOGIDO, EstadoDomicilio.EN_CAMINO, EstadoDomicilio.ENTREGADO)
+
+
+@dataclass(frozen=True)
+class _Entrega:
+    domicilio: Domicilio
+    operacion: Alquiler | Venta
+    vehiculos: dict[int, Vehiculo]
+
+
+@dataclass(frozen=True)
+class ResultadoCancelacion:
+    entrega: DomicilioConTotales
+    devolucion: Pago | None
+
+
+@dataclass(frozen=True)
+class Rastreo:
+    codigo_rastreo: str
+    estado: EstadoDomicilio
+    cambios: list[HistorialEstadoDomicilio]
+
+
+def _bloquear_entrega(sesion: Session, domicilio_id: int) -> _Entrega:
+    """Bloquea, en el orden global, las unidades de la entrega, la operación y el domicilio.
+
+    Las unidades son el vehículo de transporte y lo que se entrega (la unidad alquilada o
+    las unidades compradas).
+    """
+    fila = sesion.execute(
+        select(Domicilio.alquiler_id, Domicilio.venta_id, Domicilio.vehiculo_transporte_id).where(
+            Domicilio.id == domicilio_id
+        )
+    ).one_or_none()
+    if fila is None:
+        raise DomicilioNoEncontrado()
+    ids = {fila.vehiculo_transporte_id} - {None}
+    if fila.alquiler_id is not None:
+        ids.add(sesion.scalar(select(Alquiler.vehiculo_id).where(Alquiler.id == fila.alquiler_id)))
+        modelo, operacion_id = Alquiler, fila.alquiler_id
+    else:
+        ids.update(
+            sesion.scalars(
+                select(ItemVenta.vehiculo_id).where(
+                    ItemVenta.venta_id == fila.venta_id, ItemVenta.vehiculo_id.is_not(None)
+                )
+            )
+        )
+        modelo, operacion_id = Venta, fila.venta_id
+    vehiculos, _ = bloquear_inventario(sesion, ids)
+    operacion = sesion.scalars(
+        select(modelo)
+        .where(modelo.id == operacion_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    ).one()
+    domicilio = sesion.scalars(
+        select(Domicilio)
+        .where(Domicilio.id == domicilio_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    ).one()
+    if domicilio.vehiculo_transporte_id not in (None, *vehiculos):
+        raise TransicionDeDomicilioInvalida("La entrega cambió mientras se procesaba. Reintenta.")
+    return _Entrega(domicilio, operacion, vehiculos)
+
+
+def _liberar_transporte(sesion: Session, entrega: _Entrega, usuario: Usuario) -> None:
+    """El vehículo del domiciliario vuelve a la flota (si entró en mantenimiento, se queda)."""
+    transporte = entrega.vehiculos.get(entrega.domicilio.vehiculo_transporte_id)
+    if transporte is not None and transporte.estado == EstadoVehiculo.ASIGNADO_A_DOMICILIO:
+        motivo = f"Fin del domicilio #{entrega.domicilio.id}"
+        cambiar_estado_vehiculo(sesion, transporte, EstadoVehiculo.DISPONIBLE, usuario, motivo)
+
+
+def avanzar_estado(
+    sesion: Session,
+    domicilio_id: int,
+    usuario: Usuario,
+    nuevo: EstadoDomicilio,
+    *,
+    hoy: date | None = None,
+    momento: datetime | None = None,
+) -> DomicilioConTotales:
+    """``asignado → recogido → en_camino → entregado``, sin saltar pasos (decisión 1).
+
+    Al entregar: el domicilio guarda ``entregado_en``, el vehículo de transporte vuelve a la
+    flota y, si es un alquiler, este pasa a ``en_curso`` y la unidad a ``alquilado``
+    (decisión 2). Si la entrega del alquiler no es posible (p. ej., fuera de sus fechas),
+    nada cambia.
+    """
+    if nuevo not in _AVANCES:
+        raise TransicionDeDomicilioInvalida(
+            "Aquí solo se marca recogido, en camino o entregado. Para cancelar, usa la cancelación."
+        )
+    if usuario.rol not in ROLES_DE_DESPACHO | {Rol.DOMICILIARIO}:
+        raise PermisoDenegado()
+    hoy = hoy or fechas.hoy()
+    momento = momento or fechas.ahora()
+    entrega = _bloquear_entrega(sesion, domicilio_id)
+    domicilio = entrega.domicilio
+    if usuario.rol == Rol.DOMICILIARIO and domicilio.domiciliario_id != usuario.id:
+        raise DomicilioNoEncontrado()  # no se revela una entrega ajena
+    validar_transicion(domicilio.estado, nuevo)
+
+    if nuevo == EstadoDomicilio.ENTREGADO:
+        if isinstance(entrega.operacion, Alquiler):
+            alquileres.poner_en_curso(sesion, entrega.operacion, usuario, hoy)
+        domicilio.entregado_en = momento
+        _liberar_transporte(sesion, entrega, usuario)
+    cambiar_estado_domicilio(sesion, domicilio, nuevo, usuario.id)
+    sesion.commit()
+    return obtener_domicilio(sesion, domicilio.id, usuario)
+
+
+def cancelar_por_despacho(
+    sesion: Session, domicilio_id: int, usuario: Usuario, motivo: str
+) -> ResultadoCancelacion:
+    """El despacho cancela una entrega pagada, asignada o en ruta (decisiones 3 y 4).
+
+    El vehículo de transporte vuelve a la flota y se registra la devolución del valor del
+    envío. La reserva o la compra **sigue vigente**: el cliente recoge en el local.
+    """
+    if usuario.rol not in ROLES_DE_DESPACHO:
+        raise PermisoDenegado()
+    entrega = _bloquear_entrega(sesion, domicilio_id)
+    domicilio, operacion = entrega.domicilio, entrega.operacion
+    validar_transicion(domicilio.estado, EstadoDomicilio.CANCELADO)
+    if not _esta_pagada(sesion, domicilio):
+        raise OperacionNoAdmiteDomicilio(
+            "La operación no está pagada: antes de pagar, el domicilio lo quita el cliente."
+        )
+
+    domicilio.motivo_cancelacion = motivo
+    _liberar_transporte(sesion, entrega, usuario)
+    cambiar_estado_domicilio(sesion, domicilio, EstadoDomicilio.CANCELADO, usuario.id)
+    if isinstance(operacion, Alquiler):
+        cobro = pagos.cobro_aprobado(sesion, alquiler_id=operacion.id)
+    else:
+        cobro = pagos.cobro_aprobado(sesion, venta_id=operacion.id)
+    devolucion = None
+    if cobro is not None and operacion.valor_envio > 0:
+        devolucion = pagos.registrar_devolucion(
+            sesion,
+            cobro,
+            f"Domicilio #{domicilio.id} cancelado: {motivo}",
+            usuario.id,
+            monto=operacion.valor_envio,
+        )
+    registrar_auditoria(
+        sesion,
+        usuario_id=usuario.id,
+        accion="cancelar",
+        entidad="domicilios",
+        entidad_id=domicilio.id,
+        despues={"motivo": motivo, "devolucion_id": devolucion.id if devolucion else None},
+    )
+    sesion.commit()
+    return ResultadoCancelacion(obtener_domicilio(sesion, domicilio.id, usuario), devolucion)
+
+
+def rastreo_publico(sesion: Session, codigo: str) -> Rastreo:
+    """Consulta pública por código (decisión 5, SRS 3.6.4): solo el estado y la hora de cada
+    cambio. Sin dirección, sin nombres, sin teléfonos.
+    """
+    domicilio = sesion.scalars(
+        select(Domicilio).where(Domicilio.codigo_rastreo == codigo.strip().upper())
+    ).one_or_none()
+    if domicilio is None:
+        raise DomicilioNoEncontrado("No hay ningún pedido con ese código de rastreo.")
+    cambios = sesion.scalars(
+        select(HistorialEstadoDomicilio)
+        .where(HistorialEstadoDomicilio.domicilio_id == domicilio.id)
+        .order_by(HistorialEstadoDomicilio.cambiado_en, HistorialEstadoDomicilio.id)
+    ).all()
+    return Rastreo(domicilio.codigo_rastreo, domicilio.estado, list(cambios))
