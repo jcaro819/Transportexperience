@@ -889,6 +889,97 @@
         }
       }
     },
+    "/catalogo/productos": {
+      "get": {
+        "tags": [
+          "catálogo"
+        ],
+        "summary": "Accesorios y repuestos",
+        "description": "Cascos, cargadores, repuestos... con su precio y el stock disponible (HU-04).",
+        "operationId": "listar_productos_catalogo_productos_get",
+        "parameters": [
+          {
+            "name": "categoria",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/CategoriaProducto"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "`accesorio` o `repuesto`.",
+              "title": "Categoria"
+            },
+            "description": "`accesorio` o `repuesto`."
+          },
+          {
+            "name": "solo_disponibles",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Solo los que tienen stock.",
+              "default": false,
+              "title": "Solo Disponibles"
+            },
+            "description": "Solo los que tienen stock."
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Número de página, desde 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Número de página, desde 1."
+          },
+          {
+            "name": "tamano",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Elementos por página (máx. 100).",
+              "default": 20,
+              "title": "Tamano"
+            },
+            "description": "Elementos por página (máx. 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_ProductoCatalogo_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/vehiculos": {
       "get": {
         "tags": [
@@ -2644,6 +2735,749 @@
         }
       }
     },
+    "/ventas": {
+      "post": {
+        "tags": [
+          "ventas"
+        ],
+        "summary": "Comprar",
+        "description": "Compra vehículos (por modelo; el sistema asigna las unidades) y accesorios o repuestos.\nLas unidades quedan apartadas y el stock descontado **15 minutos** mientras el cliente\npaga (`expira_en`). Si no paga a tiempo, la compra expira y todo se devuelve.",
+        "operationId": "crear_ventas_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VentaCrear"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VentaRespuesta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto con el estado actual",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "ventas"
+        ],
+        "summary": "Todas las ventas",
+        "operationId": "listar_ventas_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "estado",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/EstadoVenta"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Estado"
+            }
+          },
+          {
+            "name": "cliente_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "exclusiveMinimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cliente Id"
+            }
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Número de página, desde 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Número de página, desde 1."
+          },
+          {
+            "name": "tamano",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Elementos por página (máx. 100).",
+              "default": 20,
+              "title": "Tamano"
+            },
+            "description": "Elementos por página (máx. 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_VentaRespuesta_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ventas/mias": {
+      "get": {
+        "tags": [
+          "ventas"
+        ],
+        "summary": "Mis compras",
+        "description": "Las compras del cliente con sesión, de la más reciente a la más antigua.",
+        "operationId": "listar_mias_ventas_mias_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "estado",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/EstadoVenta"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Estado"
+            }
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Número de página, desde 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Número de página, desde 1."
+          },
+          {
+            "name": "tamano",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Elementos por página (máx. 100).",
+              "default": 20,
+              "title": "Tamano"
+            },
+            "description": "Elementos por página (máx. 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_VentaRespuesta_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ventas/devoluciones-pendientes": {
+      "get": {
+        "tags": [
+          "ventas"
+        ],
+        "summary": "Compras con devolución pendiente",
+        "description": "Compras pagadas que no se pudieron completar porque una unidad entró en mantenimiento\nantes de aprobarse el pago. Hay que devolverle el dinero al cliente.",
+        "operationId": "listar_devoluciones_pendientes_ventas_devoluciones_pendientes_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Número de página, desde 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Número de página, desde 1."
+          },
+          {
+            "name": "tamano",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Elementos por página (máx. 100).",
+              "default": 20,
+              "title": "Tamano"
+            },
+            "description": "Elementos por página (máx. 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_VentaRespuesta_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ventas/{venta_id}": {
+      "get": {
+        "tags": [
+          "ventas"
+        ],
+        "summary": "Ver una compra",
+        "description": "El cliente solo ve las suyas; el administrador y el operador, todas.",
+        "operationId": "ver_ventas__venta_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "venta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Venta Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VentaRespuesta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ventas/{venta_id}/pago": {
+      "post": {
+        "tags": [
+          "ventas"
+        ],
+        "summary": "Pagar una compra",
+        "description": "Cobra el `total` de una compra en `pendiente_pago`. Revisa `pago.estado` y `venta.estado`:\n\n- `aprobado` y venta `pagada`: compra completa; las unidades quedan vendidas.\n- `aprobado` y venta `cancelada`: una unidad entró en mantenimiento antes del pago; la\n  compra no se completa y `devolucion` trae la devolución del dinero.\n- `rechazado`: la compra sigue pendiente; se puede reintentar antes de `expira_en`.\n\nEn desarrollo la pasarela es **falsa**: aprueba al instante y no mueve dinero.",
+        "operationId": "pagar_ventas__venta_id__pago_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "venta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Venta Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PagoVentaCrear"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagoVentaRespuesta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto con el estado actual",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ventas/{venta_id}/cancelacion": {
+      "post": {
+        "tags": [
+          "ventas"
+        ],
+        "summary": "Cancelar una compra sin pagar",
+        "description": "Solo mientras está en `pendiente_pago`. Devuelve el stock y suelta las unidades.",
+        "operationId": "cancelar_ventas__venta_id__cancelacion_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "venta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Venta Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelacionVenta"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VentaRespuesta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto con el estado actual",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ventas/{venta_id}/comprobante": {
+      "get": {
+        "tags": [
+          "ventas"
+        ],
+        "summary": "Comprobante preliminar",
+        "description": "Resumen de la compra con cliente, ítems, total, estado y pago. **No es una factura**:\nel comprobante definitivo en PDF llega con HU-05.",
+        "operationId": "comprobante_ventas__venta_id__comprobante_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "venta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Venta Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComprobantePreliminar"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/salud": {
       "get": {
         "tags": [
@@ -2919,6 +3753,35 @@
         "type": "object",
         "title": "CancelacionAlquiler"
       },
+      "CancelacionVenta": {
+        "properties": {
+          "motivo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo",
+            "examples": [
+              "Me equivoqué de talla."
+            ]
+          }
+        },
+        "type": "object",
+        "title": "CancelacionVenta"
+      },
+      "CategoriaProducto": {
+        "type": "string",
+        "enum": [
+          "accesorio",
+          "repuesto"
+        ],
+        "title": "CategoriaProducto"
+      },
       "CierreNovedad": {
         "properties": {
           "solucion": {
@@ -2942,6 +3805,112 @@
           "solucion"
         ],
         "title": "CierreNovedad"
+      },
+      "ClienteComprobante": {
+        "properties": {
+          "nombre_completo": {
+            "type": "string",
+            "title": "Nombre Completo"
+          },
+          "correo": {
+            "type": "string",
+            "title": "Correo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre_completo",
+          "correo"
+        ],
+        "title": "ClienteComprobante"
+      },
+      "ComprobantePreliminar": {
+        "properties": {
+          "numero": {
+            "type": "string",
+            "title": "Numero",
+            "examples": [
+              "PRE-000042"
+            ]
+          },
+          "es_preliminar": {
+            "type": "boolean",
+            "const": true,
+            "title": "Es Preliminar",
+            "default": true
+          },
+          "leyenda": {
+            "type": "string",
+            "title": "Leyenda"
+          },
+          "emitido_en": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Emitido En"
+          },
+          "venta_id": {
+            "type": "integer",
+            "title": "Venta Id"
+          },
+          "fecha_compra": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Compra"
+          },
+          "cliente": {
+            "$ref": "#/components/schemas/ClienteComprobante"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ItemVentaRespuesta"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "subtotal": {
+            "type": "integer",
+            "title": "Subtotal"
+          },
+          "valor_envio": {
+            "type": "integer",
+            "title": "Valor Envio"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "estado": {
+            "$ref": "#/components/schemas/EstadoVenta"
+          },
+          "pago": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PagoComprobante"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "El último cobro intentado, si hay."
+          }
+        },
+        "type": "object",
+        "required": [
+          "numero",
+          "leyenda",
+          "emitido_en",
+          "venta_id",
+          "fecha_compra",
+          "cliente",
+          "items",
+          "subtotal",
+          "valor_envio",
+          "total",
+          "estado",
+          "pago"
+        ],
+        "title": "ComprobantePreliminar",
+        "description": "Comprobante preliminar de la compra (HU-04). No es una factura.\n\nEl comprobante definitivo en PDF llega con HU-05."
       },
       "CuerpoError": {
         "properties": {
@@ -3139,6 +4108,16 @@
         "title": "EstadoVehiculo",
         "description": "Estado operativo actual de una unidad (SRS 3.3.6). Transiciones en el servicio."
       },
+      "EstadoVenta": {
+        "type": "string",
+        "enum": [
+          "pendiente_pago",
+          "pagada",
+          "cancelada",
+          "expirada"
+        ],
+        "title": "EstadoVenta"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -3246,6 +4225,119 @@
         ],
         "title": "InactivacionCrear",
         "description": "Inactivación para mantenimiento (HU-09). Equivale a una novedad crítica de mantenimiento."
+      },
+      "ItemProductoCrear": {
+        "properties": {
+          "producto_id": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Producto Id",
+            "description": "El `id` en `/catalogo/productos`."
+          },
+          "cantidad": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Cantidad",
+            "default": 1
+          }
+        },
+        "type": "object",
+        "required": [
+          "producto_id"
+        ],
+        "title": "ItemProductoCrear"
+      },
+      "ItemVehiculoCrear": {
+        "properties": {
+          "modelo_id": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Modelo Id",
+            "description": "El `id` del modelo en `/catalogo/modelos`."
+          },
+          "cantidad": {
+            "type": "integer",
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Cantidad",
+            "default": 1
+          }
+        },
+        "type": "object",
+        "required": [
+          "modelo_id"
+        ],
+        "title": "ItemVehiculoCrear"
+      },
+      "ItemVentaRespuesta": {
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "vehiculo",
+              "producto"
+            ],
+            "title": "Tipo"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion",
+            "description": "Nombre del modelo o del producto."
+          },
+          "codigo": {
+            "type": "string",
+            "title": "Codigo",
+            "description": "Código de la unidad o del producto."
+          },
+          "vehiculo_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vehiculo Id"
+          },
+          "producto_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Producto Id"
+          },
+          "cantidad": {
+            "type": "integer",
+            "title": "Cantidad"
+          },
+          "precio_unitario": {
+            "type": "integer",
+            "title": "Precio Unitario",
+            "description": "Precio del momento de la compra, en pesos."
+          },
+          "subtotal": {
+            "type": "integer",
+            "title": "Subtotal"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tipo",
+          "descripcion",
+          "codigo",
+          "vehiculo_id",
+          "producto_id",
+          "cantidad",
+          "precio_unitario",
+          "subtotal"
+        ],
+        "title": "ItemVentaRespuesta"
       },
       "Modalidad": {
         "type": "string",
@@ -3726,6 +4818,42 @@
         ],
         "title": "Pagina[NovedadRespuesta]"
       },
+      "Pagina_ProductoCatalogo_": {
+        "properties": {
+          "elementos": {
+            "items": {
+              "$ref": "#/components/schemas/ProductoCatalogo"
+            },
+            "type": "array",
+            "title": "Elementos"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamano": {
+            "type": "integer",
+            "title": "Tamano"
+          },
+          "paginas": {
+            "type": "integer",
+            "title": "Paginas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "elementos",
+          "total",
+          "pagina",
+          "tamano",
+          "paginas"
+        ],
+        "title": "Pagina[ProductoCatalogo]"
+      },
       "Pagina_TipoVehiculoRespuesta_": {
         "properties": {
           "elementos": {
@@ -3834,6 +4962,42 @@
         ],
         "title": "Pagina[VehiculoGestion]"
       },
+      "Pagina_VentaRespuesta_": {
+        "properties": {
+          "elementos": {
+            "items": {
+              "$ref": "#/components/schemas/VentaRespuesta"
+            },
+            "type": "array",
+            "title": "Elementos"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamano": {
+            "type": "integer",
+            "title": "Tamano"
+          },
+          "paginas": {
+            "type": "integer",
+            "title": "Paginas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "elementos",
+          "total",
+          "pagina",
+          "tamano",
+          "paginas"
+        ],
+        "title": "Pagina[VentaRespuesta]"
+      },
       "PagoAlquilerCrear": {
         "properties": {
           "metodo_pago": {
@@ -3871,11 +5035,50 @@
         "title": "PagoAlquilerRespuesta",
         "description": "El alquiler como quedó y el intento de pago."
       },
+      "PagoComprobante": {
+        "properties": {
+          "referencia": {
+            "type": "string",
+            "title": "Referencia"
+          },
+          "metodo": {
+            "type": "string",
+            "title": "Metodo"
+          },
+          "estado": {
+            "$ref": "#/components/schemas/EstadoPago"
+          },
+          "aprobado_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aprobado En"
+          }
+        },
+        "type": "object",
+        "required": [
+          "referencia",
+          "metodo",
+          "estado",
+          "aprobado_en"
+        ],
+        "title": "PagoComprobante"
+      },
       "PagoResumen": {
         "properties": {
           "referencia": {
             "type": "string",
             "title": "Referencia"
+          },
+          "tipo": {
+            "$ref": "#/components/schemas/TipoPago",
+            "description": "`cobro`, o `compensacion` si es una devolución."
           },
           "estado": {
             "$ref": "#/components/schemas/EstadoPago"
@@ -3893,11 +5096,60 @@
         "type": "object",
         "required": [
           "referencia",
+          "tipo",
           "estado",
           "monto",
           "proveedor"
         ],
         "title": "PagoResumen"
+      },
+      "PagoVentaCrear": {
+        "properties": {
+          "metodo_pago": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Metodo Pago",
+            "description": "Código del método de pago habilitado.",
+            "examples": [
+              "tarjeta",
+              "pse"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "metodo_pago"
+        ],
+        "title": "PagoVentaCrear"
+      },
+      "PagoVentaRespuesta": {
+        "properties": {
+          "venta": {
+            "$ref": "#/components/schemas/VentaRespuesta"
+          },
+          "pago": {
+            "$ref": "#/components/schemas/PagoResumen"
+          },
+          "devolucion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PagoResumen"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Solo si el pago se aprobó pero una unidad entró en mantenimiento antes: la compra se cancela y se registra la devolución del dinero."
+          }
+        },
+        "type": "object",
+        "required": [
+          "venta",
+          "pago"
+        ],
+        "title": "PagoVentaRespuesta",
+        "description": "La compra como quedó, el intento de pago y, si hubo que devolver, la devolución."
       },
       "PortalRespuesta": {
         "properties": {
@@ -3925,6 +5177,70 @@
         ],
         "title": "PortalRespuesta",
         "description": "Todo lo que muestra el portal, en una sola petición (HU-01: carga < 2 s)."
+      },
+      "ProductoCatalogo": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "categoria": {
+            "$ref": "#/components/schemas/CategoriaProducto"
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion"
+          },
+          "imagen_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imagen Url"
+          },
+          "precio_venta": {
+            "type": "integer",
+            "title": "Precio Venta",
+            "description": "Pesos por unidad."
+          },
+          "stock": {
+            "type": "integer",
+            "title": "Stock",
+            "description": "Unidades disponibles para la venta ahora."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "codigo",
+          "nombre",
+          "categoria",
+          "descripcion",
+          "imagen_url",
+          "precio_venta",
+          "stock"
+        ],
+        "title": "ProductoCatalogo",
+        "description": "Accesorio o repuesto a la venta (HU-04). Se compra por cantidad."
       },
       "ReasignacionAlquiler": {
         "properties": {
@@ -4083,6 +5399,14 @@
         ],
         "title": "TipoNovedad",
         "description": "Tipos de novedad del SRS 3.1.8, más ``mantenimiento`` para la inactivación de HU-09."
+      },
+      "TipoPago": {
+        "type": "string",
+        "enum": [
+          "cobro",
+          "compensacion"
+        ],
+        "title": "TipoPago"
       },
       "TipoVehiculoRespuesta": {
         "properties": {
@@ -4475,6 +5799,106 @@
         ],
         "title": "VehiculoGestion",
         "description": "Una unidad vista por el personal: con su estado real, no solo si está libre."
+      },
+      "VentaCrear": {
+        "properties": {
+          "vehiculos": {
+            "items": {
+              "$ref": "#/components/schemas/ItemVehiculoCrear"
+            },
+            "type": "array",
+            "title": "Vehiculos"
+          },
+          "productos": {
+            "items": {
+              "$ref": "#/components/schemas/ItemProductoCrear"
+            },
+            "type": "array",
+            "title": "Productos"
+          }
+        },
+        "type": "object",
+        "title": "VentaCrear",
+        "description": "El carrito confirmado: vehículos (por modelo) y accesorios o repuestos."
+      },
+      "VentaRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "cliente_id": {
+            "type": "integer",
+            "title": "Cliente Id"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ItemVentaRespuesta"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "subtotal": {
+            "type": "integer",
+            "title": "Subtotal"
+          },
+          "valor_envio": {
+            "type": "integer",
+            "title": "Valor Envio",
+            "description": "0 si no hay domicilio."
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "Lo que se cobra: subtotal + envío."
+          },
+          "estado": {
+            "$ref": "#/components/schemas/EstadoVenta"
+          },
+          "expira_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expira En",
+            "description": "Solo en `pendiente_pago`: hasta cuándo se guarda la compra sin pagar."
+          },
+          "motivo_cancelacion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo Cancelacion"
+          },
+          "creado_en": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Creado En"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "cliente_id",
+          "items",
+          "subtotal",
+          "valor_envio",
+          "total",
+          "estado",
+          "expira_en",
+          "motivo_cancelacion",
+          "creado_en"
+        ],
+        "title": "VentaRespuesta"
       }
     },
     "securitySchemes": {

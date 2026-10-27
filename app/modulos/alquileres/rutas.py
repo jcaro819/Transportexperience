@@ -19,10 +19,10 @@ from app.modulos.alquileres.esquemas import (
     CancelacionAlquiler,
     PagoAlquilerCrear,
     PagoAlquilerRespuesta,
-    PagoResumen,
     ReasignacionAlquiler,
 )
 from app.modulos.alquileres.modelos import Alquiler, EstadoAlquiler
+from app.modulos.pagos.esquemas import PagoResumen
 from app.modulos.pagos.pasarela import PasarelaPagos, obtener_pasarela
 from app.modulos.usuarios.modelos import Rol, Usuario
 from app.seguridad import AdministradorUOperador, SoloAdministrador, UsuarioActual, requiere_roles

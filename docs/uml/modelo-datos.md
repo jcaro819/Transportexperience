@@ -4,6 +4,8 @@
 (`alembic/versions/2026_09_29_1050-05ddce1f9e8a_modelo_inicial_del_mvp.py`) y
 `parametros_sistema`, agregada con HU-03
 (`alembic/versions/2026_10_27_0447-1211e36c3ef7_parametros_del_sistema.py`).
+HU-04 agregó la columna `ventas.motivo_cancelacion`
+(`alembic/versions/2026_10_27_0519-c74d60acf0af_motivo_de_cancelacion_de_ventas.py`).
 El diagrama de abajo se genera desde los modelos con `python -m scripts.generar_diagrama_er`;
 no se edita a mano.
 
@@ -305,6 +307,7 @@ erDiagram
         bigint valor_envio
         bigint total
         timestamptz expira_en
+        text motivo_cancelacion
         timestamptz creado_en
         timestamptz actualizado_en
     }

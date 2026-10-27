@@ -11,7 +11,8 @@ Cómo se garantiza que un vehículo no se reserve dos veces (CLAUDE.md 7.1):
    alquileres activos del mismo vehículo con fechas cruzadas
    (``ex_alquileres_sin_solapamiento``).
 3. **Pendientes vencidos.** Con las unidades bloqueadas, y antes de reservar, los
-   ``pendiente_pago`` cuyo bloqueo de 15 minutos ya pasó se marcan ``expirado``. No hay
+   ``pendiente_pago`` cuyo bloqueo de 15 minutos ya pasó se marcan ``expirado``, y las
+   compras vencidas que apartaban unidades del modelo se marcan ``expirada``. No hay
    tareas en segundo plano: una reserva abandonada se libera cuando alguien la necesita.
 
 Todas las operaciones validan antes de modificar y confirman al final. Si algo falla, el
@@ -54,6 +55,7 @@ from app.modulos.pagos import servicio as pagos
 from app.modulos.pagos.modelos import EstadoPago, Pago
 from app.modulos.pagos.pasarela import PasarelaPagos
 from app.modulos.usuarios.modelos import Rol, Usuario
+from app.modulos.ventas.liberacion import bloquear_y_expirar
 from app.parametros import MAX_DIAS_ALQUILER, obtener_entero
 
 # Bloqueo temporal mientras el cliente paga (decisión del 29/09/2026, HU-03).
@@ -174,21 +176,19 @@ def expirar_vencidos(
     return len(vencidos)
 
 
-def _bloquear_unidades_del_modelo(sesion: Session, modelo_id: int) -> list[Vehiculo]:
+def _bloquear_unidades_del_modelo(
+    sesion: Session, modelo_id: int, momento: datetime
+) -> list[Vehiculo]:
     """``FOR UPDATE`` sobre todas las unidades del modelo, en orden de ``id``.
 
-    El orden fijo es lo que evita los *deadlocks*: dos transacciones que bloquean en el
-    mismo orden nunca quedan esperándose la una a la otra.
+    El orden fijo es lo que evita los *deadlocks* (ver ``bloquear_inventario``). De paso
+    expira lo vencido que las aparta: compras sin pagar (que devuelven su stock y sueltan
+    sus unidades) y reservas sin pagar.
     """
-    return list(
-        sesion.scalars(
-            select(Vehiculo)
-            .where(Vehiculo.modelo_id == modelo_id)
-            .order_by(Vehiculo.id)
-            .with_for_update()
-            .execution_options(populate_existing=True)
-        )
-    )
+    ids = sesion.scalars(select(Vehiculo.id).where(Vehiculo.modelo_id == modelo_id)).all()
+    vehiculos, _ = bloquear_y_expirar(sesion, momento, ids)
+    expirar_vencidos(sesion, momento, ids)
+    return [vehiculos[i] for i in sorted(ids)]
 
 
 def _libres_entre(
@@ -264,8 +264,7 @@ def crear_alquiler(
     if modelo.tarifa_diaria is None:
         raise ModeloNoSeAlquila()
 
-    unidades = _bloquear_unidades_del_modelo(sesion, modelo.id)
-    expirar_vencidos(sesion, momento, [u.id for u in unidades])
+    unidades = _bloquear_unidades_del_modelo(sesion, modelo.id, momento)
     libres = _libres_entre(sesion, unidades, fecha_inicio, fecha_fin, hoy, momento)
     if not libres:
         raise SinUnidadesDisponibles()
@@ -334,7 +333,7 @@ def pagar_alquiler(
     validar_transicion(alquiler.estado, EstadoAlquiler.CONFIRMADO)
     metodo = pagos.obtener_metodo_activo(sesion, metodo_codigo)
 
-    pago = pagos.cobrar_alquiler(sesion, pasarela, alquiler.id, alquiler.total, metodo, momento)
+    pago = pagos.cobrar(sesion, pasarela, alquiler.total, metodo, momento, alquiler_id=alquiler.id)
     if pago.estado == EstadoPago.APROBADO:
         confirmar_pago(sesion, alquiler, cliente)
     sesion.commit()
@@ -534,7 +533,7 @@ def reasignar_alquiler(
         raise AlquilerNoEncontrado()
 
     # Mismo orden de bloqueo que crear_alquiler: todas las unidades del modelo, por id.
-    unidades = _bloquear_unidades_del_modelo(sesion, actual.vehiculo.modelo_id)
+    unidades = _bloquear_unidades_del_modelo(sesion, actual.vehiculo.modelo_id, momento)
     alquiler = sesion.scalars(
         select(Alquiler)
         .where(Alquiler.id == alquiler_id)

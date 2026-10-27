@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 from app.modulos.alquileres.modelos import Alquiler, EstadoAlquiler
 from app.modulos.inventario.esquemas import ModeloResumen
 from app.modulos.inventario.modelos import EstadoVehiculo
-from app.modulos.pagos.modelos import EstadoPago
+from app.modulos.pagos.esquemas import PagoResumen
 
 
 class AlquilerCrear(BaseModel):
@@ -97,15 +97,6 @@ class AlquilerRespuesta(BaseModel):
             motivo_cancelacion=alquiler.motivo_cancelacion,
             creado_en=alquiler.creado_en,
         )
-
-
-class PagoResumen(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    referencia: str
-    estado: EstadoPago
-    monto: int
-    proveedor: str = Field(description="`falso` en desarrollo; `wompi` desde HU-05.")
 
 
 class PagoAlquilerRespuesta(BaseModel):

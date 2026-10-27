@@ -178,7 +178,8 @@ correspondiente, y si el equipo corrige el SRS, actualiza este archivo.
    `parametros_sistema`, clave `max_dias_alquiler`; SRS 3.5.3). Se lee en cada reserva.
 2. **Vehículo reservado para compra que pasa a mantenimiento y luego se aprueba el pago:**
    la venta **no se completa**, se registra un pago de compensación (devolución) y se avisa
-   al administrador. *Se implementa con HU-04 y HU-05.*
+   al administrador. *Implementado en HU-04* (ver "Cómo quedó HU-04"); la ejecución de la
+   devolución en la pasarela llega con HU-05.
 3. **Alquileres afectados por mantenimiento:** reasignación **asistida por el
    administrador** (`POST /alquileres/{id}/reasignacion`: otra unidad libre del mismo
    modelo, mismas fechas y precio, las dos unidades bloqueadas en la misma transacción) y
@@ -203,10 +204,44 @@ correspondiente, y si el equipo corrige el SRS, actualiza este archivo.
   confirma. HU-05 agrega Wompi y el webhook, que llamará a `alquileres.servicio.confirmar_pago`.
 - **Pendientes vencidos:** se expiran al reservar (los de las unidades del modelo) y al
   intentar pagar o cancelar. Las consultas muestran `expirado` sin escribir en la base.
-- **Pendiente para HU-04:** el barrido previo a reservar también debe expirar las ventas
-  vencidas (devolviendo stock), cuando existan.
+- **Hecho en HU-04:** el barrido previo a reservar también expira las compras vencidas que
+  apartan unidades del modelo (devolviendo su stock).
 - **Sin endpoint** para que el administrador edite `parametros_sistema`; por ahora se
   cambia en la base (adminer). *Pendiente de decidir con el equipo si se agrega.*
+
+### Cómo quedó HU-04 (27/10/2026)
+
+- **Carrito**: `POST /ventas` con `vehiculos` (por modelo; el sistema asigna las unidades,
+  como en HU-03) y `productos` (por cantidad). Una sola venta, un solo pago.
+- **Listado de accesorios y repuestos** en el catálogo público: `GET /catalogo/productos`.
+- **Orden global de bloqueo** (`inventario.servicio.bloquear_inventario`): vehículos por
+  `id`, luego productos por `id`, luego la operación. Alquileres y ventas lo comparten.
+- **Expirar antes de operar**: `ventas/liberacion.py` expira las compras vencidas que
+  apartan lo pedido (devuelve stock y suelta unidades) en la misma transacción, también al
+  reservar un alquiler.
+- **No se vende** una unidad con alquileres `pendiente_pago`, `confirmado` o `en_curso`
+  (sin importar la fecha). Una unidad apartada para compra no vuelve a servicio mientras
+  la compra esté vigente.
+- **Decisión 2**: si al aprobarse el pago una unidad ya no está `reservado`, la venta se
+  cancela con `motivo_cancelacion`, se devuelve lo apartado y se registra un pago de
+  compensación `pendiente`. El aviso al administrador es `GET /ventas/devoluciones-pendientes`
+  más una advertencia en el log (no hay notificaciones: HU-14 está fuera del MVP).
+- **Comprobante preliminar** en JSON (`GET /ventas/{id}/comprobante`). El PDF llega con HU-05.
+- **Modelo de datos**: nueva columna `ventas.motivo_cancelacion` (migración `c74d60acf0af`).
+
+### Pendientes para HU-05
+
+1. **Un pago PSE puede tardar más que el bloqueo de 15 minutos.** Hay que decidir si el
+   bloqueo se extiende mientras haya un pago `pendiente`, o si el pago tardío se devuelve
+   con una compensación. Afecta alquileres y ventas (hoy, un pago sobre una reserva vencida
+   se rechaza con `reserva_expirada` / `venta_expirada`).
+2. **Con Wompi, el pago se guarda como `pendiente` y se confirma en la base ANTES de llamar
+   a la pasarela**, para que nunca quede un cobro sin registro. Hoy `pagos.servicio.cobrar`
+   llama a la pasarela falsa y guarda el resultado en la misma transacción: sirve con la
+   falsa, pero hay que cambiarlo con Wompi.
+3. **Ejecutar las devoluciones** (pagos de compensación en `pendiente`) en la pasarela, y
+   cancelar con devolución los alquileres pagados (decisiones 3 y 4 del Sprint 2).
+4. **Comprobante en PDF** (HU-05), a partir del comprobante preliminar de HU-04.
 
 ### Casos pendientes para HU-06
 
@@ -497,8 +532,8 @@ De ahí en adelante seguimos el backlog sprint por sprint.
 
 **Bloque 1 completo.** **Sprint 2 en curso** (una rama por historia saliendo de `main`):
 
-11. HU-03 alquileres. **Hecho (rama `hu-03-alquileres`, PR #7 en revisión).**
-12. HU-04 compra. Antes de empezar, revisar la decisión 2 del Sprint 2 (sección 4).
-13. HU-05 pagos.
+11. HU-03 alquileres. **Hecho (PR #7).**
+12. HU-04 compra. **Hecho (rama `hu-04-compra`, PR #8 en revisión).**
+13. HU-05 pagos. Antes de empezar, revisar los "Pendientes para HU-05" (sección 4).
 
 Espera mi confirmación antes de empezar cada historia.
