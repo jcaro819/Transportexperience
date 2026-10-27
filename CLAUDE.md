@@ -615,7 +615,7 @@ De ahí en adelante seguimos el backlog sprint por sprint.
 
 **Sprint 2 completo.** **Sprint 3 en curso** (HU-06, HU-07, HU-08):
 
-14. HU-06 domicilios. **Hecho (rama `hu-06-domicilios`, PR en revisión).**
+14. HU-06 domicilios. **Hecho (rama `hu-06-domicilios`, PR #10 en revisión).**
 15. HU-07 estado del domicilio y rastreo. Antes, revisar "Para HU-07" en "Cómo quedó HU-06".
 16. HU-08 rastreo GPS (simulador, consulta cada 5 s).
 
