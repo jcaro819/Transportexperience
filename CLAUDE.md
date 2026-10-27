@@ -497,7 +497,7 @@ De ahí en adelante seguimos el backlog sprint por sprint.
 
 **Bloque 1 completo.** **Sprint 2 en curso** (una rama por historia saliendo de `main`):
 
-11. HU-03 alquileres. **Hecho (rama `hu-03-alquileres`, PR en revisión).**
+11. HU-03 alquileres. **Hecho (rama `hu-03-alquileres`, PR #7 en revisión).**
 12. HU-04 compra. Antes de empezar, revisar la decisión 2 del Sprint 2 (sección 4).
 13. HU-05 pagos.
 
