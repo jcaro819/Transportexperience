@@ -182,6 +182,7 @@ Toda respuesta de error, sin excepción, tiene esta estructura:
 | `rango_de_recorrido_invalido` | 422 | `desde` no es anterior a `hasta` o pasa de 7 días atrás |
 | `error_interno` | 500 | Falla inesperada; no se hizo ningún cambio |
 | `pasarela_no_disponible` | 503 | La pasarela de pagos no responde; no se cobró nada |
+| `cuerpo_demasiado_grande` | 413 | El cuerpo del webhook de pagos pasa de 64 KiB |
 
 ---
 
@@ -353,7 +354,7 @@ apartada para compra no se puede alquilar.
 | `GET` | `/pagos/{referencia}/comprobante` | Cliente (los suyos), administrador, operador | Comprobante en **PDF** |
 | `GET` | `/pagos/devoluciones-pendientes` | Administrador | Dinero por devolver (alquileres y compras) |
 | `POST` | `/pagos/{referencia}/devolucion-ejecutada` | Administrador | Registrar que la devolución se hizo en Wompi (`nota`) |
-| `POST` | `/pagos/webhooks/wompi` | Wompi (no el frontend) | Eventos de la pasarela; verifica firma, descarta repetidos |
+| `POST` | `/pagos/webhooks/wompi` | Wompi (no el frontend) | Eventos de la pasarela; verifica firma, descarta repetidos; máximo 64 KiB |
 
 **Cuerpo para pagar** (`POST /alquileres/{id}/pago` y `POST /ventas/{id}/pago`):
 
