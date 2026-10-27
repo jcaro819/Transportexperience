@@ -409,6 +409,42 @@ HU-07 quedó **aprobada**.
 - **Modelo de datos**: `vehiculos.hash_clave_gps`, `fuente_gps`, `clave_gps_emitida_en` y
   el parámetro `segundos_sin_senal` (migración `845c1b8b60d3`).
 
+### Decisiones del Sprint 4 (27/10/2026)
+
+Los 4 puntos de "Cómo quedó HU-08" quedaron **aprobados**. Sprint 3 cerrado.
+
+1. **HU-10 incluye la gestión del inventario para el administrador**: crear y editar tipos
+   de vehículo, modelos, unidades y productos (SRS 3.1.4), con auditoría. **Alertas de bajo
+   stock**: un endpoint con los productos en o bajo su stock mínimo, sin correo ni SMS
+   (HU-14 está fuera del MVP).
+2. **HU-11: actas de entrega y recepción**, generadas al entregar o recibir un vehículo (en
+   el local y por domicilio), exportables a PDF (ReportLab) y Excel (openpyxl). Firma de
+   conformidad: registro con usuario, fecha y hash del PDF (tabla `actas`), **pendiente de
+   confirmar con el equipo**.
+3. **Requisitos no funcionales pendientes para cerrar en este sprint**: el script de
+   respaldo y restauración de Postgres documentado (SRS 3.3.2), y limitar el tamaño del
+   cuerpo del webhook de pagos.
+
+### Cómo quedó HU-10 (27/10/2026)
+
+- **Rutas bajo `/inventario`** (`inventario/rutas_gestion.py`, servicio en
+  `inventario/gestion.py`, esquemas en `inventario/esquemas_gestion.py`): consultar es del
+  administrador y el operador; crear, editar y ajustar, solo del administrador.
+- **`PATCH` parciales** (solo cambia lo enviado; null no vale en campos obligatorios).
+  Cada cambio se audita con el antes y el después **solo de lo que cambió** (tarifas y
+  precios incluidos); editar sin cambios no deja registro.
+- **El stock no se edita**: `POST /inventario/productos/{id}/ajustes` suma o resta sobre
+  la fila bloqueada (`FOR UPDATE`), con motivo, y nunca deja el stock en negativo. Test de
+  concurrencia: 6 ajustes y 6 compras simultáneos dejan el stock exacto.
+- **No se editan** el estado de una unidad (tiene sus flujos), ni el código ni el modelo
+  de una unidad, ni el código de un producto: son su identidad.
+- **Unidades**: entran `disponible`; código en mayúsculas y único; `nivel_bateria` solo si
+  el tipo usa batería; una vendida no se edita; editar bloquea la fila (regla 1 de 7.1).
+- **Alertas**: `GET /inventario/alertas-stock` (activos con `stock <= stock_minimo`, los
+  más urgentes primero) y `GET /inventario/resumen` (unidades por estado y productos en
+  alerta). `Producto.bajo_stock` es una propiedad, no una columna.
+- **Sin cambios en las tablas.**
+
 ---
 
 ## 5. Stack
@@ -700,11 +736,14 @@ De ahí en adelante seguimos el backlog sprint por sprint.
 
 14. HU-06 domicilios. **Hecho (PR #10).**
 15. HU-07 estado del domicilio y rastreo. **Hecho (PR #11).**
-16. HU-08 rastreo GPS (simulador, consulta cada 5 s). **Hecho (rama
-    `hu-08-rastreo-gps`, PR #12 en revisión).**
+16. HU-08 rastreo GPS (simulador, consulta cada 5 s). **Hecho (PR #12).**
 
-**Sprint 3 completo** al unir HU-08. El siguiente es el **Sprint 4** (HU-10 inventario
-y alertas de bajo stock, HU-11 reportes). Pendiente menor del Sprint 3: limitar el
-tamaño del cuerpo del webhook de pagos.
+**Sprint 3 completo.** **Sprint 4 en curso**:
+
+17. HU-10 inventario y alertas de bajo stock. **Hecho (rama `hu-10-inventario`, PR en
+    revisión).**
+18. HU-11 actas de entrega y recepción, PDF y Excel (ver la decisión 2 del Sprint 4).
+19. Requisitos no funcionales: script de respaldo y restauración (SRS 3.3.2) y límite
+    del tamaño del cuerpo del webhook de pagos.
 
 Espera mi confirmación antes de empezar cada historia.
