@@ -1,7 +1,9 @@
-"""Reglas de negocio de alquileres (HU-03).
+"""Consultas de ocupación de vehículos por alquileres (HU-03).
 
-Por ahora solo la consulta de ocupación, que usa también el catálogo (HU-02). La creación
-de reservas llega con HU-03.
+Las usan el catálogo (HU-02), la flota (HU-09) y el servicio de alquileres. Viven aparte
+del servicio para que inventario pueda importarlas sin crear un import circular (el
+servicio de alquileres, a su vez, usa el de inventario para bloquear y cambiar unidades).
+Son consultas de solo lectura: no escriben nada.
 """
 
 from datetime import date, datetime

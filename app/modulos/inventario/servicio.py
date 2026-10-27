@@ -22,12 +22,12 @@ from app.auditoria import registrar_auditoria
 from app.comun import fechas
 from app.comun.errores import PermisoDenegado
 from app.comun.paginacion import ParametrosPagina, ResultadoPagina, paginar
-from app.modulos.alquileres.modelos import Alquiler
-from app.modulos.alquileres.servicio import (
+from app.modulos.alquileres.consultas import (
     consulta_alquiler_en_curso,
     consulta_alquileres_vigentes,
     consulta_vehiculos_ocupados,
 )
+from app.modulos.alquileres.modelos import Alquiler
 from app.modulos.domicilios.servicio import consulta_domicilios_sin_finalizar
 from app.modulos.inventario.esquemas import CierreNovedad, FiltrosCatalogo, Modalidad, NovedadCrear
 from app.modulos.inventario.estados import es_transicion_valida, validar_transicion
@@ -87,7 +87,7 @@ class ResultadoDisponibilidad:
         return self.unidades_libres > 0
 
 
-def _unidades_libres(inicio: date, fin: date, hoy: date, momento: datetime) -> Select:
+def consulta_unidades_libres(inicio: date, fin: date, hoy: date, momento: datetime) -> Select:
     """Consulta (id, modelo_id) de las unidades libres durante todo [inicio, fin]."""
     estados = (EstadoVehiculo.DISPONIBLE,) if inicio <= hoy else _RESERVABLES_A_FUTURO
     return select(Vehiculo.id, Vehiculo.modelo_id).where(
@@ -130,7 +130,7 @@ def listar_modelos(
     hoy = hoy or fechas.hoy()
     momento = momento or fechas.ahora()
 
-    libres = _unidades_libres(hoy, hoy, hoy, momento).subquery()
+    libres = consulta_unidades_libres(hoy, hoy, hoy, momento).subquery()
     conteo = (
         select(libres.c.modelo_id, func.count().label("cantidad"))
         .group_by(libres.c.modelo_id)
@@ -162,7 +162,7 @@ def listar_modelos(
     return ResultadoPagina(elementos, pagina.total, pagina.pagina, pagina.tamano)
 
 
-def _modelo_visible(sesion: Session, modelo_id: int) -> ModeloVehiculo:
+def obtener_modelo_visible(sesion: Session, modelo_id: int) -> ModeloVehiculo:
     modelo = sesion.scalars(_modelos_visibles().where(ModeloVehiculo.id == modelo_id)).first()
     if modelo is None:
         raise ModeloNoEncontrado()
@@ -179,8 +179,8 @@ def obtener_modelo(
     """Ficha de un modelo con sus unidades libres hoy (código, ubicación, batería)."""
     hoy = hoy or fechas.hoy()
     momento = momento or fechas.ahora()
-    modelo = _modelo_visible(sesion, modelo_id)
-    libres = _unidades_libres(hoy, hoy, hoy, momento).with_only_columns(Vehiculo.id)
+    modelo = obtener_modelo_visible(sesion, modelo_id)
+    libres = consulta_unidades_libres(hoy, hoy, hoy, momento).with_only_columns(Vehiculo.id)
     unidades = sesion.scalars(
         select(Vehiculo)
         .where(Vehiculo.modelo_id == modelo.id, Vehiculo.id.in_(libres))
@@ -205,11 +205,11 @@ def consultar_disponibilidad(
         raise FechasInvalidas("La fecha de inicio ya pasó.")
     if fecha_fin < fecha_inicio:
         raise FechasInvalidas("La fecha de fin es anterior a la de inicio.")
-    modelo = _modelo_visible(sesion, modelo_id)
+    modelo = obtener_modelo_visible(sesion, modelo_id)
     if modelo.tarifa_diaria is None:
         raise ModeloNoSeAlquila()
 
-    libres = _unidades_libres(fecha_inicio, fecha_fin, hoy, momento).subquery()
+    libres = consulta_unidades_libres(fecha_inicio, fecha_fin, hoy, momento).subquery()
     cantidad = sesion.scalar(
         select(func.count()).select_from(libres).where(libres.c.modelo_id == modelo.id)
     )
