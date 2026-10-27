@@ -1,6 +1,7 @@
 # API de TransportExperience: guía para el frontend
 
-Todo lo necesario para consumir el backend del **Sprint 1** (HU-12, HU-02, HU-09, HU-01).
+Todo lo necesario para consumir el backend del **Sprint 1** (HU-12, HU-02, HU-09, HU-01) y
+de los **alquileres** del Sprint 2 (HU-03).
 El contrato completo y exacto (esquemas, campos, ejemplos) está en
 [`openapi.json`](openapi.json), que se genera desde el código. La forma más cómoda de
 explorarlo es la documentación interactiva: **http://127.0.0.1:8000/docs**.
@@ -33,6 +34,9 @@ alembic upgrade head             # crea las tablas
 python -m seeds.cargar           # datos de ejemplo y usuarios de prueba
 uvicorn app.main:app --reload    # API en http://127.0.0.1:8000
 ```
+
+**Al actualizar el repositorio**, vuelve a correr `alembic upgrade head`: HU-03 agregó la
+tabla `parametros_sistema` (máximo de días por alquiler).
 
 Si todo va bien, `http://127.0.0.1:8000/salud` responde
 `{"estado": "ok", "base_datos": "ok"}`.
@@ -120,6 +124,7 @@ Toda respuesta de error, sin excepción, tiene esta estructura:
 | `modelo_no_encontrado` | 404 | El modelo no existe o salió del catálogo |
 | `vehiculo_no_encontrado` | 404 | La unidad no existe |
 | `novedad_no_encontrada` | 404 | La novedad no existe o es de otra unidad |
+| `alquiler_no_encontrado` | 404 | El alquiler no existe o es de otro cliente |
 | `metodo_no_permitido` | 405 | La dirección no admite ese método |
 | `correo_ya_registrado` | 409 | Ya hay una cuenta con ese correo |
 | `cambio_sobre_si_mismo` | 409 | Un administrador intenta desactivarse o quitarse el rol |
@@ -128,9 +133,19 @@ Toda respuesta de error, sin excepción, tiene esta estructura:
 | `transicion_invalida` | 409 | La unidad no puede pasar a ese estado |
 | `no_puede_volver_a_servicio` | 409 | La unidad aún no puede volver (el `mensaje` dice por qué) |
 | `novedad_ya_cerrada` | 409 | La novedad ya estaba cerrada |
+| `sin_unidades_disponibles` | 409 | No hay unidades libres de ese modelo en esas fechas |
+| `reserva_expirada` | 409 | Pasaron los 15 minutos sin pagar; hay que reservar de nuevo |
+| `transicion_de_alquiler_invalida` | 409 | El alquiler no está en el estado que la acción necesita (p. ej., pagar uno ya pagado) |
+| `alquiler_no_cancelable` | 409 | Solo se cancelan reservas en `pendiente_pago` |
+| `fuera_de_las_fechas_del_alquiler` | 409 | Se intenta entregar fuera de las fechas del alquiler |
+| `vehiculo_no_listo_para_entrega` | 409 | La unidad está en mantenimiento o sigue con otro cliente (el `mensaje` dice cuál) |
+| `reasignacion_invalida` | 409 | No se puede mover el alquiler a esa unidad |
 | `rango_de_tarifa_invalido` | 422 | `tarifa_min` es mayor que `tarifa_max` |
 | `fechas_invalidas` | 422 | Fecha de inicio en el pasado o fin antes del inicio |
+| `duracion_excedida` | 422 | El alquiler supera el máximo de días (hoy, 30) |
+| `metodo_de_pago_no_disponible` | 422 | El método de pago no existe o está deshabilitado |
 | `error_interno` | 500 | Falla inesperada; no se hizo ningún cambio |
+| `pasarela_no_disponible` | 503 | La pasarela de pagos no responde; no se cobró nada |
 
 ---
 
@@ -166,7 +181,7 @@ dentro de la ficha de un modelo o los 7 días de horario del portal).
 
 ---
 
-## 7. Endpoints del Sprint 1
+## 7. Endpoints
 
 "Público" = sin iniciar sesión. En `/docs`, cada ruta muestra sus parámetros, el cuerpo que
 espera y ejemplos de respuesta.
@@ -214,6 +229,48 @@ operador.
 | `PUT` | `/portal/secciones/{seccion}` | Administrador | Editar `mision`, `vision` o `contacto` |
 | `PUT` | `/portal/horarios/{dia}` | Administrador | Abrir un día o cambiar su horario (`lunes` ... `domingo`) |
 | `DELETE` | `/portal/horarios/{dia}` | Administrador | Cerrar un día |
+
+### Alquileres (HU-03)
+
+| Método | Ruta | Quién | Para qué |
+|---|---|---|---|
+| `POST` | `/alquileres` | Cliente | Reservar un modelo (`modelo_id`, `fecha_inicio`, `fecha_fin`); el sistema asigna la unidad |
+| `GET` | `/alquileres/mios` | Cliente | Mis alquileres; filtro `estado` |
+| `GET` | `/alquileres/{alquiler_id}` | Cliente (solo los suyos), administrador, operador | Ver un alquiler |
+| `POST` | `/alquileres/{alquiler_id}/pago` | Cliente | Pagar la reserva (`{"metodo_pago": "tarjeta"}`) |
+| `POST` | `/alquileres/{alquiler_id}/cancelacion` | Cliente | Cancelar una reserva **sin pagar** (`motivo` opcional) |
+| `GET` | `/alquileres` | Administrador, operador | Todos los alquileres; filtros `estado`, `vehiculo_id`, `cliente_id` |
+| `POST` | `/alquileres/{alquiler_id}/entrega` | Administrador, operador | Entregar el vehículo: `confirmado` → `en_curso` |
+| `POST` | `/alquileres/{alquiler_id}/devolucion` | Administrador, operador | Recibir el vehículo: `en_curso` → `finalizado` |
+| `GET` | `/alquileres/en-riesgo` | Administrador, operador | Alquileres sin entregar cuya unidad está en mantenimiento |
+| `POST` | `/alquileres/{alquiler_id}/reasignacion` | Administrador | Mover el alquiler a otra unidad libre del mismo modelo (`vehiculo_id` opcional) |
+
+**Flujo del cliente.**
+
+1. Consulta `/catalogo/modelos/{modelo_id}/disponibilidad` con las fechas.
+2. `POST /alquileres`: la respuesta trae el `total` y `expira_en`. **La unidad se guarda
+   15 minutos**; muestra una cuenta regresiva hasta `expira_en`.
+3. `POST /alquileres/{id}/pago`. Revisa `pago.estado`:
+   - `aprobado`: el alquiler queda `confirmado`.
+   - `rechazado`: sigue `pendiente_pago`; puede reintentar antes de `expira_en`.
+   - `pendiente`: llegará con PSE en HU-05; consulta el alquiler hasta que cambie.
+4. Si no paga a tiempo, el alquiler aparece como `expirado` y la unidad queda libre.
+
+**En desarrollo la pasarela es falsa**: aprueba todo al instante y no mueve dinero. Los
+métodos de pago válidos son los de los seeds: `tarjeta` y `pse`.
+
+**Estados del alquiler:** `pendiente_pago` → `confirmado` → `en_curso` → `finalizado`;
+`pendiente_pago` también puede terminar en `cancelado` o `expirado`. El cliente solo
+cancela mientras está `pendiente_pago`; un alquiler pagado se cancela con devolución, a
+través del administrador (llega con HU-05).
+
+**Mostrador.** Se entrega entre `fecha_inicio` y `fecha_fin`. Si la unidad entró en
+mantenimiento, la entrega se rechaza: el administrador la **reasigna** a otra unidad del
+mismo modelo, que conserva fechas y precio. Si la unidad entra en mantenimiento mientras
+el cliente la tiene, la devolución finaliza el alquiler y la unidad se queda en
+mantenimiento.
+
+Cada alquiler trae su `vehiculo` con `codigo`, `modelo` y `estado` físico actual.
 
 ### Sistema
 

@@ -35,6 +35,20 @@ RUTAS_SPRINT_1 = {
     ("delete", "/portal/horarios/{dia}"),
 }
 
+# Lo que HU-03 (Sprint 2) promete al frontend.
+RUTAS_HU_03 = {
+    ("post", "/alquileres"),
+    ("get", "/alquileres"),
+    ("get", "/alquileres/mios"),
+    ("get", "/alquileres/en-riesgo"),
+    ("get", "/alquileres/{alquiler_id}"),
+    ("post", "/alquileres/{alquiler_id}/pago"),
+    ("post", "/alquileres/{alquiler_id}/cancelacion"),
+    ("post", "/alquileres/{alquiler_id}/entrega"),
+    ("post", "/alquileres/{alquiler_id}/devolucion"),
+    ("post", "/alquileres/{alquiler_id}/reasignacion"),
+}
+
 # Códigos que no vienen de una clase ErrorDeNegocio sino de los manejadores globales.
 CODIGOS_GENERALES = {
     "datos_invalidos",
@@ -70,6 +84,11 @@ def test_openapi_exportado_esta_actualizado() -> None:
 def test_el_contrato_incluye_todas_las_rutas_del_sprint_1() -> None:
     faltantes = RUTAS_SPRINT_1 - _operaciones()
     assert not faltantes, f"Rutas del Sprint 1 que no están en el contrato: {sorted(faltantes)}"
+
+
+def test_el_contrato_incluye_todas_las_rutas_de_hu_03() -> None:
+    faltantes = RUTAS_HU_03 - _operaciones()
+    assert not faltantes, f"Rutas de HU-03 que no están en el contrato: {sorted(faltantes)}"
 
 
 @pytest.mark.parametrize(("metodo", "ruta"), sorted(_operaciones()))
