@@ -701,7 +701,7 @@ De ahí en adelante seguimos el backlog sprint por sprint.
 14. HU-06 domicilios. **Hecho (PR #10).**
 15. HU-07 estado del domicilio y rastreo. **Hecho (PR #11).**
 16. HU-08 rastreo GPS (simulador, consulta cada 5 s). **Hecho (rama
-    `hu-08-rastreo-gps`, PR en revisión).**
+    `hu-08-rastreo-gps`, PR #12 en revisión).**
 
 **Sprint 3 completo** al unir HU-08. El siguiente es el **Sprint 4** (HU-10 inventario
 y alertas de bajo stock, HU-11 reportes). Pendiente menor del Sprint 3: limitar el
