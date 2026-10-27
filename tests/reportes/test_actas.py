@@ -12,6 +12,7 @@ from openpyxl import load_workbook
 from sqlalchemy import select
 
 from app.comun.errores import PermisoDenegado
+from app.comun.fechas import ZONA_COLOMBIA
 from app.comun.paginacion import ParametrosPagina
 from app.modulos.alquileres import servicio as alquileres
 from app.modulos.alquileres.excepciones import FueraDeLasFechasDelAlquiler
@@ -232,10 +233,47 @@ def test_el_pdf_del_acta_es_siempre_el_mismo(sesion, acta, cliente) -> None:
     assert primero == segundo  # byte a byte: por eso su SHA-256 sirve de huella
 
 
-def test_si_el_acta_cambia_cambia_la_huella(sesion, acta) -> None:
+def test_si_el_documento_cambia_cambia_la_huella(sesion, acta) -> None:
     antes = huella(pdf_acta(acta))
-    acta.estado_vehiculo = "Otro texto."
+    acta.instantanea = acta.instantanea | {"estado_vehiculo": "Otro texto."}
     assert huella(pdf_acta(acta)) != antes
+
+
+def test_al_crear_el_acta_se_guarda_su_instantanea(sesion, acta, cliente, operador) -> None:
+    assert acta.instantanea == {
+        "titulo": f"Acta de entrega {acta.numero}",
+        "fecha": acta.creado_en.astimezone(ZONA_COLOMBIA).strftime("%d/%m/%Y %H:%M"),
+        "operacion": f"Alquiler #{acta.alquiler_id} (del 02/11/2026 al 03/11/2026)",
+        "domicilio": "No",
+        "cliente": f"{cliente.nombre_completo} ({cliente.correo})",
+        "vehiculo": "MON-0001 — Monopatín Urbano 350",
+        "bateria": "88 %",
+        "estado_vehiculo": "Sin rayones.",
+        "registrada_por": operador.nombre_completo,
+    }
+
+
+def test_si_el_cliente_cambia_su_nombre_despues_de_aceptar_la_huella_sigue_coincidiendo(
+    sesion, acta, cliente
+) -> None:
+    aceptada = servicio.dar_conformidad(sesion, acta.id, cliente)
+
+    cliente.nombre_completo = "Nombre Totalmente Distinto"
+    acta.vehiculo.modelo.nombre = "Modelo renombrado"
+    sesion.flush()
+    sesion.expire_all()  # que todo se vuelva a leer de la base
+
+    assert servicio.verificar(sesion, acta.id, cliente) is True
+    assert huella(servicio.pdf(sesion, acta.id, cliente)) == aceptada.hash_pdf
+    assert b"Nombre Totalmente Distinto" not in servicio.pdf(sesion, acta.id, cliente)
+
+
+def test_la_instantanea_produce_el_mismo_pdf_que_los_datos_de_ese_momento(sesion, acta) -> None:
+    # Las actas viejas (sin instantánea) se arman con los datos actuales: mientras nada haya
+    # cambiado, el PDF es idéntico, así que su huella no se rompe al aplicar este arreglo.
+    con_copia = pdf_acta(acta)
+    acta.instantanea = None
+    assert pdf_acta(acta) == con_copia
 
 
 def test_el_cliente_da_su_conformidad_con_la_huella_del_pdf(sesion, acta, cliente) -> None:
@@ -250,7 +288,7 @@ def test_el_cliente_da_su_conformidad_con_la_huella_del_pdf(sesion, acta, client
 
 def test_la_verificacion_detecta_un_acta_alterada(sesion, acta, cliente) -> None:
     servicio.dar_conformidad(sesion, acta.id, cliente)
-    acta.estado_vehiculo = "Alguien cambió el texto después."
+    acta.instantanea = acta.instantanea | {"estado_vehiculo": "Alguien cambió el texto después."}
     sesion.flush()
     assert servicio.verificar(sesion, acta.id, cliente) is False
 

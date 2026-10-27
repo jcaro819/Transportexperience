@@ -11,6 +11,7 @@ from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from sqlalchemy import CheckConstraint, DateTime, ForeignKey, SmallInteger, String, Text, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.comun.modelos import tipo_estado
@@ -53,6 +54,10 @@ class Acta(Base):
     conforme_por_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"))
     conforme_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     hash_pdf: Mapped[str | None] = mapped_column(String(64))
+    # Copia de lo que dice el acta (nombres, vehículo, fechas...) tomada al crearla. El PDF
+    # se arma solo desde aquí: si alguien cambia su nombre después, el PDF y su SHA-256 no
+    # cambian. Nula solo en actas creadas antes de esta columna.
+    instantanea: Mapped[dict[str, str] | None] = mapped_column(JSONB)
 
     vehiculo: Mapped["Vehiculo"] = relationship()
     alquiler: Mapped["Alquiler | None"] = relationship()

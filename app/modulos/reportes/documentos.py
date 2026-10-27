@@ -5,7 +5,8 @@ Funciones puras: reciben actas ya cargadas (con sus relaciones) y devuelven byte
 El PDF de un acta es **determinista** (``invariant=True``): el mismo contenido produce
 exactamente los mismos bytes, sin fecha de creación ni identificador aleatorio. Por eso su
 SHA-256 sirve como huella de la conformidad: si alguien altera el documento, la huella deja
-de coincidir.
+de coincidir. Y como se arma desde la instantánea guardada al crear el acta (no desde los
+datos actuales), cambiar un nombre después no lo altera.
 """
 
 import hashlib
@@ -61,21 +62,49 @@ def _documento(salida: BytesIO, titulo: str, **opciones) -> SimpleDocTemplate:
     )
 
 
+def instantanea(acta: Acta) -> dict[str, str]:
+    """La "foto" de lo que dice el acta, con los textos ya formateados.
+
+    Se guarda en ``actas.instantanea`` al crear el acta, y el PDF se arma **solo desde
+    aquí**. Así, si después alguien cambia su nombre o se edita el modelo del vehículo, el
+    PDF de un acta ya aceptada sigue siendo el mismo y su SHA-256 sigue coincidiendo.
+    """
+    usuario_cliente = cliente(acta)
+    return {
+        "titulo": f"{TITULOS[acta.tipo]} {acta.numero}",
+        "fecha": _fecha(acta),
+        "operacion": operacion(acta),
+        "domicilio": f"Domicilio #{acta.domicilio_id}" if acta.domicilio_id else "No",
+        "cliente": f"{usuario_cliente.nombre_completo} ({usuario_cliente.correo})",
+        "vehiculo": f"{acta.vehiculo.codigo} — {acta.vehiculo.modelo.nombre}",
+        "bateria": _bateria(acta),
+        "estado_vehiculo": acta.estado_vehiculo,
+        "registrada_por": acta.registrada_por.nombre_completo,
+    }
+
+
 def pdf_acta(acta: Acta) -> bytes:
-    """El acta en PDF (tamaño carta). No incluye la conformidad: es el documento que se acepta."""
+    """El acta en PDF (tamaño carta), armado desde su instantánea.
+
+    No incluye la conformidad: es el documento que se acepta. Las actas creadas antes de que
+    existiera la instantánea no la tienen; para ellas se arma con los datos actuales.
+    """
+    return pdf_desde_instantanea(acta.instantanea or instantanea(acta))
+
+
+def pdf_desde_instantanea(datos: dict[str, str]) -> bytes:
     salida = BytesIO()
     estilos = getSampleStyleSheet()
-    titulo = f"{TITULOS[acta.tipo]} {acta.numero}"
-    usuario_cliente = cliente(acta)
+    titulo = datos["titulo"]
     filas = [
-        ["Fecha", _fecha(acta)],
-        ["Operación", operacion(acta)],
-        ["Entrega a domicilio", f"Domicilio #{acta.domicilio_id}" if acta.domicilio_id else "No"],
-        ["Cliente", f"{usuario_cliente.nombre_completo} ({usuario_cliente.correo})"],
-        ["Vehículo", f"{acta.vehiculo.codigo} — {acta.vehiculo.modelo.nombre}"],
-        ["Batería", _bateria(acta)],
-        ["Estado del vehículo", Paragraph(acta.estado_vehiculo, estilos["Normal"])],
-        ["Registrada por", acta.registrada_por.nombre_completo],
+        ["Fecha", datos["fecha"]],
+        ["Operación", datos["operacion"]],
+        ["Entrega a domicilio", datos["domicilio"]],
+        ["Cliente", datos["cliente"]],
+        ["Vehículo", datos["vehiculo"]],
+        ["Batería", datos["bateria"]],
+        ["Estado del vehículo", Paragraph(datos["estado_vehiculo"], estilos["Normal"])],
+        ["Registrada por", datos["registrada_por"]],
     ]
     tabla = Table(filas, colWidths=[5 * cm, 12 * cm])
     tabla.setStyle(
