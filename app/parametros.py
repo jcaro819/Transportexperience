@@ -17,6 +17,7 @@ from app.db import Base
 # Claves conocidas. El valor vive en la tabla ``parametros_sistema``.
 MAX_DIAS_ALQUILER = "max_dias_alquiler"
 MAX_MINUTOS_PAGO_PENDIENTE = "max_minutos_pago_pendiente"
+SEGUNDOS_SIN_SENAL = "segundos_sin_senal"
 
 
 class ParametroSistema(Base):

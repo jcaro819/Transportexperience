@@ -2,7 +2,7 @@
 
 Todo lo necesario para consumir el backend del **Sprint 1** (HU-12, HU-02, HU-09, HU-01) y
 del **Sprint 2** (alquileres, compras y pagos: HU-03, HU-04, HU-05) y los
-domicilios del Sprint 3 (HU-06, HU-07).
+domicilios y el rastreo GPS del Sprint 3 (HU-06, HU-07, HU-08).
 El contrato completo y exacto (esquemas, campos, ejemplos) está en
 [`openapi.json`](openapi.json), que se genera desde el código. La forma más cómoda de
 explorarlo es la documentación interactiva: **http://127.0.0.1:8000/docs**.
@@ -38,8 +38,9 @@ uvicorn app.main:app --reload    # API en http://127.0.0.1:8000
 
 **Al actualizar el repositorio**, vuelve a correr `alembic upgrade head`: HU-03 agregó la
 tabla `parametros_sistema` (máximo de días por alquiler), HU-04 la columna
-`ventas.motivo_cancelacion` y HU-05 dos columnas en `pagos` y el parámetro
-`max_minutos_pago_pendiente`.
+`ventas.motivo_cancelacion`, HU-05 dos columnas en `pagos` y el parámetro
+`max_minutos_pago_pendiente`, y HU-08 la clave GPS de los vehículos y el parámetro
+`segundos_sin_senal`.
 
 Si todo va bien, `http://127.0.0.1:8000/salud` responde
 `{"estado": "ok", "base_datos": "ok"}`.
@@ -120,8 +121,10 @@ Toda respuesta de error, sin excepción, tiene esta estructura:
 | `no_autenticado` | 401 | Falta el token o no es válido |
 | `sesion_expirada` | 401 | El token venció: hay que iniciar sesión de nuevo |
 | `credenciales_invalidas` | 401 | Correo o contraseña incorrectos |
+| `clave_gps_invalida` | 401 | Falta la clave del dispositivo GPS (`X-Clave-Gps`) o no es válida |
 | `cuenta_inactiva` | 403 | La cuenta fue desactivada |
 | `permiso_denegado` | 403 | El rol no puede hacer eso |
+| `fuente_gps_desactivada` | 403 | La clave es de una fuente (simulador o dispositivo) que el servidor no está aceptando (`GPS_FUENTE`) |
 | `recurso_no_encontrado` | 404 | La dirección no existe |
 | `usuario_no_encontrado` | 404 | El usuario no existe |
 | `modelo_no_encontrado` | 404 | El modelo no existe o salió del catálogo |
@@ -168,6 +171,8 @@ Toda respuesta de error, sin excepción, tiene esta estructura:
 | `metodo_de_pago_no_disponible` | 422 | El método de pago no existe o está deshabilitado |
 | `terminos_no_aceptados` | 422 | Con Wompi, falta `acepta_terminos: true` |
 | `datos_de_pago_incompletos` | 422 | Con Wompi, falta `tarjeta.token` o los datos de `pse` |
+| `posicion_fuera_de_tiempo` | 422 | La hora de la posición está en el futuro o tiene más de 7 días |
+| `rango_de_recorrido_invalido` | 422 | `desde` no es anterior a `hasta` o pasa de 7 días atrás |
 | `error_interno` | 500 | Falla inesperada; no se hizo ningún cambio |
 | `pasarela_no_disponible` | 503 | La pasarela de pagos no responde; no se cobró nada |
 
@@ -436,6 +441,40 @@ Un alquiler con domicilio vigente no se entrega en el local
 **envío** (`devolucion`) y la reserva o la compra sigue vigente (se recoge en el local).
 Nunca se devuelve más de lo cobrado: si después se cancela el alquiler con devolución, se
 descuenta lo ya devuelto.
+
+### Rastreo GPS (HU-08)
+
+| Método | Ruta | Quién | Para qué |
+|---|---|---|---|
+| `GET` | `/rastreo/flota` | Administrador, operador | Mapa de la flota: última posición de cada vehículo con GPS y su `senal`; filtro `senal` |
+| `GET` | `/rastreo/vehiculos/{vehiculo_id}/recorrido` | Administrador, operador | Posiciones entre `desde` y `hasta` (por defecto, la última hora; máximo 7 días atrás) |
+| `POST` | `/rastreo/vehiculos/{vehiculo_id}/clave` | Administrador | Emitir la clave GPS de una unidad (`fuente`: `dispositivo` o `simulador`); se muestra una sola vez |
+| `POST` | `/rastreo/posiciones` | Dispositivo GPS o simulador (encabezado `X-Clave-Gps`, no JWT) | Reportar una posición cada 5 s |
+
+**Mapa de la flota.** Consulta `GET /rastreo/flota` **cada 5 segundos** (no hay WebSocket)
+y dibuja cada `posicion` (`latitud`, `longitud`, con 6 decimales). Usa `senal` para el
+indicador en tiempo real:
+
+| `senal` | Significa |
+|---|---|
+| `en_linea` | Reportó hace menos del umbral (30 s, configurable en la base) |
+| `sin_senal` | No reporta hace más del umbral: muéstralo distinto (gris, parpadeando...) |
+| `sin_datos` | Tiene GPS pero nunca ha reportado; `posicion` es `null` |
+
+`segundos_sin_reportar` dice hace cuánto llegó la última posición. El mapa es solo del
+administrador y el operador: el cliente sigue viendo solo el estado de su domicilio.
+
+**Ver posiciones moverse en desarrollo** (sin hardware): con la API corriendo y
+`GPS_FUENTE=simulador` en el `.env`, en otra terminal:
+
+```powershell
+.venv\Scripts\activate
+python -m simulador_gps
+```
+
+Mueve 5 vehículos de la flota por calles de Bucaramanga y envía sus posiciones cada 5 s por
+el mismo endpoint que usaría un GPS real. Detenlo con Ctrl+C: a los 30 s los vehículos
+pasan a `sin_senal`.
 
 ### Sistema
 

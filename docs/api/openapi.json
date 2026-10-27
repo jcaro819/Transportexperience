@@ -5072,6 +5072,413 @@
         }
       }
     },
+    "/rastreo/posiciones": {
+      "post": {
+        "tags": [
+          "rastreo GPS"
+        ],
+        "summary": "Reportar una posición (dispositivo GPS o simulador)",
+        "description": "Cada 5 segundos. Se autentica con la clave del vehículo en `X-Clave-Gps`. Las\ncoordenadas se guardan con 6 decimales. Solo se aceptan posiciones de la fuente activa\nen el servidor (`GPS_FUENTE`).",
+        "operationId": "reportar_posicion_rastreo_posiciones_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PosicionCrear"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PosicionRecibida"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/rastreo/flota": {
+      "get": {
+        "tags": [
+          "rastreo GPS"
+        ],
+        "summary": "Mapa de la flota",
+        "description": "Última posición de cada vehículo con GPS y si está `en_linea`, `sin_senal` o\n`sin_datos`. Pensado para consultarse cada 5 segundos.",
+        "operationId": "flota_rastreo_flota_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "senal",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "en_linea",
+                    "sin_senal",
+                    "sin_datos"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtra por estado de la señal.",
+              "title": "Senal"
+            },
+            "description": "Filtra por estado de la señal."
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Número de página, desde 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Número de página, desde 1."
+          },
+          {
+            "name": "tamano",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Elementos por página (máx. 100).",
+              "default": 20,
+              "title": "Tamano"
+            },
+            "description": "Elementos por página (máx. 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_VehiculoEnMapa_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rastreo/vehiculos/{vehiculo_id}/recorrido": {
+      "get": {
+        "tags": [
+          "rastreo GPS"
+        ],
+        "summary": "Recorrido de una unidad",
+        "description": "Posiciones en orden cronológico, dentro de los últimos 7 días.",
+        "operationId": "recorrido_rastreo_vehiculos__vehiculo_id__recorrido_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "vehiculo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Vehiculo Id"
+            }
+          },
+          {
+            "name": "desde",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Por defecto, hace una hora.",
+              "title": "Desde"
+            },
+            "description": "Por defecto, hace una hora."
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Por defecto, ahora.",
+              "title": "Hasta"
+            },
+            "description": "Por defecto, ahora."
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Número de página, desde 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Número de página, desde 1."
+          },
+          {
+            "name": "tamano",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Elementos por página (máx. 100).",
+              "default": 20,
+              "title": "Tamano"
+            },
+            "description": "Elementos por página (máx. 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_PosicionRespuesta_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rastreo/vehiculos/{vehiculo_id}/clave": {
+      "post": {
+        "tags": [
+          "rastreo GPS"
+        ],
+        "summary": "Emitir la clave GPS de una unidad",
+        "description": "La clave se muestra **una sola vez**; en la base queda solo su hash. Emitir otra\ninvalida la anterior.",
+        "operationId": "emitir_clave_rastreo_vehiculos__vehiculo_id__clave_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "vehiculo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Vehiculo Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClaveGpsCrear"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaveGpsEmitida"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/salud": {
       "get": {
         "tags": [
@@ -5567,6 +5974,59 @@
           "solucion"
         ],
         "title": "CierreNovedad"
+      },
+      "ClaveGpsCrear": {
+        "properties": {
+          "fuente": {
+            "$ref": "#/components/schemas/FuenteGps",
+            "description": "`dispositivo` para un GPS real, `simulador` para el simulador de desarrollo."
+          }
+        },
+        "type": "object",
+        "required": [
+          "fuente"
+        ],
+        "title": "ClaveGpsCrear"
+      },
+      "ClaveGpsEmitida": {
+        "properties": {
+          "vehiculo_id": {
+            "type": "integer",
+            "title": "Vehiculo Id"
+          },
+          "vehiculo_codigo": {
+            "type": "string",
+            "title": "Vehiculo Codigo"
+          },
+          "fuente": {
+            "$ref": "#/components/schemas/FuenteGps"
+          },
+          "clave": {
+            "type": "string",
+            "title": "Clave",
+            "description": "Va en el encabezado `X-Clave-Gps` de cada posición."
+          },
+          "emitida_en": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Emitida En"
+          },
+          "aviso": {
+            "type": "string",
+            "title": "Aviso",
+            "default": "Guarda esta clave: no se vuelve a mostrar. Emitir otra invalida esta."
+          }
+        },
+        "type": "object",
+        "required": [
+          "vehiculo_id",
+          "vehiculo_codigo",
+          "fuente",
+          "clave",
+          "emitida_en"
+        ],
+        "title": "ClaveGpsEmitida",
+        "description": "La clave en claro se muestra **una sola vez**: en la base solo queda su hash."
       },
       "ClienteComprobante": {
         "properties": {
@@ -6252,6 +6712,14 @@
         },
         "type": "object",
         "title": "EventoRecibido"
+      },
+      "FuenteGps": {
+        "type": "string",
+        "enum": [
+          "simulador",
+          "dispositivo"
+        ],
+        "title": "FuenteGps"
       },
       "HTTPValidationError": {
         "properties": {
@@ -7061,6 +7529,42 @@
         ],
         "title": "Pagina[PersonaContacto]"
       },
+      "Pagina_PosicionRespuesta_": {
+        "properties": {
+          "elementos": {
+            "items": {
+              "$ref": "#/components/schemas/PosicionRespuesta"
+            },
+            "type": "array",
+            "title": "Elementos"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamano": {
+            "type": "integer",
+            "title": "Tamano"
+          },
+          "paginas": {
+            "type": "integer",
+            "title": "Paginas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "elementos",
+          "total",
+          "pagina",
+          "tamano",
+          "paginas"
+        ],
+        "title": "Pagina[PosicionRespuesta]"
+      },
       "Pagina_ProductoCatalogo_": {
         "properties": {
           "elementos": {
@@ -7168,6 +7672,42 @@
           "paginas"
         ],
         "title": "Pagina[UsuarioRespuesta]"
+      },
+      "Pagina_VehiculoEnMapa_": {
+        "properties": {
+          "elementos": {
+            "items": {
+              "$ref": "#/components/schemas/VehiculoEnMapa"
+            },
+            "type": "array",
+            "title": "Elementos"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamano": {
+            "type": "integer",
+            "title": "Tamano"
+          },
+          "paginas": {
+            "type": "integer",
+            "title": "Paginas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "elementos",
+          "total",
+          "pagina",
+          "tamano",
+          "paginas"
+        ],
+        "title": "Pagina[VehiculoEnMapa]"
       },
       "Pagina_VehiculoGestion_": {
         "properties": {
@@ -7617,6 +8157,201 @@
         ],
         "title": "PortalRespuesta",
         "description": "Todo lo que muestra el portal, en una sola petición (HU-01: carga < 2 s)."
+      },
+      "PosicionCrear": {
+        "properties": {
+          "latitud": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Latitud",
+            "examples": [
+              "7.119300"
+            ]
+          },
+          "longitud": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Longitud",
+            "examples": [
+              "-73.122700"
+            ]
+          },
+          "precision_metros": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 9999.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precision Metros",
+            "description": "Precisión que reporta el GPS (HU-08 pide < 10 m)."
+          },
+          "velocidad_kmh": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 200.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Velocidad Kmh"
+          },
+          "nivel_bateria": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nivel Bateria"
+          },
+          "registrado_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Registrado En",
+            "description": "Hora en que el dispositivo tomó la posición, con zona horaria. Si falta, se usa la hora de llegada."
+          }
+        },
+        "type": "object",
+        "required": [
+          "latitud",
+          "longitud"
+        ],
+        "title": "PosicionCrear",
+        "description": "Lo que envía el dispositivo GPS (o el simulador) cada 5 segundos."
+      },
+      "PosicionRecibida": {
+        "properties": {
+          "vehiculo_codigo": {
+            "type": "string",
+            "title": "Vehiculo Codigo"
+          },
+          "registrado_en": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Registrado En"
+          }
+        },
+        "type": "object",
+        "required": [
+          "vehiculo_codigo",
+          "registrado_en"
+        ],
+        "title": "PosicionRecibida"
+      },
+      "PosicionRespuesta": {
+        "properties": {
+          "latitud": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Latitud"
+          },
+          "longitud": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Longitud"
+          },
+          "precision_metros": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precision Metros"
+          },
+          "velocidad_kmh": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Velocidad Kmh"
+          },
+          "nivel_bateria": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nivel Bateria"
+          },
+          "registrado_en": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Registrado En"
+          },
+          "recibido_en": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Recibido En"
+          }
+        },
+        "type": "object",
+        "required": [
+          "latitud",
+          "longitud",
+          "precision_metros",
+          "velocidad_kmh",
+          "nivel_bateria",
+          "registrado_en",
+          "recibido_en"
+        ],
+        "title": "PosicionRespuesta"
       },
       "ProductoCatalogo": {
         "properties": {
@@ -8276,6 +9011,68 @@
         ],
         "title": "VehiculoDelAlquiler"
       },
+      "VehiculoEnMapa": {
+        "properties": {
+          "vehiculo_id": {
+            "type": "integer",
+            "title": "Vehiculo Id"
+          },
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "modelo": {
+            "$ref": "#/components/schemas/ModeloResumen"
+          },
+          "estado": {
+            "$ref": "#/components/schemas/EstadoVehiculo",
+            "description": "Estado operativo de la unidad."
+          },
+          "senal": {
+            "type": "string",
+            "enum": [
+              "en_linea",
+              "sin_senal",
+              "sin_datos"
+            ],
+            "title": "Senal",
+            "description": "`en_linea`: reportó hace poco. `sin_senal`: no reporta hace más del umbral (30 s, configurable). `sin_datos`: nunca ha reportado."
+          },
+          "segundos_sin_reportar": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Segundos Sin Reportar"
+          },
+          "posicion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PosicionRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "vehiculo_id",
+          "codigo",
+          "modelo",
+          "estado",
+          "senal",
+          "segundos_sin_reportar",
+          "posicion"
+        ],
+        "title": "VehiculoEnMapa",
+        "description": "Un vehículo de la flota en el mapa, con su última posición y el estado de la señal."
+      },
       "VehiculoGestion": {
         "properties": {
           "id": {
@@ -8516,6 +9313,12 @@
             "tokenUrl": "/autenticacion/token"
           }
         }
+      },
+      "APIKeyHeader": {
+        "type": "apiKey",
+        "description": "Clave del vehículo, emitida con `POST /rastreo/vehiculos/{id}/clave`.",
+        "in": "header",
+        "name": "X-Clave-Gps"
       }
     }
   }
