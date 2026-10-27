@@ -1,15 +1,50 @@
-"""Esquemas de los domicilios (HU-06). Son el contrato con el frontend.
+"""Esquemas de los domicilios (HU-06, HU-07). Son el contrato con el frontend.
 
 Coordenadas en grados decimales (6 decimales, ~11 cm). Dinero en pesos enteros.
 """
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Annotated, Any, Self
+from typing import Annotated, Any, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 from app.modulos.domicilios.modelos import Domicilio, EstadoDomicilio
+from app.modulos.pagos.esquemas import PagoResumen
+
+
+class CambioDeEstado(BaseModel):
+    """Avance de la entrega, sin saltar pasos: asignado → recogido → en_camino → entregado."""
+
+    estado: Literal["recogido", "en_camino", "entregado"]
+
+
+class CancelacionPorDespacho(BaseModel):
+    motivo: Annotated[
+        str,
+        StringConstraints(strip_whitespace=True, min_length=5, max_length=500),
+        Field(examples=["El cliente no estaba en la dirección y pidió recoger en el local."]),
+    ]
+
+
+class CambioRastreo(BaseModel):
+    """Un cambio de estado en el rastreo público: solo el estado y la hora."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    estado: EstadoDomicilio = Field(validation_alias="estado_nuevo")
+    en: datetime = Field(validation_alias="cambiado_en")
+
+
+class RastreoPublico(BaseModel):
+    """Lo que ve cualquiera con el código (SRS 3.6.4). Sin dirección ni datos personales."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    codigo_rastreo: str
+    estado: EstadoDomicilio
+    cambios: list[CambioRastreo]
+
 
 Latitud = Annotated[Decimal, Field(ge=-90, le=90, decimal_places=6, examples=["7.119300"])]
 Longitud = Annotated[Decimal, Field(ge=-180, le=180, decimal_places=6, examples=["-73.122700"])]
@@ -137,3 +172,10 @@ class DomicilioRespuesta(BaseModel):
             motivo_cancelacion=domicilio.motivo_cancelacion,
             creado_en=domicilio.creado_en,
         )
+
+
+class CancelacionDomicilioRespuesta(BaseModel):
+    domicilio: DomicilioRespuesta
+    devolucion: PagoResumen | None = Field(
+        description="Devolución del valor del envío, si la operación estaba pagada."
+    )
