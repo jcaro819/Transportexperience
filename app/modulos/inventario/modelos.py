@@ -153,6 +153,11 @@ class Producto(ConMarcasDeTiempo, Base):
     stock_minimo: Mapped[int] = mapped_column(default=0, server_default="0")
     activo: Mapped[bool] = mapped_column(default=True, server_default=true())
 
+    @property
+    def bajo_stock(self) -> bool:
+        """HU-10: en o bajo el mínimo, el producto aparece en las alertas."""
+        return self.stock <= self.stock_minimo
+
 
 class NovedadVehiculo(Base):
     """Daño, falla, batería baja, mantenimiento... reportado sobre una unidad.
