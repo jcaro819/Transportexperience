@@ -1538,6 +1538,1312 @@
         }
       }
     },
+    "/inventario/resumen": {
+      "get": {
+        "tags": [
+          "inventario"
+        ],
+        "summary": "Resumen del inventario",
+        "description": "Unidades por estado y cuántos productos están en alerta de stock.",
+        "operationId": "resumen_inventario_resumen_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumenInventario"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/inventario/alertas-stock": {
+      "get": {
+        "tags": [
+          "inventario"
+        ],
+        "summary": "Alertas de bajo stock",
+        "description": "Productos activos en o bajo su `stock_minimo`, los más urgentes primero. No se envía\ncorreo ni SMS: el frontend consulta esta lista.",
+        "operationId": "alertas_stock_inventario_alertas_stock_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Número de página, desde 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Número de página, desde 1."
+          },
+          {
+            "name": "tamano",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Elementos por página (máx. 100).",
+              "default": 20,
+              "title": "Tamano"
+            },
+            "description": "Elementos por página (máx. 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_ProductoGestion_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/inventario/tipos": {
+      "get": {
+        "tags": [
+          "inventario"
+        ],
+        "summary": "Tipos de vehículo",
+        "description": "Todos, activos o no.",
+        "operationId": "listar_tipos_inventario_tipos_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Número de página, desde 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Número de página, desde 1."
+          },
+          {
+            "name": "tamano",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Elementos por página (máx. 100).",
+              "default": 20,
+              "title": "Tamano"
+            },
+            "description": "Elementos por página (máx. 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_TipoVehiculoGestion_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "inventario"
+        ],
+        "summary": "Crear un tipo de vehículo",
+        "operationId": "crear_tipo_inventario_tipos_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TipoVehiculoCrear"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TipoVehiculoGestion"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto con el estado actual",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/inventario/tipos/{tipo_id}": {
+      "patch": {
+        "tags": [
+          "inventario"
+        ],
+        "summary": "Editar un tipo de vehículo",
+        "description": "`{\"activo\": false}` lo oculta del catálogo, con todos sus modelos.",
+        "operationId": "actualizar_tipo_inventario_tipos__tipo_id__patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tipo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Tipo Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TipoVehiculoActualizar"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TipoVehiculoGestion"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto con el estado actual",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/inventario/modelos": {
+      "get": {
+        "tags": [
+          "inventario"
+        ],
+        "summary": "Modelos",
+        "description": "Todos los modelos con sus tarifas, activos o no.",
+        "operationId": "listar_modelos_inventario_modelos_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tipo_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "exclusiveMinimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tipo Id"
+            }
+          },
+          {
+            "name": "activo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Activo"
+            }
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Número de página, desde 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Número de página, desde 1."
+          },
+          {
+            "name": "tamano",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Elementos por página (máx. 100).",
+              "default": 20,
+              "title": "Tamano"
+            },
+            "description": "Elementos por página (máx. 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_ModeloGestion_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "inventario"
+        ],
+        "summary": "Crear un modelo",
+        "description": "Con `tarifa_diaria` se alquila; con `precio_venta` se vende; puede tener ambos.",
+        "operationId": "crear_modelo_inventario_modelos_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModeloCrear"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModeloGestion"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto con el estado actual",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/inventario/modelos/{modelo_id}": {
+      "patch": {
+        "tags": [
+          "inventario"
+        ],
+        "summary": "Editar un modelo (tarifas, precio, ficha)",
+        "description": "El cambio de tarifa o precio aplica a operaciones nuevas; las hechas conservan el suyo.",
+        "operationId": "actualizar_modelo_inventario_modelos__modelo_id__patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "modelo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Modelo Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModeloActualizar"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModeloGestion"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto con el estado actual",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/inventario/unidades": {
+      "post": {
+        "tags": [
+          "inventario"
+        ],
+        "summary": "Registrar una unidad",
+        "description": "Entra `disponible`. El código se guarda en mayúsculas.",
+        "operationId": "crear_unidad_inventario_unidades_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnidadCrear"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VehiculoGestion"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto con el estado actual",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/inventario/unidades/{vehiculo_id}": {
+      "patch": {
+        "tags": [
+          "inventario"
+        ],
+        "summary": "Editar una unidad (batería, ubicación, observaciones)",
+        "description": "El estado no se cambia aquí: tiene sus propios flujos (alquiler, venta, mantenimiento).",
+        "operationId": "actualizar_unidad_inventario_unidades__vehiculo_id__patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "vehiculo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Vehiculo Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnidadActualizar"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VehiculoGestion"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto con el estado actual",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/inventario/productos": {
+      "get": {
+        "tags": [
+          "inventario"
+        ],
+        "summary": "Productos",
+        "description": "Todos, activos o no, con su stock y su mínimo.",
+        "operationId": "listar_productos_inventario_productos_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "categoria",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/CategoriaProducto"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Categoria"
+            }
+          },
+          {
+            "name": "activo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Activo"
+            }
+          },
+          {
+            "name": "solo_bajo_stock",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Solo Bajo Stock"
+            }
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Número de página, desde 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Número de página, desde 1."
+          },
+          {
+            "name": "tamano",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Elementos por página (máx. 100).",
+              "default": 20,
+              "title": "Tamano"
+            },
+            "description": "Elementos por página (máx. 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_ProductoGestion_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "inventario"
+        ],
+        "summary": "Crear un producto",
+        "operationId": "crear_producto_inventario_productos_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductoCrear"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductoGestion"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto con el estado actual",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/inventario/productos/{producto_id}": {
+      "patch": {
+        "tags": [
+          "inventario"
+        ],
+        "summary": "Editar un producto",
+        "description": "El stock no se edita aquí: usa el ajuste de stock.",
+        "operationId": "actualizar_producto_inventario_productos__producto_id__patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "producto_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Producto Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductoActualizar"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductoGestion"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto con el estado actual",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/inventario/productos/{producto_id}/ajustes": {
+      "post": {
+        "tags": [
+          "inventario"
+        ],
+        "summary": "Ajustar el stock (entrada o salida)",
+        "description": "`cantidad` positiva (llegó mercancía) o negativa (daño, pérdida), con `motivo`. Queda\nen auditoría. Nunca deja el stock en negativo.",
+        "operationId": "ajustar_stock_inventario_productos__producto_id__ajustes_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "producto_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Producto Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AjusteStock"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductoGestion"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto con el estado actual",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/portal": {
       "get": {
         "tags": [
@@ -5514,6 +6820,36 @@
   },
   "components": {
     "schemas": {
+      "AjusteStock": {
+        "properties": {
+          "cantidad": {
+            "type": "integer",
+            "maximum": 1000000.0,
+            "minimum": -1000000.0,
+            "title": "Cantidad",
+            "description": "+5: llegaron 5. -2: se dañaron 2.",
+            "examples": [
+              5
+            ]
+          },
+          "motivo": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 5,
+            "title": "Motivo",
+            "examples": [
+              "Llegó el pedido del proveedor (factura 1234)."
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "cantidad",
+          "motivo"
+        ],
+        "title": "AjusteStock",
+        "description": "Entrada (positiva) o salida (negativa) de stock, con su motivo. Queda en auditoría."
+      },
       "AlquilerAfectado": {
         "properties": {
           "id": {
@@ -6950,6 +8286,118 @@
         ],
         "title": "Modalidad"
       },
+      "ModeloActualizar": {
+        "properties": {
+          "tipo_vehiculo_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tipo Vehiculo Id"
+          },
+          "nombre": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nombre"
+          },
+          "marca": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 60
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Marca"
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion"
+          },
+          "imagen_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500,
+                "pattern": "^https?://\\S+$",
+                "examples": [
+                  "https://transportexperience.test/img/urbano-350.jpg"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imagen Url"
+          },
+          "tarifa_diaria": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000000000.0,
+                "exclusiveMinimum": 0.0,
+                "description": "Pesos enteros."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tarifa Diaria"
+          },
+          "precio_venta": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000000000.0,
+                "exclusiveMinimum": 0.0,
+                "description": "Pesos enteros."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precio Venta"
+          },
+          "activo": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activo",
+            "description": "false lo saca del catálogo al instante."
+          }
+        },
+        "type": "object",
+        "title": "ModeloActualizar",
+        "description": "``tarifa_diaria`` o ``precio_venta`` en null: el modelo deja de alquilarse o venderse.\n\nLas operaciones ya hechas no cambian: guardan el precio del momento."
+      },
       "ModeloCatalogo": {
         "properties": {
           "id": {
@@ -7050,6 +8498,97 @@
         ],
         "title": "ModeloCatalogo",
         "description": "Una ficha del catálogo: un modelo y cuántas unidades suyas están libres hoy."
+      },
+      "ModeloCrear": {
+        "properties": {
+          "tipo_vehiculo_id": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Tipo Vehiculo Id"
+          },
+          "nombre": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 2,
+            "title": "Nombre"
+          },
+          "marca": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 60
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Marca"
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion"
+          },
+          "imagen_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500,
+                "pattern": "^https?://\\S+$",
+                "examples": [
+                  "https://transportexperience.test/img/urbano-350.jpg"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imagen Url"
+          },
+          "tarifa_diaria": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000000000.0,
+                "exclusiveMinimum": 0.0,
+                "description": "Pesos enteros."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tarifa Diaria",
+            "description": "null: no se alquila."
+          },
+          "precio_venta": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000000000.0,
+                "exclusiveMinimum": 0.0,
+                "description": "Pesos enteros."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precio Venta",
+            "description": "null: no se vende."
+          }
+        },
+        "type": "object",
+        "required": [
+          "tipo_vehiculo_id",
+          "nombre"
+        ],
+        "title": "ModeloCrear"
       },
       "ModeloDetalle": {
         "properties": {
@@ -7159,6 +8698,93 @@
         ],
         "title": "ModeloDetalle",
         "description": "Vista detallada de un modelo: su ficha más las unidades libres hoy."
+      },
+      "ModeloGestion": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "tipo": {
+            "$ref": "#/components/schemas/TipoVehiculoRespuesta"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "marca": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Marca"
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion"
+          },
+          "imagen_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imagen Url"
+          },
+          "tarifa_diaria": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tarifa Diaria"
+          },
+          "precio_venta": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precio Venta"
+          },
+          "activo": {
+            "type": "boolean",
+            "title": "Activo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "tipo",
+          "nombre",
+          "marca",
+          "descripcion",
+          "imagen_url",
+          "tarifa_diaria",
+          "precio_venta",
+          "activo"
+        ],
+        "title": "ModeloGestion"
       },
       "ModeloResumen": {
         "properties": {
@@ -7421,6 +9047,42 @@
         ],
         "title": "Pagina[ModeloCatalogo]"
       },
+      "Pagina_ModeloGestion_": {
+        "properties": {
+          "elementos": {
+            "items": {
+              "$ref": "#/components/schemas/ModeloGestion"
+            },
+            "type": "array",
+            "title": "Elementos"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamano": {
+            "type": "integer",
+            "title": "Tamano"
+          },
+          "paginas": {
+            "type": "integer",
+            "title": "Paginas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "elementos",
+          "total",
+          "pagina",
+          "tamano",
+          "paginas"
+        ],
+        "title": "Pagina[ModeloGestion]"
+      },
       "Pagina_NovedadRespuesta_": {
         "properties": {
           "elementos": {
@@ -7600,6 +9262,78 @@
           "paginas"
         ],
         "title": "Pagina[ProductoCatalogo]"
+      },
+      "Pagina_ProductoGestion_": {
+        "properties": {
+          "elementos": {
+            "items": {
+              "$ref": "#/components/schemas/ProductoGestion"
+            },
+            "type": "array",
+            "title": "Elementos"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamano": {
+            "type": "integer",
+            "title": "Tamano"
+          },
+          "paginas": {
+            "type": "integer",
+            "title": "Paginas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "elementos",
+          "total",
+          "pagina",
+          "tamano",
+          "paginas"
+        ],
+        "title": "Pagina[ProductoGestion]"
+      },
+      "Pagina_TipoVehiculoGestion_": {
+        "properties": {
+          "elementos": {
+            "items": {
+              "$ref": "#/components/schemas/TipoVehiculoGestion"
+            },
+            "type": "array",
+            "title": "Elementos"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamano": {
+            "type": "integer",
+            "title": "Tamano"
+          },
+          "paginas": {
+            "type": "integer",
+            "title": "Paginas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "elementos",
+          "total",
+          "pagina",
+          "tamano",
+          "paginas"
+        ],
+        "title": "Pagina[TipoVehiculoGestion]"
       },
       "Pagina_TipoVehiculoRespuesta_": {
         "properties": {
@@ -8353,6 +10087,102 @@
         ],
         "title": "PosicionRespuesta"
       },
+      "ProductoActualizar": {
+        "properties": {
+          "nombre": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120,
+                "minLength": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nombre"
+          },
+          "categoria": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CategoriaProducto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion"
+          },
+          "imagen_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500,
+                "pattern": "^https?://\\S+$",
+                "examples": [
+                  "https://transportexperience.test/img/urbano-350.jpg"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imagen Url"
+          },
+          "precio_venta": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000000000.0,
+                "exclusiveMinimum": 0.0,
+                "description": "Pesos enteros."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precio Venta"
+          },
+          "stock_minimo": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stock Minimo"
+          },
+          "activo": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activo",
+            "description": "false lo saca de la venta al instante."
+          }
+        },
+        "type": "object",
+        "title": "ProductoActualizar"
+      },
       "ProductoCatalogo": {
         "properties": {
           "id": {
@@ -8416,6 +10246,164 @@
         ],
         "title": "ProductoCatalogo",
         "description": "Accesorio o repuesto a la venta (HU-04). Se compra por cantidad."
+      },
+      "ProductoCrear": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{2,19}$",
+            "title": "Codigo",
+            "description": "Letras, números y guiones (3 a 20). Se guarda en mayúsculas.",
+            "examples": [
+              "MON-0010"
+            ]
+          },
+          "nombre": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 2,
+            "title": "Nombre"
+          },
+          "categoria": {
+            "$ref": "#/components/schemas/CategoriaProducto"
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion"
+          },
+          "imagen_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500,
+                "pattern": "^https?://\\S+$",
+                "examples": [
+                  "https://transportexperience.test/img/urbano-350.jpg"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imagen Url"
+          },
+          "precio_venta": {
+            "type": "integer",
+            "maximum": 1000000000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Precio Venta",
+            "description": "Pesos enteros."
+          },
+          "stock": {
+            "type": "integer",
+            "maximum": 1000000.0,
+            "minimum": 0.0,
+            "title": "Stock",
+            "description": "Stock inicial.",
+            "default": 0
+          },
+          "stock_minimo": {
+            "type": "integer",
+            "maximum": 1000000.0,
+            "minimum": 0.0,
+            "title": "Stock Minimo",
+            "description": "En o bajo este número, alerta.",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "nombre",
+          "categoria",
+          "precio_venta"
+        ],
+        "title": "ProductoCrear"
+      },
+      "ProductoGestion": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "categoria": {
+            "$ref": "#/components/schemas/CategoriaProducto"
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion"
+          },
+          "imagen_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imagen Url"
+          },
+          "precio_venta": {
+            "type": "integer",
+            "title": "Precio Venta"
+          },
+          "stock": {
+            "type": "integer",
+            "title": "Stock"
+          },
+          "stock_minimo": {
+            "type": "integer",
+            "title": "Stock Minimo"
+          },
+          "activo": {
+            "type": "boolean",
+            "title": "Activo"
+          },
+          "bajo_stock": {
+            "type": "boolean",
+            "title": "Bajo Stock",
+            "description": "true si `stock` está en o bajo `stock_minimo`."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "codigo",
+          "nombre",
+          "categoria",
+          "descripcion",
+          "imagen_url",
+          "precio_venta",
+          "stock",
+          "stock_minimo",
+          "activo",
+          "bajo_stock"
+        ],
+        "title": "ProductoGestion"
       },
       "PseCrear": {
         "properties": {
@@ -8564,6 +10552,41 @@
         "title": "RegistroCliente",
         "description": "Registro público. La cuenta creada siempre tiene rol ``cliente``."
       },
+      "ResumenInventario": {
+        "properties": {
+          "total_unidades": {
+            "type": "integer",
+            "title": "Total Unidades"
+          },
+          "unidades_por_estado": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/EstadoVehiculo"
+            },
+            "type": "object",
+            "title": "Unidades Por Estado"
+          },
+          "productos_activos": {
+            "type": "integer",
+            "title": "Productos Activos"
+          },
+          "productos_bajo_stock": {
+            "type": "integer",
+            "title": "Productos Bajo Stock"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_unidades",
+          "unidades_por_estado",
+          "productos_activos",
+          "productos_bajo_stock"
+        ],
+        "title": "ResumenInventario",
+        "description": "Estado de la flota y del stock de un vistazo."
+      },
       "Rol": {
         "type": "string",
         "enum": [
@@ -8682,6 +10705,96 @@
         ],
         "title": "TipoPago"
       },
+      "TipoVehiculoActualizar": {
+        "properties": {
+          "nombre": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50,
+                "minLength": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nombre"
+          },
+          "usa_bateria": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usa Bateria"
+          },
+          "activo": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activo",
+            "description": "false lo oculta del catálogo con sus modelos."
+          }
+        },
+        "type": "object",
+        "title": "TipoVehiculoActualizar"
+      },
+      "TipoVehiculoCrear": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 2,
+            "title": "Nombre"
+          },
+          "usa_bateria": {
+            "type": "boolean",
+            "title": "Usa Bateria"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre",
+          "usa_bateria"
+        ],
+        "title": "TipoVehiculoCrear"
+      },
+      "TipoVehiculoGestion": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "usa_bateria": {
+            "type": "boolean",
+            "title": "Usa Bateria"
+          },
+          "activo": {
+            "type": "boolean",
+            "title": "Activo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre",
+          "usa_bateria",
+          "activo"
+        ],
+        "title": "TipoVehiculoGestion"
+      },
       "TipoVehiculoRespuesta": {
         "properties": {
           "id": {
@@ -8734,6 +10847,112 @@
         ],
         "title": "TokenAcceso",
         "description": "Respuesta del inicio de sesión (formato OAuth2, más los datos del usuario)."
+      },
+      "UnidadActualizar": {
+        "properties": {
+          "nivel_bateria": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nivel Bateria"
+          },
+          "ubicacion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 150
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ubicacion"
+          },
+          "observaciones": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observaciones"
+          }
+        },
+        "type": "object",
+        "title": "UnidadActualizar"
+      },
+      "UnidadCrear": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{2,19}$",
+            "title": "Codigo",
+            "description": "Letras, números y guiones (3 a 20). Se guarda en mayúsculas.",
+            "examples": [
+              "MON-0010"
+            ]
+          },
+          "modelo_id": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Modelo Id"
+          },
+          "nivel_bateria": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nivel Bateria",
+            "description": "Solo si el tipo usa batería."
+          },
+          "ubicacion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 150
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ubicacion"
+          },
+          "observaciones": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observaciones"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "modelo_id"
+        ],
+        "title": "UnidadCrear",
+        "description": "Una unidad nueva entra ``disponible``."
       },
       "UnidadDisponible": {
         "properties": {
