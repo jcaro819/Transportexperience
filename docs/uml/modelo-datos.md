@@ -9,6 +9,9 @@ HU-04 agregó la columna `ventas.motivo_cancelacion`
 HU-05 agregó `pagos.url_redireccion` y `pagos.bloqueo_original_hasta`, y el parámetro
 `max_minutos_pago_pendiente` = 60
 (`alembic/versions/2026_10_27_0543-7f6b572858d8_pagos_pendientes_y_pse.py`).
+HU-08 agregó a `vehiculos` la clave GPS (`hash_clave_gps`, `fuente_gps`,
+`clave_gps_emitida_en`) y el parámetro `segundos_sin_senal` = 30
+(`alembic/versions/2026_10_27_0658-845c1b8b60d3_clave_gps_de_los_vehiculos.py`).
 El diagrama de abajo se genera desde los modelos con `python -m scripts.generar_diagrama_er`;
 no se edita a mano.
 
@@ -301,6 +304,9 @@ erDiagram
         smallint nivel_bateria
         varchar ubicacion
         text observaciones
+        varchar hash_clave_gps UK
+        varchar fuente_gps "simulador | dispositivo"
+        timestamptz clave_gps_emitida_en
         timestamptz creado_en
         timestamptz actualizado_en
     }
