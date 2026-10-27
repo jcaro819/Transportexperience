@@ -575,7 +575,7 @@ De ahí en adelante seguimos el backlog sprint por sprint.
 
 11. HU-03 alquileres. **Hecho (PR #7).**
 12. HU-04 compra. **Hecho (PR #8).**
-13. HU-05 pagos. **Hecho (rama `hu-05-pagos`, PR en revisión).** Falta probarlo contra el
+13. HU-05 pagos. **Hecho (rama `hu-05-pagos`, PR #9 en revisión).** Falta probarlo contra el
     sandbox real cuando estén las llaves (ver "Cómo quedó HU-05").
 
 **Sprint 2 completo** al unir HU-05. El siguiente es el **Sprint 3** (HU-06 domicilio,
