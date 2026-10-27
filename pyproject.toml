@@ -19,12 +19,15 @@ dependencies = [
     "passlib[bcrypt]>=1.7.4",
     # bcrypt 5 rompe passlib 1.7.4 (falla al iniciar el hash); se fija por debajo.
     "bcrypt>=4.0,<5",
+    # Llamadas a la API de Wompi sandbox (HU-05).
+    "httpx>=0.27",
+    # Comprobantes de pago en PDF (HU-05).
+    "reportlab>=4.2",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.2",
-    "httpx>=0.27",
     "ruff>=0.6",
 ]
 

@@ -2271,7 +2271,7 @@
           "alquileres"
         ],
         "summary": "Pagar una reserva",
-        "description": "Cobra el `total` de una reserva en `pendiente_pago`. Revisa `pago.estado`:\n\n- `aprobado`: el alquiler pasa a `confirmado`.\n- `rechazado`: el alquiler sigue pendiente; se puede reintentar antes de `expira_en`.\n- `pendiente`: (desde HU-05, con PSE) la confirmación llega después; consulta el alquiler.\n\nEn desarrollo la pasarela es **falsa**: aprueba al instante y no mueve dinero.",
+        "description": "Cobra el `total` de una reserva en `pendiente_pago`. Revisa `pago.estado`:\n\n- `aprobado`: el alquiler pasa a `confirmado`.\n- `rechazado` o `error`: el alquiler sigue pendiente hasta su `expira_en` original; se\n  puede reintentar.\n- `pendiente` (PSE, o la pasarela no respondió): envía al cliente a\n  `pago.url_redireccion` si existe, y consulta `GET /pagos/{referencia}` hasta que\n  cambie. Mientras tanto la reserva no vence (máximo 60 minutos).\n\nCon Wompi, envía `acepta_terminos: true` y `tarjeta` o `pse`. Con la pasarela **falsa**\n(desarrollo) basta `metodo_pago`: aprueba al instante y no mueve dinero.",
         "operationId": "pagar_alquileres__alquiler_id__pago_post",
         "security": [
           {
@@ -2294,7 +2294,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/PagoAlquilerCrear"
+                "$ref": "#/components/schemas/PagoCrear"
               }
             }
           }
@@ -2369,7 +2369,7 @@
           "alquileres"
         ],
         "summary": "Cancelar una reserva sin pagar",
-        "description": "Solo mientras está en `pendiente_pago`. Un alquiler pagado no se cancela desde aquí.",
+        "description": "Solo mientras está en `pendiente_pago` y sin un pago en proceso. Un alquiler pagado\nlo cancela el administrador, con devolución.",
         "operationId": "cancelar_alquileres__alquiler_id__cancelacion_post",
         "security": [
           {
@@ -2404,6 +2404,104 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AlquilerRespuesta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto con el estado actual",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/alquileres/{alquiler_id}/cancelacion-con-devolucion": {
+      "post": {
+        "tags": [
+          "alquileres"
+        ],
+        "summary": "Cancelar un alquiler pagado y devolver el dinero",
+        "description": "Para un alquiler `confirmado` (pagado y sin entregar), p. ej. en riesgo y sin otra\nunidad libre. Registra la devolución, que aparece en `/pagos/devoluciones-pendientes`.",
+        "operationId": "cancelar_con_devolucion_alquileres__alquiler_id__cancelacion_con_devolucion_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "alquiler_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Alquiler Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelacionConDevolucion"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancelacionConDevolucionRespuesta"
                 }
               }
             }
@@ -3210,7 +3308,7 @@
           "ventas"
         ],
         "summary": "Pagar una compra",
-        "description": "Cobra el `total` de una compra en `pendiente_pago`. Revisa `pago.estado` y `venta.estado`:\n\n- `aprobado` y venta `pagada`: compra completa; las unidades quedan vendidas.\n- `aprobado` y venta `cancelada`: una unidad entró en mantenimiento antes del pago; la\n  compra no se completa y `devolucion` trae la devolución del dinero.\n- `rechazado`: la compra sigue pendiente; se puede reintentar antes de `expira_en`.\n\nEn desarrollo la pasarela es **falsa**: aprueba al instante y no mueve dinero.",
+        "description": "Cobra el `total` de una compra en `pendiente_pago`. Revisa `pago.estado` y `venta.estado`:\n\n- `aprobado` y venta `pagada`: compra completa; las unidades quedan vendidas.\n- `aprobado` y venta `cancelada`: una unidad entró en mantenimiento antes del pago; la\n  compra no se completa y `devolucion` trae la devolución del dinero.\n- `rechazado` o `error`: la compra sigue pendiente hasta su `expira_en` original.\n- `pendiente` (PSE): envía al cliente a `pago.url_redireccion` y consulta\n  `GET /pagos/{referencia}`. Mientras tanto la compra no vence (máximo 60 minutos).\n\nCon Wompi, envía `acepta_terminos: true` y `tarjeta` o `pse`. Con la pasarela **falsa**\n(desarrollo) basta `metodo_pago`: aprueba al instante y no mueve dinero.",
         "operationId": "pagar_ventas__venta_id__pago_post",
         "security": [
           {
@@ -3233,7 +3331,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/PagoVentaCrear"
+                "$ref": "#/components/schemas/PagoCrear"
               }
             }
           }
@@ -3478,6 +3576,412 @@
         }
       }
     },
+    "/pagos/configuracion": {
+      "get": {
+        "tags": [
+          "pagos"
+        ],
+        "summary": "Configuración de pagos para el frontend",
+        "description": "Métodos habilitados y, con Wompi, la llave pública para tokenizar la tarjeta y los\nenlaces de términos y autorización de datos que el cliente debe aceptar.",
+        "operationId": "configuracion_pagos_configuracion_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfiguracionPagos"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pagos/pse/bancos": {
+      "get": {
+        "tags": [
+          "pagos"
+        ],
+        "summary": "Bancos de PSE",
+        "description": "Lista corta y acotada que da la pasarela (no se pagina). En sandbox, el banco `1`\naprueba y el `2` rechaza.",
+        "operationId": "bancos_pse_pagos_pse_bancos_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BancoPse"
+                  },
+                  "type": "array",
+                  "title": "Response Bancos Pse Pagos Pse Bancos Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pagos/devoluciones-pendientes": {
+      "get": {
+        "tags": [
+          "pagos"
+        ],
+        "summary": "Devoluciones pendientes",
+        "description": "Dinero que hay que devolver a un cliente: compras que no se completaron, alquileres\ncancelados con devolución, o pagos que se aprobaron cuando la reserva ya había expirado.",
+        "operationId": "devoluciones_pendientes_pagos_devoluciones_pendientes_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Número de página, desde 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Número de página, desde 1."
+          },
+          {
+            "name": "tamano",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Elementos por página (máx. 100).",
+              "default": 20,
+              "title": "Tamano"
+            },
+            "description": "Elementos por página (máx. 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_PagoDetalle_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pagos/webhooks/wompi": {
+      "post": {
+        "tags": [
+          "pagos"
+        ],
+        "summary": "Eventos de Wompi (webhook)",
+        "description": "Lo llama Wompi, no el frontend. Verifica la firma, descarta repetidos y siempre\nresponde 200 (si no, Wompi reintenta). El cuerpo crudo queda guardado.",
+        "operationId": "webhook_wompi_pagos_webhooks_wompi_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventoRecibido"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pagos/{referencia}": {
+      "get": {
+        "tags": [
+          "pagos"
+        ],
+        "summary": "Estado de un pago",
+        "description": "Si el pago sigue `pendiente`, el backend le pregunta a la pasarela (consulta de\nrespaldo) antes de responder. Consúltalo cada pocos segundos tras volver del banco.",
+        "operationId": "ver_pagos__referencia__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "referencia",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Referencia"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagoDetalle"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pagos/{referencia}/comprobante": {
+      "get": {
+        "tags": [
+          "pagos"
+        ],
+        "summary": "Comprobante de pago en PDF",
+        "description": "Valor, fecha, servicio, cliente y estado de la transacción (SRS 3.1.6).",
+        "operationId": "comprobante_pagos__referencia__comprobante_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "referencia",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Referencia"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "El comprobante en PDF",
+            "content": {
+              "application/pdf": {}
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pagos/{referencia}/devolucion-ejecutada": {
+      "post": {
+        "tags": [
+          "pagos"
+        ],
+        "summary": "Marcar una devolución como hecha",
+        "description": "El administrador hizo el reembolso en el panel de Wompi y lo registra aquí.",
+        "operationId": "devolucion_ejecutada_pagos__referencia__devolucion_ejecutada_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "referencia",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Referencia"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DevolucionEjecutada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagoDetalle"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autenticado o sesión expirada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El rol no tiene permiso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto con el estado actual",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Datos inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/salud": {
       "get": {
         "tags": [
@@ -3673,6 +4177,24 @@
         ],
         "title": "AlquilerRespuesta"
       },
+      "BancoPse": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "nombre"
+        ],
+        "title": "BancoPse"
+      },
       "Body_iniciar_sesion_autenticacion_token_post": {
         "properties": {
           "grant_type": {
@@ -3752,6 +4274,40 @@
         },
         "type": "object",
         "title": "CancelacionAlquiler"
+      },
+      "CancelacionConDevolucion": {
+        "properties": {
+          "motivo": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 5,
+            "title": "Motivo",
+            "examples": [
+              "La unidad está en mantenimiento y no hay otra libre en esas fechas."
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "motivo"
+        ],
+        "title": "CancelacionConDevolucion"
+      },
+      "CancelacionConDevolucionRespuesta": {
+        "properties": {
+          "alquiler": {
+            "$ref": "#/components/schemas/AlquilerRespuesta"
+          },
+          "devolucion": {
+            "$ref": "#/components/schemas/PagoResumen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "alquiler",
+          "devolucion"
+        ],
+        "title": "CancelacionConDevolucionRespuesta"
       },
       "CancelacionVenta": {
         "properties": {
@@ -3912,6 +4468,81 @@
         "title": "ComprobantePreliminar",
         "description": "Comprobante preliminar de la compra (HU-04). No es una factura.\n\nEl comprobante definitivo en PDF llega con HU-05."
       },
+      "ConfiguracionPagos": {
+        "properties": {
+          "proveedor": {
+            "type": "string",
+            "title": "Proveedor"
+          },
+          "metodos": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Metodos",
+            "description": "Códigos de los métodos de pago habilitados."
+          },
+          "llave_publica": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Llave Publica",
+            "description": "Para tokenizar la tarjeta. null en `falso`."
+          },
+          "url_api": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url Api",
+            "description": "API de Wompi sandbox para tokenizar."
+          },
+          "terminos_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Terminos Url",
+            "description": "Términos de la pasarela: muéstralos."
+          },
+          "datos_personales_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Datos Personales Url",
+            "description": "Autorización de datos personales."
+          }
+        },
+        "type": "object",
+        "required": [
+          "proveedor",
+          "metodos",
+          "llave_publica",
+          "url_api",
+          "terminos_url",
+          "datos_personales_url"
+        ],
+        "title": "ConfiguracionPagos",
+        "description": "Lo que el frontend necesita antes de cobrar."
+      },
       "CuerpoError": {
         "properties": {
           "codigo": {
@@ -3966,6 +4597,24 @@
           "mensaje"
         ],
         "title": "DetalleCampo"
+      },
+      "DevolucionEjecutada": {
+        "properties": {
+          "nota": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 5,
+            "title": "Nota",
+            "examples": [
+              "Reembolso hecho en el panel de Wompi el 27/10/2026."
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "nota"
+        ],
+        "title": "DevolucionEjecutada"
       },
       "DiaSemana": {
         "type": "string",
@@ -4117,6 +4766,17 @@
           "expirada"
         ],
         "title": "EstadoVenta"
+      },
+      "EventoRecibido": {
+        "properties": {
+          "recibido": {
+            "type": "boolean",
+            "title": "Recibido",
+            "default": true
+          }
+        },
+        "type": "object",
+        "title": "EventoRecibido"
       },
       "HTTPValidationError": {
         "properties": {
@@ -4818,6 +5478,42 @@
         ],
         "title": "Pagina[NovedadRespuesta]"
       },
+      "Pagina_PagoDetalle_": {
+        "properties": {
+          "elementos": {
+            "items": {
+              "$ref": "#/components/schemas/PagoDetalle"
+            },
+            "type": "array",
+            "title": "Elementos"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamano": {
+            "type": "integer",
+            "title": "Tamano"
+          },
+          "paginas": {
+            "type": "integer",
+            "title": "Paginas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "elementos",
+          "total",
+          "pagina",
+          "tamano",
+          "paginas"
+        ],
+        "title": "Pagina[PagoDetalle]"
+      },
       "Pagina_ProductoCatalogo_": {
         "properties": {
           "elementos": {
@@ -4998,26 +5694,6 @@
         ],
         "title": "Pagina[VentaRespuesta]"
       },
-      "PagoAlquilerCrear": {
-        "properties": {
-          "metodo_pago": {
-            "type": "string",
-            "maxLength": 20,
-            "minLength": 1,
-            "title": "Metodo Pago",
-            "description": "Código del método de pago habilitado.",
-            "examples": [
-              "tarjeta",
-              "pse"
-            ]
-          }
-        },
-        "type": "object",
-        "required": [
-          "metodo_pago"
-        ],
-        "title": "PagoAlquilerCrear"
-      },
       "PagoAlquilerRespuesta": {
         "properties": {
           "alquiler": {
@@ -5025,6 +5701,17 @@
           },
           "pago": {
             "$ref": "#/components/schemas/PagoResumen"
+          },
+          "devolucion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PagoResumen"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Solo si el pago se aprobó cuando la reserva ya había expirado (p. ej., un PSE muy lento): se registra la devolución del dinero."
           }
         },
         "type": "object",
@@ -5033,7 +5720,7 @@
           "pago"
         ],
         "title": "PagoAlquilerRespuesta",
-        "description": "El alquiler como quedó y el intento de pago."
+        "description": "El alquiler como quedó, el intento de pago y, si hubo que devolver, la devolución."
       },
       "PagoComprobante": {
         "properties": {
@@ -5070,6 +5757,154 @@
         ],
         "title": "PagoComprobante"
       },
+      "PagoCrear": {
+        "properties": {
+          "metodo_pago": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Metodo Pago",
+            "description": "Código del método de pago habilitado.",
+            "examples": [
+              "tarjeta",
+              "pse"
+            ]
+          },
+          "acepta_terminos": {
+            "type": "boolean",
+            "title": "Acepta Terminos",
+            "description": "Con Wompi es obligatorio: el cliente aceptó los términos y la autorización de datos (enlaces en `/pagos/configuracion`).",
+            "default": false
+          },
+          "tarjeta": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TarjetaCrear"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pse": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PseCrear"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "metodo_pago"
+        ],
+        "title": "PagoCrear",
+        "description": "Cómo paga el cliente. Con la pasarela falsa basta `metodo_pago`."
+      },
+      "PagoDetalle": {
+        "properties": {
+          "referencia": {
+            "type": "string",
+            "title": "Referencia"
+          },
+          "tipo": {
+            "$ref": "#/components/schemas/TipoPago",
+            "description": "`cobro`, o `compensacion` si es una devolución."
+          },
+          "estado": {
+            "$ref": "#/components/schemas/EstadoPago"
+          },
+          "monto": {
+            "type": "integer",
+            "title": "Monto"
+          },
+          "proveedor": {
+            "type": "string",
+            "title": "Proveedor",
+            "description": "`falso` en desarrollo; `wompi` con el sandbox."
+          },
+          "url_redireccion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url Redireccion",
+            "description": "PSE: envía al cliente a esta página del banco para que pague."
+          },
+          "alquiler_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alquiler Id"
+          },
+          "venta_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venta Id"
+          },
+          "detalle_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detalle Error",
+            "description": "Por qué falló, o el motivo de la devolución."
+          },
+          "aprobado_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aprobado En"
+          },
+          "creado_en": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Creado En"
+          }
+        },
+        "type": "object",
+        "required": [
+          "referencia",
+          "tipo",
+          "estado",
+          "monto",
+          "proveedor",
+          "alquiler_id",
+          "venta_id",
+          "detalle_error",
+          "aprobado_en",
+          "creado_en"
+        ],
+        "title": "PagoDetalle"
+      },
       "PagoResumen": {
         "properties": {
           "referencia": {
@@ -5090,7 +5925,19 @@
           "proveedor": {
             "type": "string",
             "title": "Proveedor",
-            "description": "`falso` en desarrollo; `wompi` desde HU-05."
+            "description": "`falso` en desarrollo; `wompi` con el sandbox."
+          },
+          "url_redireccion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url Redireccion",
+            "description": "PSE: envía al cliente a esta página del banco para que pague."
           }
         },
         "type": "object",
@@ -5102,26 +5949,6 @@
           "proveedor"
         ],
         "title": "PagoResumen"
-      },
-      "PagoVentaCrear": {
-        "properties": {
-          "metodo_pago": {
-            "type": "string",
-            "maxLength": 20,
-            "minLength": 1,
-            "title": "Metodo Pago",
-            "description": "Código del método de pago habilitado.",
-            "examples": [
-              "tarjeta",
-              "pse"
-            ]
-          }
-        },
-        "type": "object",
-        "required": [
-          "metodo_pago"
-        ],
-        "title": "PagoVentaCrear"
       },
       "PagoVentaRespuesta": {
         "properties": {
@@ -5140,7 +5967,7 @@
                 "type": "null"
               }
             ],
-            "description": "Solo si el pago se aprobó pero una unidad entró en mantenimiento antes: la compra se cancela y se registra la devolución del dinero."
+            "description": "Solo si el pago se aprobó pero la compra no pudo completarse (una unidad entró en mantenimiento, o la compra ya había expirado): se registra la devolución."
           }
         },
         "type": "object",
@@ -5241,6 +6068,53 @@
         ],
         "title": "ProductoCatalogo",
         "description": "Accesorio o repuesto a la venta (HU-04). Se compra por cantidad."
+      },
+      "PseCrear": {
+        "properties": {
+          "tipo_persona": {
+            "type": "string",
+            "enum": [
+              "natural",
+              "juridica"
+            ],
+            "title": "Tipo Persona",
+            "default": "natural"
+          },
+          "tipo_documento": {
+            "type": "string",
+            "enum": [
+              "CC",
+              "NIT"
+            ],
+            "title": "Tipo Documento",
+            "default": "CC"
+          },
+          "documento": {
+            "type": "string",
+            "pattern": "^\\d{5,15}$",
+            "title": "Documento",
+            "description": "Solo dígitos.",
+            "examples": [
+              "1098765432"
+            ]
+          },
+          "banco": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Banco",
+            "description": "`codigo` de `/pagos/pse/bancos`.",
+            "examples": [
+              "1"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "documento",
+          "banco"
+        ],
+        "title": "PseCrear"
       },
       "ReasignacionAlquiler": {
         "properties": {
@@ -5386,6 +6260,32 @@
           "actualizado_en"
         ],
         "title": "SeccionRespuesta"
+      },
+      "TarjetaCrear": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Token",
+            "description": "Token de la tarjeta, generado por el frontend con la llave pública (`POST /tokens/cards` de Wompi). El número de la tarjeta nunca llega a este backend.",
+            "examples": [
+              "tok_test_12345_abcdef"
+            ]
+          },
+          "cuotas": {
+            "type": "integer",
+            "maximum": 36.0,
+            "minimum": 1.0,
+            "title": "Cuotas",
+            "default": 1
+          }
+        },
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "title": "TarjetaCrear"
       },
       "TipoNovedad": {
         "type": "string",

@@ -17,12 +17,14 @@ from app.modulos.alquileres.esquemas import (
     AlquilerCrear,
     AlquilerRespuesta,
     CancelacionAlquiler,
-    PagoAlquilerCrear,
+    CancelacionConDevolucion,
+    CancelacionConDevolucionRespuesta,
     PagoAlquilerRespuesta,
     ReasignacionAlquiler,
 )
 from app.modulos.alquileres.modelos import Alquiler, EstadoAlquiler
-from app.modulos.pagos.esquemas import PagoResumen
+from app.modulos.pagos import procesamiento
+from app.modulos.pagos.esquemas import PagoCrear, PagoResumen
 from app.modulos.pagos.pasarela import PasarelaPagos, obtener_pasarela
 from app.modulos.usuarios.modelos import Rol, Usuario
 from app.seguridad import AdministradorUOperador, SoloAdministrador, UsuarioActual, requiere_roles
@@ -141,20 +143,28 @@ def pagar(
     cliente: SoloCliente,
     pasarela: Pasarela,
     alquiler_id: int,
-    datos: PagoAlquilerCrear,
+    datos: PagoCrear,
 ) -> PagoAlquilerRespuesta:
     """Cobra el `total` de una reserva en `pendiente_pago`. Revisa `pago.estado`:
 
     - `aprobado`: el alquiler pasa a `confirmado`.
-    - `rechazado`: el alquiler sigue pendiente; se puede reintentar antes de `expira_en`.
-    - `pendiente`: (desde HU-05, con PSE) la confirmación llega después; consulta el alquiler.
+    - `rechazado` o `error`: el alquiler sigue pendiente hasta su `expira_en` original; se
+      puede reintentar.
+    - `pendiente` (PSE, o la pasarela no respondió): envía al cliente a
+      `pago.url_redireccion` si existe, y consulta `GET /pagos/{referencia}` hasta que
+      cambie. Mientras tanto la reserva no vence (máximo 60 minutos).
 
-    En desarrollo la pasarela es **falsa**: aprueba al instante y no mueve dinero.
+    Con Wompi, envía `acepta_terminos: true` y `tarjeta` o `pse`. Con la pasarela **falsa**
+    (desarrollo) basta `metodo_pago`: aprueba al instante y no mueve dinero.
     """
-    resultado = servicio.pagar_alquiler(sesion, alquiler_id, cliente, datos.metodo_pago, pasarela)
+    resultado = procesamiento.pagar(sesion, cliente, datos, pasarela, alquiler_id=alquiler_id)
+    alquiler = servicio.obtener_alquiler(sesion, alquiler_id, cliente)
     return PagoAlquilerRespuesta(
-        alquiler=_respuesta(resultado.alquiler),
+        alquiler=_respuesta(alquiler),
         pago=PagoResumen.model_validate(resultado.pago),
+        devolucion=PagoResumen.model_validate(resultado.devolucion)
+        if resultado.devolucion
+        else None,
     )
 
 
@@ -167,8 +177,33 @@ def pagar(
 def cancelar(
     sesion: SesionBD, cliente: SoloCliente, alquiler_id: int, datos: CancelacionAlquiler
 ) -> AlquilerRespuesta:
-    """Solo mientras está en `pendiente_pago`. Un alquiler pagado no se cancela desde aquí."""
+    """Solo mientras está en `pendiente_pago` y sin un pago en proceso. Un alquiler pagado
+    lo cancela el administrador, con devolución.
+    """
     return _respuesta(servicio.cancelar_alquiler(sesion, alquiler_id, cliente, datos.motivo))
+
+
+@enrutador_alquileres.post(
+    "/{alquiler_id}/cancelacion-con-devolucion",
+    response_model=CancelacionConDevolucionRespuesta,
+    summary="Cancelar un alquiler pagado y devolver el dinero",
+    responses=respuestas_error(401, 403, 404, 409, 422),
+)
+def cancelar_con_devolucion(
+    sesion: SesionBD,
+    administrador: SoloAdministrador,
+    alquiler_id: int,
+    datos: CancelacionConDevolucion,
+) -> CancelacionConDevolucionRespuesta:
+    """Para un alquiler `confirmado` (pagado y sin entregar), p. ej. en riesgo y sin otra
+    unidad libre. Registra la devolución, que aparece en `/pagos/devoluciones-pendientes`.
+    """
+    alquiler, devolucion = servicio.cancelar_con_devolucion(
+        sesion, alquiler_id, administrador, datos.motivo
+    )
+    return CancelacionConDevolucionRespuesta(
+        alquiler=_respuesta(alquiler), devolucion=PagoResumen.model_validate(devolucion)
+    )
 
 
 @enrutador_alquileres.post(

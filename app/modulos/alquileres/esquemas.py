@@ -22,14 +22,6 @@ class AlquilerCrear(BaseModel):
     fecha_fin: date = Field(description="Último día del alquiler, inclusive.")
 
 
-class PagoAlquilerCrear(BaseModel):
-    metodo_pago: Annotated[
-        str,
-        StringConstraints(strip_whitespace=True, to_lower=True, min_length=1, max_length=20),
-        Field(description="Código del método de pago habilitado.", examples=["tarjeta", "pse"]),
-    ]
-
-
 class CancelacionAlquiler(BaseModel):
     motivo: Annotated[
         str | None,
@@ -100,7 +92,27 @@ class AlquilerRespuesta(BaseModel):
 
 
 class PagoAlquilerRespuesta(BaseModel):
-    """El alquiler como quedó y el intento de pago."""
+    """El alquiler como quedó, el intento de pago y, si hubo que devolver, la devolución."""
 
     alquiler: AlquilerRespuesta
     pago: PagoResumen
+    devolucion: PagoResumen | None = Field(
+        None,
+        description=(
+            "Solo si el pago se aprobó cuando la reserva ya había expirado (p. ej., un PSE muy "
+            "lento): se registra la devolución del dinero."
+        ),
+    )
+
+
+class CancelacionConDevolucion(BaseModel):
+    motivo: Annotated[
+        str,
+        StringConstraints(strip_whitespace=True, min_length=5, max_length=500),
+        Field(examples=["La unidad está en mantenimiento y no hay otra libre en esas fechas."]),
+    ]
+
+
+class CancelacionConDevolucionRespuesta(BaseModel):
+    alquiler: AlquilerRespuesta
+    devolucion: PagoResumen

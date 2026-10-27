@@ -229,19 +229,60 @@ correspondiente, y si el equipo corrige el SRS, actualiza este archivo.
 - **Comprobante preliminar** en JSON (`GET /ventas/{id}/comprobante`). El PDF llega con HU-05.
 - **Modelo de datos**: nueva columna `ventas.motivo_cancelacion` (migración `c74d60acf0af`).
 
-### Pendientes para HU-05
+### Decisiones de HU-05 (27/10/2026)
 
-1. **Un pago PSE puede tardar más que el bloqueo de 15 minutos.** Hay que decidir si el
-   bloqueo se extiende mientras haya un pago `pendiente`, o si el pago tardío se devuelve
-   con una compensación. Afecta alquileres y ventas (hoy, un pago sobre una reserva vencida
-   se rechaza con `reserva_expirada` / `venta_expirada`).
-2. **Con Wompi, el pago se guarda como `pendiente` y se confirma en la base ANTES de llamar
-   a la pasarela**, para que nunca quede un cobro sin registro. Hoy `pagos.servicio.cobrar`
-   llama a la pasarela falsa y guarda el resultado en la misma transacción: sirve con la
-   falsa, pero hay que cambiarlo con Wompi.
-3. **Ejecutar las devoluciones** (pagos de compensación en `pendiente`) en la pasarela, y
-   cancelar con devolución los alquileres pagados (decisiones 3 y 4 del Sprint 2).
-4. **Comprobante en PDF** (HU-05), a partir del comprobante preliminar de HU-04.
+Las 5 decisiones de "Cómo quedó HU-04" quedaron **aprobadas** por el equipo.
+
+1. **PSE lento:** mientras un alquiler o una compra tenga un pago `pendiente`, el bloqueo de
+   15 minutos **no vence**. Expira solo cuando la pasarela reporta el pago como rechazado,
+   expirado o con error, o tras un máximo de **60 minutos** con el pago pendiente
+   (`max_minutos_pago_pendiente` en `parametros_sistema`). Si después llega un pago
+   aprobado, se registra la devolución, igual que en la decisión 2 del Sprint 2.
+2. **El pago se guarda como `pendiente` y se confirma en la base ANTES de llamar a Wompi.**
+3. **Webhook de Wompi** con verificación de firma e idempotencia (7.3), más una **consulta
+   de respaldo** del estado de la transacción a la API de Wompi, porque en desarrollo Wompi
+   no puede llegar a 127.0.0.1. **Sin túneles.**
+4. **Comprobante en PDF con ReportLab.**
+
+Las llaves de sandbox las pone el responsable en el `.env`: **nunca se piden por chat ni
+se escriben en el código.**
+
+### Cómo quedó HU-05 (27/10/2026)
+
+- **Cobro en tres pasos** (`pagos/procesamiento.py`): (1) con la operación bloqueada se
+  guarda el pago `pendiente` y se hace commit; (2) se llama a la pasarela fuera de toda
+  transacción; si no responde, el pago queda `pendiente`; (3) se aplica el resultado. El
+  paso 3 también lo disparan el webhook y la consulta de respaldo; los tres son
+  idempotentes (un pago ya resuelto no cambia).
+- **Bloqueo extendido:** al empezar el cobro, `expira_en` de la operación pasa a
+  `ahora + max_minutos_pago_pendiente`, y el plazo original queda en
+  `pagos.bloqueo_original_hasta`. Si el cobro falla, se restaura ese plazo (si ya pasó,
+  la operación expira). Así nadie retiene un vehículo encadenando pagos fallidos.
+- **Un solo cobro en curso por operación**, y no se cancela una operación con un pago
+  pendiente (`pago_en_curso`): si el banco lo aprobara después, habría que devolver.
+- **Wompi sandbox** (`pagos/wompi.py`): `GET /merchants/info` para los tokens de aceptación
+  (el endpoint viejo `/merchants/:llave` se retira el 31/10/2026), `POST /transactions`
+  con firma de integridad, consulta de respaldo con `GET /transactions?reference=` (llave
+  privada). URL del sandbox fija en el código. Timeouts cortos (SRS: < 3 s).
+- **Tarjeta tokenizada en el frontend**: el número nunca llega al backend, solo el token.
+- **Configuración:** nueva variable `WOMPI_SECRETO_INTEGRIDAD`. La API no arranca con
+  llaves que no sean de sandbox (`pub_test_`, `prv_test_`, `test_events_`,
+  `test_integrity_`), ni con `PAGOS_PROVEEDOR=wompi` y las llaves de ejemplo.
+- **Webhook** `POST /pagos/webhooks/wompi`: guarda siempre el cuerpo crudo; procesa solo
+  con firma válida, ambiente `test`, referencia conocida y monto igual; responde 200.
+- **Consulta de respaldo**: `GET /pagos/{referencia}` pregunta a la pasarela si el pago
+  sigue pendiente, y `python -m scripts.sincronizar_pagos` lo hace con todos.
+- **Devoluciones**: `GET /pagos/devoluciones-pendientes` y
+  `POST /pagos/{referencia}/devolucion-ejecutada` (el administrador hace el reembolso en el
+  panel de Wompi y lo registra). Nueva `POST /alquileres/{id}/cancelacion-con-devolucion`
+  (administrador; decisiones 3 y 4 del Sprint 2). `confirmado → cancelado` solo por ahí.
+- **Comprobante PDF**: `GET /pagos/{referencia}/comprobante` (ReportLab).
+- **Modelo de datos**: `pagos.url_redireccion`, `pagos.bloqueo_original_hasta` y el
+  parámetro `max_minutos_pago_pendiente` (migración `7f6b572858d8`).
+- **Pendiente de validar con las llaves reales**: el flujo contra el sandbox de Wompi
+  (los tests usan un transporte simulado). El ejemplo de checksum de eventos de la
+  documentación de Wompi no corresponde a su propia cadena (ver `tests/pagos/test_wompi.py`):
+  hay que confirmar la firma con un evento real.
 
 ### Casos pendientes para HU-06
 
@@ -533,7 +574,12 @@ De ahí en adelante seguimos el backlog sprint por sprint.
 **Bloque 1 completo.** **Sprint 2 en curso** (una rama por historia saliendo de `main`):
 
 11. HU-03 alquileres. **Hecho (PR #7).**
-12. HU-04 compra. **Hecho (rama `hu-04-compra`, PR #8 en revisión).**
-13. HU-05 pagos. Antes de empezar, revisar los "Pendientes para HU-05" (sección 4).
+12. HU-04 compra. **Hecho (PR #8).**
+13. HU-05 pagos. **Hecho (rama `hu-05-pagos`, PR #9 en revisión).** Falta probarlo contra el
+    sandbox real cuando estén las llaves (ver "Cómo quedó HU-05").
+
+**Sprint 2 completo** al unir HU-05. El siguiente es el **Sprint 3** (HU-06 domicilio,
+HU-07 estado del domicilio, HU-08 rastreo GPS); antes de HU-06, revisar sus casos
+pendientes y la decisión 6 del 29/09 (GPS por consulta cada 5 s, pendiente con Julián).
 
 Espera mi confirmación antes de empezar cada historia.

@@ -18,6 +18,8 @@ from app.modulos.inventario import servicio as inventario
 from app.modulos.inventario.esquemas import CierreNovedad
 from app.modulos.inventario.excepciones import NoPuedeVolverAServicio
 from app.modulos.inventario.modelos import CategoriaProducto, EstadoVehiculo, NovedadVehiculo
+from app.modulos.pagos import procesamiento
+from app.modulos.pagos.esquemas import PagoCrear
 from app.modulos.pagos.modelos import EstadoPago, MetodoPago, Pago, TipoPago
 from app.modulos.pagos.pasarela import PasarelaFalsa
 from app.modulos.usuarios.modelos import Rol
@@ -73,8 +75,15 @@ def _comprar(sesion, cliente, vehiculos=(), productos=(), momento=MOMENTO) -> Ve
 
 
 def _pagar(sesion, venta, cliente, *, aprueba=True, momento=MOMENTO):
-    pasarela = PasarelaFalsa(aprueba=aprueba)
-    return servicio.pagar_venta(sesion, venta.id, cliente, "tarjeta", pasarela, momento=momento)
+    pasarela = PasarelaFalsa(EstadoPago.APROBADO if aprueba else EstadoPago.RECHAZADO)
+    return procesamiento.pagar(
+        sesion,
+        cliente,
+        PagoCrear(metodo_pago="tarjeta"),
+        pasarela,
+        venta_id=venta.id,
+        momento=momento,
+    )
 
 
 # --- Comprar ----------------------------------------------------------------------------

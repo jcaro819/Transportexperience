@@ -7,10 +7,11 @@ Es la única fuente de verdad: todo cambio de estado de un alquiler pasa por
     pendiente_pago → cancelado     (el cliente desiste antes de pagar)
     pendiente_pago → expirado      (no pagó dentro de los 15 minutos del bloqueo)
     confirmado     → en_curso      (el operador entrega el vehículo)
+    confirmado     → cancelado     (solo el administrador, con devolución del dinero)
     en_curso       → finalizado    (el operador recibe el vehículo)
 
 Un alquiler ya pagado (``confirmado``) no lo cancela el cliente: esa cancelación exige
-devolver el dinero con un pago de compensación, y llega con HU-05.
+devolver el dinero con un pago de compensación, y la hace el administrador.
 """
 
 from app.modulos.alquileres.excepciones import TransicionDeAlquilerInvalida
@@ -18,7 +19,7 @@ from app.modulos.alquileres.modelos import EstadoAlquiler as E
 
 TRANSICIONES: dict[E, frozenset[E]] = {
     E.PENDIENTE_PAGO: frozenset({E.CONFIRMADO, E.CANCELADO, E.EXPIRADO}),
-    E.CONFIRMADO: frozenset({E.EN_CURSO}),
+    E.CONFIRMADO: frozenset({E.EN_CURSO, E.CANCELADO}),
     E.EN_CURSO: frozenset({E.FINALIZADO}),
     E.FINALIZADO: frozenset(),
     E.CANCELADO: frozenset(),

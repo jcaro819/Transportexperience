@@ -20,7 +20,6 @@ alquiler y la unidad quedan exactamente como estaban (SRS 3.3.4).
 """
 
 from collections.abc import Sequence
-from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
 from sqlalchemy import ColumnElement, and_, or_, select
@@ -52,11 +51,12 @@ from app.modulos.inventario.servicio import (
     obtener_modelo_visible,
 )
 from app.modulos.pagos import servicio as pagos
+from app.modulos.pagos.excepciones import PagoEnCurso
 from app.modulos.pagos.modelos import EstadoPago, Pago
-from app.modulos.pagos.pasarela import PasarelaPagos
+from app.modulos.pagos.pasarela import ResultadoCobro
 from app.modulos.usuarios.modelos import Rol, Usuario
 from app.modulos.ventas.liberacion import bloquear_y_expirar
-from app.parametros import MAX_DIAS_ALQUILER, obtener_entero
+from app.parametros import MAX_DIAS_ALQUILER, MAX_MINUTOS_PAGO_PENDIENTE, obtener_entero
 
 # Bloqueo temporal mientras el cliente paga (decisión del 29/09/2026, HU-03).
 MINUTOS_BLOQUEO = 15
@@ -66,12 +66,6 @@ ROLES_DE_MOSTRADOR = frozenset({Rol.ADMINISTRADOR, Rol.OPERADOR})
 
 # Alquileres que todavía pueden moverse a otra unidad: aún no se ha entregado el vehículo.
 _ESTADOS_REASIGNABLES = (EstadoAlquiler.PENDIENTE_PAGO, EstadoAlquiler.CONFIRMADO)
-
-
-@dataclass(frozen=True)
-class ResultadoPago:
-    alquiler: Alquiler
-    pago: Pago
 
 
 # --- Lógica pura: sin base de datos ---------------------------------------------------------
@@ -308,22 +302,21 @@ def crear_alquiler(
     return alquiler
 
 
-def pagar_alquiler(
+def preparar_pago(
     sesion: Session,
     alquiler_id: int,
     cliente: Usuario,
     metodo_codigo: str,
-    pasarela: PasarelaPagos,
+    proveedor: str,
     *,
     momento: datetime | None = None,
-) -> ResultadoPago:
-    """Cobra el total de una reserva pendiente con la pasarela configurada.
+) -> Pago:
+    """Fase 1 del cobro: registra el pago ``pendiente`` y lo confirma en la base.
 
-    - Aprobado: el alquiler pasa a ``confirmado`` y el vehículo queda reservado sin plazo.
-    - Rechazado: el alquiler sigue ``pendiente_pago`` y el cliente puede reintentar
-      mientras no venza el bloqueo.
-    - Pendiente (Wompi, HU-05): la confirmación llegará por el webhook, que llamará a
-      ``confirmar_pago``.
+    Se hace **antes** de llamar a la pasarela (decisión 2 de HU-05). Mientras el pago esté
+    pendiente, el bloqueo del alquiler no vence: se extiende hasta un máximo configurable
+    (``max_minutos_pago_pendiente``, decisión 1). El plazo original queda en el pago para
+    restaurarlo si el cobro falla.
     """
     momento = momento or fechas.ahora()
     alquiler = _bloquear_alquiler(sesion, alquiler_id)
@@ -331,22 +324,64 @@ def pagar_alquiler(
     if esta_vencido(alquiler, momento):
         _expirar_y_avisar(sesion, alquiler)
     validar_transicion(alquiler.estado, EstadoAlquiler.CONFIRMADO)
+    if pagos.hay_cobro_pendiente(sesion, alquiler_id=alquiler.id):
+        raise PagoEnCurso()
     metodo = pagos.obtener_metodo_activo(sesion, metodo_codigo)
 
-    pago = pagos.cobrar(sesion, pasarela, alquiler.total, metodo, momento, alquiler_id=alquiler.id)
-    if pago.estado == EstadoPago.APROBADO:
-        confirmar_pago(sesion, alquiler, cliente)
+    pago = pagos.crear_cobro_pendiente(
+        sesion, alquiler.total, metodo, proveedor, alquiler.expira_en, alquiler_id=alquiler.id
+    )
+    maximo = timedelta(minutes=obtener_entero(sesion, MAX_MINUTOS_PAGO_PENDIENTE))
+    alquiler.expira_en = max(alquiler.expira_en, momento + maximo)
     sesion.commit()
-    return ResultadoPago(alquiler, pago)
+    return pago
 
 
-def confirmar_pago(sesion: Session, alquiler: Alquiler, usuario: Usuario | None) -> None:
-    """Pasa a ``confirmado`` un alquiler cuyo pago se aprobó. No hace commit.
+def aplicar_resultado_pago(
+    sesion: Session, pago_id: int, resultado: ResultadoCobro, momento: datetime
+) -> Pago | None:
+    """Fase final del cobro: aplica lo que reporta la pasarela. Devuelve la devolución, si hubo.
 
-    La fila del alquiler (y la de su unidad) deben estar bloqueadas. HU-05 la llamará
-    desde el webhook de la pasarela.
+    La llaman el cobro mismo, el webhook y la consulta de respaldo; es idempotente.
+
+    - Aprobado con la reserva vigente: el alquiler pasa a ``confirmado``.
+    - Aprobado con la reserva ya expirada o cancelada (p. ej., PSE pasó del máximo de
+      minutos): se registra la devolución del dinero (decisión 1 de HU-05).
+    - Rechazado, expirado o error: la reserva vuelve a su plazo original de 15 minutos; si
+      ya pasó, expira ahora.
     """
-    _cambiar_estado(sesion, alquiler, EstadoAlquiler.CONFIRMADO, usuario, "Pago aprobado")
+    alquiler_id = sesion.scalar(select(Pago.alquiler_id).where(Pago.id == pago_id))
+    alquiler = _bloquear_alquiler(sesion, alquiler_id)
+    pago = pagos.bloquear_pago(sesion, pago_id)
+    devolucion = None
+    if pagos.registrar_resultado(pago, resultado, momento):
+        pendiente = alquiler.estado == EstadoAlquiler.PENDIENTE_PAGO
+        if pago.estado == EstadoPago.APROBADO:
+            if pendiente and not esta_vencido(alquiler, momento):
+                _cambiar_estado(sesion, alquiler, EstadoAlquiler.CONFIRMADO, None, "Pago aprobado")
+            else:
+                if pendiente:
+                    _cambiar_estado(
+                        sesion, alquiler, EstadoAlquiler.EXPIRADO, None, "Bloqueo vencido"
+                    )
+                motivo = (
+                    f"El pago se aprobó cuando el alquiler ya estaba '{alquiler.estado}'. "
+                    "Se devuelve el dinero."
+                )
+                devolucion = pagos.registrar_devolucion(sesion, pago, motivo)
+        elif pendiente:
+            _restaurar_bloqueo(sesion, alquiler, pago, momento)
+    sesion.commit()
+    return devolucion
+
+
+def _restaurar_bloqueo(sesion: Session, alquiler: Alquiler, pago: Pago, momento: datetime) -> None:
+    """El cobro falló: la reserva vuelve a su plazo original; si ya pasó, expira."""
+    original = pago.bloqueo_original_hasta
+    if original is None or original <= momento:
+        _cambiar_estado(sesion, alquiler, EstadoAlquiler.EXPIRADO, None, "El pago no se aprobó")
+    else:
+        alquiler.expira_en = original
 
 
 def cancelar_alquiler(
@@ -357,10 +392,10 @@ def cancelar_alquiler(
     *,
     momento: datetime | None = None,
 ) -> Alquiler:
-    """El cliente desiste de una reserva. Solo mientras está en ``pendiente_pago``.
+    """El cliente desiste de una reserva. Solo mientras está en ``pendiente_pago`` y sin un
+    pago en proceso (si el banco lo aprobara después, habría que devolver el dinero).
 
-    Un alquiler ya pagado no se cancela desde aquí: exige devolver el dinero con un pago de
-    compensación, y eso lo gestiona el administrador (HU-05).
+    Un alquiler ya pagado lo cancela el administrador, con devolución.
     """
     momento = momento or fechas.ahora()
     alquiler = _bloquear_alquiler(sesion, alquiler_id)
@@ -369,10 +404,36 @@ def cancelar_alquiler(
         _expirar_y_avisar(sesion, alquiler)
     if alquiler.estado != EstadoAlquiler.PENDIENTE_PAGO:
         raise AlquilerNoCancelable()
+    if pagos.hay_cobro_pendiente(sesion, alquiler_id=alquiler.id):
+        raise PagoEnCurso()
     alquiler.motivo_cancelacion = motivo
     _cambiar_estado(sesion, alquiler, EstadoAlquiler.CANCELADO, cliente, motivo)
     sesion.commit()
     return alquiler
+
+
+def cancelar_con_devolucion(
+    sesion: Session, alquiler_id: int, administrador: Usuario, motivo: str
+) -> tuple[Alquiler, Pago]:
+    """El administrador cancela un alquiler pagado y aún no entregado, y registra la
+    devolución del dinero (decisiones 3 y 4 del Sprint 2: p. ej., la unidad está en
+    mantenimiento y no hay otra libre para reasignar).
+    """
+    _exigir_rol(administrador, frozenset({Rol.ADMINISTRADOR}))
+    alquiler = _bloquear_alquiler(sesion, alquiler_id)
+    validar_transicion(alquiler.estado, EstadoAlquiler.CANCELADO)
+    if alquiler.estado != EstadoAlquiler.CONFIRMADO:
+        raise AlquilerNoCancelable(
+            "Solo se cancela con devolución un alquiler pagado y aún no entregado."
+        )
+    cobro = pagos.cobro_aprobado(sesion, alquiler_id=alquiler.id)
+    if cobro is None:  # datos viejos sin pago registrado: no hay nada que devolver
+        raise AlquilerNoCancelable("El alquiler no tiene un pago aprobado registrado.")
+    alquiler.motivo_cancelacion = motivo
+    _cambiar_estado(sesion, alquiler, EstadoAlquiler.CANCELADO, administrador, motivo)
+    devolucion = pagos.registrar_devolucion(sesion, cobro, motivo, administrador.id)
+    sesion.commit()
+    return alquiler, devolucion
 
 
 def _con_vehiculo():

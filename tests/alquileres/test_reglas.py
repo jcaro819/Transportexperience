@@ -98,6 +98,7 @@ def test_un_confirmado_nunca_vence() -> None:
         (E.PENDIENTE_PAGO, E.CANCELADO),
         (E.PENDIENTE_PAGO, E.EXPIRADO),
         (E.CONFIRMADO, E.EN_CURSO),
+        (E.CONFIRMADO, E.CANCELADO),  # solo el administrador, con devolución (HU-05)
         (E.EN_CURSO, E.FINALIZADO),
     ],
 )
@@ -108,7 +109,6 @@ def test_transiciones_validas(actual: E, nuevo: E) -> None:
 @pytest.mark.parametrize(
     ("actual", "nuevo"),
     [
-        (E.CONFIRMADO, E.CANCELADO),  # pagado: se cancela con devolución (HU-05)
         (E.PENDIENTE_PAGO, E.EN_CURSO),  # no se entrega sin pagar
         (E.EN_CURSO, E.CANCELADO),
         (E.EXPIRADO, E.CONFIRMADO),  # un pago tardío no revive la reserva

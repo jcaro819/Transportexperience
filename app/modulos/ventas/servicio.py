@@ -36,8 +36,9 @@ from app.modulos.inventario.servicio import (
     obtener_modelo_visible,
 )
 from app.modulos.pagos import servicio as pagos
+from app.modulos.pagos.excepciones import PagoEnCurso
 from app.modulos.pagos.modelos import EstadoPago, MetodoPago, Pago, TipoPago
-from app.modulos.pagos.pasarela import PasarelaPagos
+from app.modulos.pagos.pasarela import ResultadoCobro
 from app.modulos.usuarios.modelos import Rol, Usuario
 from app.modulos.ventas.esquemas import VentaCrear
 from app.modulos.ventas.estados import validar_transicion
@@ -52,6 +53,7 @@ from app.modulos.ventas.excepciones import (
 )
 from app.modulos.ventas.liberacion import bloquear_y_expirar, cambiar_estado_venta, liberar_venta
 from app.modulos.ventas.modelos import EstadoVenta, ItemVenta, Venta
+from app.parametros import MAX_MINUTOS_PAGO_PENDIENTE, obtener_entero
 
 registro = logging.getLogger(__name__)
 
@@ -59,13 +61,6 @@ registro = logging.getLogger(__name__)
 MINUTOS_BLOQUEO = 15
 
 ROLES_DE_MOSTRADOR = frozenset({Rol.ADMINISTRADOR, Rol.OPERADOR})
-
-
-@dataclass(frozen=True)
-class ResultadoPagoVenta:
-    venta: Venta
-    pago: Pago
-    devolucion: Pago | None
 
 
 @dataclass(frozen=True)
@@ -258,22 +253,19 @@ def crear_venta(
     return venta
 
 
-def pagar_venta(
+def preparar_pago(
     sesion: Session,
     venta_id: int,
     cliente: Usuario,
     metodo_codigo: str,
-    pasarela: PasarelaPagos,
+    proveedor: str,
     *,
     momento: datetime | None = None,
-) -> ResultadoPagoVenta:
-    """Cobra el total de una compra pendiente.
+) -> Pago:
+    """Fase 1 del cobro: registra el pago ``pendiente`` y lo confirma en la base.
 
-    - Aprobado y todas las unidades apartadas: la compra queda ``pagada`` y las unidades
-      ``vendido``.
-    - Aprobado pero alguna unidad ya no está apartada (entró en mantenimiento): la compra se
-      cancela, se devuelve lo apartado y se registra la devolución del dinero.
-    - Rechazado: la compra sigue pendiente; el cliente puede reintentar a tiempo.
+    Igual que en alquileres: antes de llamar a la pasarela (decisión 2 de HU-05), y con el
+    bloqueo extendido mientras el pago esté pendiente (decisión 1).
     """
     momento = momento or fechas.ahora()
     venta, vehiculos, productos = _bloquear_venta(sesion, venta_id)
@@ -281,24 +273,90 @@ def pagar_venta(
     if esta_vencida(venta, momento):
         _expirar_y_avisar(sesion, venta, vehiculos, productos)
     validar_transicion(venta.estado, EstadoVenta.PAGADA)
+    if pagos.hay_cobro_pendiente(sesion, venta_id=venta.id):
+        raise PagoEnCurso()
     metodo = pagos.obtener_metodo_activo(sesion, metodo_codigo)
 
-    pago = pagos.cobrar(sesion, pasarela, venta.total, metodo, momento, venta_id=venta.id)
-    devolucion = None
-    if pago.estado == EstadoPago.APROBADO:
-        unidades = [vehiculos[i.vehiculo_id] for i in venta.items if i.vehiculo_id is not None]
-        no_apartadas = [u for u in unidades if u.estado != EstadoVehiculo.RESERVADO]
-        if no_apartadas:
-            devolucion = _cancelar_con_devolucion(
-                sesion, venta, pago, no_apartadas, vehiculos, productos
-            )
-        else:
-            for unidad in unidades:
-                motivo = f"Venta #{venta.id} pagada"
-                cambiar_estado_vehiculo(sesion, unidad, EstadoVehiculo.VENDIDO, cliente, motivo)
-            cambiar_estado_venta(sesion, venta, EstadoVenta.PAGADA, cliente, "Pago aprobado")
+    pago = pagos.crear_cobro_pendiente(
+        sesion, venta.total, metodo, proveedor, venta.expira_en, venta_id=venta.id
+    )
+    maximo = timedelta(minutes=obtener_entero(sesion, MAX_MINUTOS_PAGO_PENDIENTE))
+    venta.expira_en = max(venta.expira_en, momento + maximo)
     sesion.commit()
-    return ResultadoPagoVenta(venta, pago, devolucion)
+    return pago
+
+
+def aplicar_resultado_pago(
+    sesion: Session, pago_id: int, resultado: ResultadoCobro, momento: datetime
+) -> Pago | None:
+    """Fase final del cobro: aplica lo que reporta la pasarela. Devuelve la devolución, si hubo.
+
+    - Aprobado, compra vigente y todas las unidades apartadas: ``pagada`` y ``vendido``.
+    - Aprobado pero alguna unidad dejó de estar apartada (decisión 2 del Sprint 2), o la
+      compra ya había expirado o se había cancelado (decisión 1 de HU-05): la compra no se
+      completa y se registra la devolución del dinero.
+    - Rechazado, expirado o error: la compra vuelve a su plazo original; si ya pasó, expira.
+    """
+    venta_id = sesion.scalar(select(Pago.venta_id).where(Pago.id == pago_id))
+    venta, vehiculos, productos = _bloquear_venta(sesion, venta_id)
+    pago = pagos.bloquear_pago(sesion, pago_id)
+    devolucion = None
+    if pagos.registrar_resultado(pago, resultado, momento):
+        pendiente = venta.estado == EstadoVenta.PENDIENTE_PAGO
+        if pago.estado == EstadoPago.APROBADO:
+            if pendiente and not esta_vencida(venta, momento):
+                devolucion = _completar(sesion, venta, pago, vehiculos, productos)
+            else:
+                if pendiente:
+                    liberar_venta(
+                        sesion,
+                        venta,
+                        EstadoVenta.EXPIRADA,
+                        None,
+                        "Bloqueo vencido",
+                        vehiculos,
+                        productos,
+                    )
+                motivo = (
+                    f"El pago se aprobó cuando la compra ya estaba '{venta.estado}'. "
+                    "Se devuelve el dinero."
+                )
+                devolucion = pagos.registrar_devolucion(sesion, pago, motivo)
+        elif pendiente:
+            original = pago.bloqueo_original_hasta
+            if original is None or original <= momento:
+                liberar_venta(
+                    sesion,
+                    venta,
+                    EstadoVenta.EXPIRADA,
+                    None,
+                    "El pago no se aprobó",
+                    vehiculos,
+                    productos,
+                )
+            else:
+                venta.expira_en = original
+    sesion.commit()
+    return devolucion
+
+
+def _completar(
+    sesion: Session,
+    venta: Venta,
+    pago: Pago,
+    vehiculos: dict[int, Vehiculo],
+    productos: dict[int, Producto],
+) -> Pago | None:
+    """Pago aprobado a tiempo: vende las unidades, o devuelve si alguna ya no está apartada."""
+    unidades = [vehiculos[i.vehiculo_id] for i in venta.items if i.vehiculo_id is not None]
+    no_apartadas = [u for u in unidades if u.estado != EstadoVehiculo.RESERVADO]
+    if no_apartadas:
+        return _cancelar_con_devolucion(sesion, venta, pago, no_apartadas, vehiculos, productos)
+    for unidad in unidades:
+        motivo = f"Venta #{venta.id} pagada"
+        cambiar_estado_vehiculo(sesion, unidad, EstadoVehiculo.VENDIDO, None, motivo)
+    cambiar_estado_venta(sesion, venta, EstadoVenta.PAGADA, None, "Pago aprobado")
+    return None
 
 
 def _cancelar_con_devolucion(
@@ -321,12 +379,7 @@ def _cancelar_con_devolucion(
     )
     venta.motivo_cancelacion = motivo
     liberar_venta(sesion, venta, EstadoVenta.CANCELADA, None, motivo, vehiculos, productos)
-    devolucion = pagos.registrar_devolucion(sesion, pago, motivo)
-    registro.warning(
-        "Compra cancelada con devolución pendiente: el administrador debe atenderla",
-        extra={"venta_id": venta.id, "pago_id": pago.id, "devolucion_id": devolucion.id},
-    )
-    return devolucion
+    return pagos.registrar_devolucion(sesion, pago, motivo)
 
 
 def cancelar_venta(
@@ -345,6 +398,8 @@ def cancelar_venta(
         _expirar_y_avisar(sesion, venta, vehiculos, productos)
     if venta.estado != EstadoVenta.PENDIENTE_PAGO:
         raise VentaNoCancelable()
+    if pagos.hay_cobro_pendiente(sesion, venta_id=venta.id):
+        raise PagoEnCurso()
     venta.motivo_cancelacion = motivo
     liberar_venta(sesion, venta, EstadoVenta.CANCELADA, cliente, motivo or "", vehiculos, productos)
     sesion.commit()
