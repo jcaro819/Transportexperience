@@ -1,7 +1,7 @@
 # API de TransportExperience: guía para el frontend
 
 Todo lo necesario para consumir el backend del **Sprint 1** (HU-12, HU-02, HU-09, HU-01) y
-de los **alquileres** y las **compras** del Sprint 2 (HU-03, HU-04).
+del **Sprint 2**: alquileres, compras y pagos (HU-03, HU-04, HU-05).
 El contrato completo y exacto (esquemas, campos, ejemplos) está en
 [`openapi.json`](openapi.json), que se genera desde el código. La forma más cómoda de
 explorarlo es la documentación interactiva: **http://127.0.0.1:8000/docs**.
@@ -36,8 +36,9 @@ uvicorn app.main:app --reload    # API en http://127.0.0.1:8000
 ```
 
 **Al actualizar el repositorio**, vuelve a correr `alembic upgrade head`: HU-03 agregó la
-tabla `parametros_sistema` (máximo de días por alquiler) y HU-04 la columna
-`ventas.motivo_cancelacion`.
+tabla `parametros_sistema` (máximo de días por alquiler), HU-04 la columna
+`ventas.motivo_cancelacion` y HU-05 dos columnas en `pagos` y el parámetro
+`max_minutos_pago_pendiente`.
 
 Si todo va bien, `http://127.0.0.1:8000/salud` responde
 `{"estado": "ok", "base_datos": "ok"}`.
@@ -127,6 +128,7 @@ Toda respuesta de error, sin excepción, tiene esta estructura:
 | `novedad_no_encontrada` | 404 | La novedad no existe o es de otra unidad |
 | `alquiler_no_encontrado` | 404 | El alquiler no existe o es de otro cliente |
 | `venta_no_encontrada` | 404 | La compra no existe o es de otro cliente |
+| `pago_no_encontrado` | 404 | El pago no existe o es de otro cliente |
 | `producto_no_encontrado` | 404 | El accesorio o repuesto no existe o ya no se vende |
 | `metodo_no_permitido` | 405 | La dirección no admite ese método |
 | `correo_ya_registrado` | 409 | Ya hay una cuenta con ese correo |
@@ -149,10 +151,14 @@ Toda respuesta de error, sin excepción, tiene esta estructura:
 | `venta_expirada` | 409 | Pasaron los 15 minutos sin pagar la compra; hay que comprar de nuevo |
 | `transicion_de_venta_invalida` | 409 | La compra no está en el estado que la acción necesita (p. ej., pagar una ya pagada) |
 | `venta_no_cancelable` | 409 | Solo se cancelan compras en `pendiente_pago` |
+| `pago_en_curso` | 409 | Ya hay un pago esperando respuesta del banco: no se puede pagar otra vez ni cancelar |
+| `devolucion_no_pendiente` | 409 | Ese pago no es una devolución pendiente |
 | `rango_de_tarifa_invalido` | 422 | `tarifa_min` es mayor que `tarifa_max` |
 | `fechas_invalidas` | 422 | Fecha de inicio en el pasado o fin antes del inicio |
 | `duracion_excedida` | 422 | El alquiler supera el máximo de días (hoy, 30) |
 | `metodo_de_pago_no_disponible` | 422 | El método de pago no existe o está deshabilitado |
+| `terminos_no_aceptados` | 422 | Con Wompi, falta `acepta_terminos: true` |
+| `datos_de_pago_incompletos` | 422 | Con Wompi, falta `tarjeta.token` o los datos de `pse` |
 | `error_interno` | 500 | Falla inesperada; no se hizo ningún cambio |
 | `pasarela_no_disponible` | 503 | La pasarela de pagos no responde; no se cobró nada |
 
@@ -247,12 +253,13 @@ operador.
 | `POST` | `/alquileres` | Cliente | Reservar un modelo (`modelo_id`, `fecha_inicio`, `fecha_fin`); el sistema asigna la unidad |
 | `GET` | `/alquileres/mios` | Cliente | Mis alquileres; filtro `estado` |
 | `GET` | `/alquileres/{alquiler_id}` | Cliente (solo los suyos), administrador, operador | Ver un alquiler |
-| `POST` | `/alquileres/{alquiler_id}/pago` | Cliente | Pagar la reserva (`{"metodo_pago": "tarjeta"}`) |
+| `POST` | `/alquileres/{alquiler_id}/pago` | Cliente | Pagar la reserva (ver **Pagos**) |
 | `POST` | `/alquileres/{alquiler_id}/cancelacion` | Cliente | Cancelar una reserva **sin pagar** (`motivo` opcional) |
 | `GET` | `/alquileres` | Administrador, operador | Todos los alquileres; filtros `estado`, `vehiculo_id`, `cliente_id` |
 | `POST` | `/alquileres/{alquiler_id}/entrega` | Administrador, operador | Entregar el vehículo: `confirmado` → `en_curso` |
 | `POST` | `/alquileres/{alquiler_id}/devolucion` | Administrador, operador | Recibir el vehículo: `en_curso` → `finalizado` |
 | `GET` | `/alquileres/en-riesgo` | Administrador, operador | Alquileres sin entregar cuya unidad está en mantenimiento |
+| `POST` | `/alquileres/{alquiler_id}/cancelacion-con-devolucion` | Administrador | Cancelar un alquiler pagado y sin entregar (`motivo`) y registrar la devolución |
 | `POST` | `/alquileres/{alquiler_id}/reasignacion` | Administrador | Mover el alquiler a otra unidad libre del mismo modelo (`vehiculo_id` opcional) |
 
 **Flujo del cliente.**
@@ -260,19 +267,17 @@ operador.
 1. Consulta `/catalogo/modelos/{modelo_id}/disponibilidad` con las fechas.
 2. `POST /alquileres`: la respuesta trae el `total` y `expira_en`. **La unidad se guarda
    15 minutos**; muestra una cuenta regresiva hasta `expira_en`.
-3. `POST /alquileres/{id}/pago`. Revisa `pago.estado`:
+3. `POST /alquileres/{id}/pago` (ver **Pagos**). Revisa `pago.estado`:
    - `aprobado`: el alquiler queda `confirmado`.
-   - `rechazado`: sigue `pendiente_pago`; puede reintentar antes de `expira_en`.
-   - `pendiente`: llegará con PSE en HU-05; consulta el alquiler hasta que cambie.
+   - `rechazado` o `error`: sigue `pendiente_pago`; puede reintentar antes de `expira_en`.
+   - `pendiente` (PSE): envía al cliente a `pago.url_redireccion` y consulta
+     `GET /pagos/{referencia}` hasta que cambie. Mientras tanto la reserva no vence.
 4. Si no paga a tiempo, el alquiler aparece como `expirado` y la unidad queda libre.
-
-**En desarrollo la pasarela es falsa**: aprueba todo al instante y no mueve dinero. Los
-métodos de pago válidos son los de los seeds: `tarjeta` y `pse`.
 
 **Estados del alquiler:** `pendiente_pago` → `confirmado` → `en_curso` → `finalizado`;
 `pendiente_pago` también puede terminar en `cancelado` o `expirado`. El cliente solo
-cancela mientras está `pendiente_pago`; un alquiler pagado se cancela con devolución, a
-través del administrador (llega con HU-05).
+cancela mientras está `pendiente_pago` y sin un pago en proceso; un alquiler pagado lo
+cancela el administrador con `/cancelacion-con-devolucion`.
 
 **Mostrador.** Se entrega entre `fecha_inicio` y `fecha_fin`. Si la unidad entró en
 mantenimiento, la entrega se rechaza: el administrador la **reasigna** a otra unidad del
@@ -289,7 +294,7 @@ Cada alquiler trae su `vehiculo` con `codigo`, `modelo` y `estado` físico actua
 | `POST` | `/ventas` | Cliente | Comprar: `vehiculos` (`modelo_id`, `cantidad`) y `productos` (`producto_id`, `cantidad`) |
 | `GET` | `/ventas/mias` | Cliente | Mis compras; filtro `estado` |
 | `GET` | `/ventas/{venta_id}` | Cliente (solo las suyas), administrador, operador | Ver una compra |
-| `POST` | `/ventas/{venta_id}/pago` | Cliente | Pagar la compra (`{"metodo_pago": "tarjeta"}`) |
+| `POST` | `/ventas/{venta_id}/pago` | Cliente | Pagar la compra (ver **Pagos**) |
 | `POST` | `/ventas/{venta_id}/cancelacion` | Cliente | Cancelar una compra **sin pagar** (`motivo` opcional) |
 | `GET` | `/ventas/{venta_id}/comprobante` | Cliente (solo las suyas), administrador, operador | Comprobante preliminar (JSON) |
 | `GET` | `/ventas` | Administrador, operador | Todas las ventas; filtros `estado`, `cliente_id` |
@@ -306,14 +311,62 @@ Cada alquiler trae su `vehiculo` con `codigo`, `modelo` y `estado` físico actua
    y `codigo`.
 3. `POST /ventas/{id}/pago`. Revisa `venta.estado`:
    - `pagada`: compra completa.
-   - `pendiente_pago` (con `pago.estado` = `rechazado`): puede reintentar antes de `expira_en`.
+   - `pendiente_pago` con `pago.estado` = `rechazado` o `error`: puede reintentar antes
+     de `expira_en`.
+   - `pendiente_pago` con `pago.estado` = `pendiente` (PSE): igual que en alquileres.
    - `cancelada` con `devolucion`: una unidad entró en mantenimiento antes del pago; la
      compra no se completa y se le devolverá el dinero. Muestra `motivo_cancelacion`.
-4. `GET /ventas/{id}/comprobante`: comprobante **preliminar** (no es factura). El PDF llega
-   con HU-05.
+4. `GET /ventas/{id}/comprobante`: comprobante **preliminar** en JSON (no es factura). El
+   comprobante de pago en PDF es `GET /pagos/{referencia}/comprobante`.
 
 Una unidad con alquileres pendientes, confirmados o en curso no se vende. Una unidad
 apartada para compra no se puede alquilar.
+
+### Pagos (HU-05)
+
+| Método | Ruta | Quién | Para qué |
+|---|---|---|---|
+| `GET` | `/pagos/configuracion` | Público | Proveedor, métodos habilitados y, con Wompi, la llave pública y los enlaces de términos |
+| `GET` | `/pagos/pse/bancos` | Público | Bancos de PSE (`codigo`, `nombre`); lista corta, sin paginar |
+| `GET` | `/pagos/{referencia}` | Cliente (los suyos), administrador, operador | Estado del pago; si está `pendiente`, el backend le pregunta a la pasarela |
+| `GET` | `/pagos/{referencia}/comprobante` | Cliente (los suyos), administrador, operador | Comprobante en **PDF** |
+| `GET` | `/pagos/devoluciones-pendientes` | Administrador | Dinero por devolver (alquileres y compras) |
+| `POST` | `/pagos/{referencia}/devolucion-ejecutada` | Administrador | Registrar que la devolución se hizo en Wompi (`nota`) |
+| `POST` | `/pagos/webhooks/wompi` | Wompi (no el frontend) | Eventos de la pasarela; verifica firma, descarta repetidos |
+
+**Cuerpo para pagar** (`POST /alquileres/{id}/pago` y `POST /ventas/{id}/pago`):
+
+```json
+{ "metodo_pago": "tarjeta", "acepta_terminos": true,
+  "tarjeta": { "token": "tok_test_...", "cuotas": 1 } }
+```
+
+```json
+{ "metodo_pago": "pse", "acepta_terminos": true,
+  "pse": { "tipo_persona": "natural", "tipo_documento": "CC",
+           "documento": "1098765432", "banco": "1" } }
+```
+
+- **Con la pasarela falsa** (desarrollo, `proveedor: "falso"`) basta
+  `{"metodo_pago": "tarjeta"}`: aprueba al instante y no mueve dinero.
+- **Con Wompi sandbox** (`proveedor: "wompi"`):
+  1. `GET /pagos/configuracion`: muestra `terminos_url` y `datos_personales_url` con una
+     casilla para aceptarlos; envía `acepta_terminos: true`.
+  2. **Tarjeta**: tokeniza en el navegador con `POST {url_api}/tokens/cards` y
+     `Authorization: Bearer {llave_publica}`. **El número de la tarjeta nunca se envía a
+     nuestro backend**: solo el `token`. Tarjeta de prueba que aprueba:
+     `4242 4242 4242 4242`; que rechaza: `4111 1111 1111 1111`.
+  3. **PSE**: el banco sale de `/pagos/pse/bancos` (en sandbox, `1` aprueba y `2`
+     rechaza). La respuesta trae `pago.url_redireccion`: envía al cliente ahí. Al volver,
+     consulta `GET /pagos/{referencia}` cada 3 a 5 segundos hasta que deje de estar
+     `pendiente`.
+- **La verdad del pago la da la pasarela**, no la página de retorno: nunca muestres "pago
+  exitoso" sin que `GET /pagos/{referencia}` diga `aprobado`.
+- Mientras un pago está `pendiente`, la reserva o la compra **no vence** (hasta 60
+  minutos). Si el banco lo rechaza, vuelve a su plazo de 15 minutos; si ya pasó, expira.
+- Si un pago se aprueba cuando la reserva o la compra ya había expirado, se registra una
+  **devolución** (`tipo: "compensacion"`) y el administrador la ve en
+  `/pagos/devoluciones-pendientes`.
 
 ### Sistema
 

@@ -18,6 +18,7 @@ from app.config import obtener_configuracion
 from app.db import obtener_sesion
 from app.modulos.alquileres.rutas import enrutador_alquileres
 from app.modulos.inventario.rutas import enrutador_catalogo, enrutador_vehiculos
+from app.modulos.pagos.rutas import enrutador_pagos
 from app.modulos.portal.rutas import enrutador_portal
 from app.modulos.usuarios.rutas import enrutador_autenticacion, enrutador_usuarios
 from app.modulos.ventas.rutas import enrutador_ventas
@@ -53,6 +54,7 @@ app.include_router(enrutador_vehiculos)
 app.include_router(enrutador_portal)
 app.include_router(enrutador_alquileres)
 app.include_router(enrutador_ventas)
+app.include_router(enrutador_pagos)
 
 
 class EstadoSalud(BaseModel):
