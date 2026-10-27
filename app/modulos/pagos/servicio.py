@@ -118,21 +118,46 @@ def registrar_resultado(pago: Pago, resultado: ResultadoCobro, momento: datetime
     return True
 
 
+def ya_devuelto(sesion: Session, cobro: Pago) -> int:
+    """Suma de las devoluciones ya registradas (pendientes o hechas) de un cobro."""
+    # SUM de Postgres devuelve numeric (Decimal en Python); el dinero va siempre en int.
+    suma = sesion.scalar(
+        select(func.coalesce(func.sum(Pago.monto), 0)).where(
+            Pago.pago_compensado_id == cobro.id, Pago.tipo == TipoPago.COMPENSACION
+        )
+    )
+    return int(suma or 0)
+
+
 def registrar_devolucion(
-    sesion: Session, cobro: Pago, motivo: str, usuario_id: int | None = None
-) -> Pago:
+    sesion: Session,
+    cobro: Pago,
+    motivo: str,
+    usuario_id: int | None = None,
+    *,
+    monto: int | None = None,
+) -> Pago | None:
     """Registra la devolución de un cobro aprobado con un pago de compensación (CLAUDE.md 7.3).
 
     El cobro aprobado no se toca: la compensación es otro registro que lo referencia. Queda
     ``pendiente`` hasta que el administrador la ejecute en Wompi y la marque. No hace commit.
+
+    Sin ``monto`` se devuelve lo que falte del cobro; con ``monto`` (p. ej., solo el envío,
+    HU-07) se devuelve eso. **Nunca se devuelve más de lo cobrado**: se descuentan las
+    devoluciones anteriores. Si no queda nada por devolver, no registra nada y devuelve
+    ``None``.
     """
+    por_devolver = cobro.monto - ya_devuelto(sesion, cobro)
+    monto = por_devolver if monto is None else min(monto, por_devolver)
+    if monto <= 0:
+        return None
     devolucion = Pago(
         referencia=f"DEV-{cobro.id}-{secrets.token_hex(4).upper()}",
         tipo=TipoPago.COMPENSACION,
         alquiler_id=cobro.alquiler_id,
         venta_id=cobro.venta_id,
         metodo_pago_id=cobro.metodo_pago_id,
-        monto=cobro.monto,
+        monto=monto,
         estado=EstadoPago.PENDIENTE,
         proveedor=cobro.proveedor,
         pago_compensado_id=cobro.id,
@@ -146,7 +171,7 @@ def registrar_devolucion(
         accion="compensar",
         entidad="pagos",
         entidad_id=cobro.id,
-        despues={"devolucion_id": devolucion.id, "monto": cobro.monto, "motivo": motivo},
+        despues={"devolucion_id": devolucion.id, "monto": monto, "motivo": motivo},
     )
     registro.warning(
         "Devolución pendiente: el administrador debe atenderla",

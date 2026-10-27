@@ -115,4 +115,6 @@ class CancelacionConDevolucion(BaseModel):
 
 class CancelacionConDevolucionRespuesta(BaseModel):
     alquiler: AlquilerRespuesta
-    devolucion: PagoResumen
+    devolucion: PagoResumen | None = Field(
+        description="null si ya se había devuelto todo (p. ej., el envío y luego el resto)."
+    )

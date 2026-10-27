@@ -437,7 +437,7 @@ def cancelar_alquiler(
 
 def cancelar_con_devolucion(
     sesion: Session, alquiler_id: int, administrador: Usuario, motivo: str
-) -> tuple[Alquiler, Pago]:
+) -> tuple[Alquiler, Pago | None]:
     """El administrador cancela un alquiler pagado y aún no entregado, y registra la
     devolución del dinero (decisiones 3 y 4 del Sprint 2: p. ej., la unidad está en
     mantenimiento y no hay otra libre para reasignar).
@@ -520,14 +520,30 @@ def obtener_alquiler(sesion: Session, alquiler_id: int, usuario: Usuario) -> Alq
 def entregar_vehiculo(
     sesion: Session, alquiler_id: int, usuario: Usuario, *, hoy: date | None = None
 ) -> Alquiler:
-    """El operador entrega la unidad al cliente: ``confirmado`` → ``en_curso``.
+    """El operador entrega la unidad al cliente en el local: ``confirmado`` → ``en_curso``.
 
-    La unidad pasa de ``disponible`` a ``alquilado``. Se entrega entre la fecha de inicio y
-    la de fin del alquiler, y solo si la unidad está físicamente disponible.
+    Si el alquiler tiene un domicilio vigente, la entrega la registra el domiciliario al
+    marcar el domicilio como entregado (HU-07), no el mostrador.
     """
     _exigir_rol(usuario, ROLES_DE_MOSTRADOR)
-    hoy = hoy or fechas.hoy()
     alquiler = _bloquear_alquiler(sesion, alquiler_id)
+    if domicilio_vigente(sesion, alquiler_id=alquiler.id) is not None:
+        raise VehiculoNoListoParaEntrega(
+            "Este alquiler se entrega a domicilio. La entrega se registra al marcar el "
+            "domicilio como entregado, o cancela primero el domicilio."
+        )
+    poner_en_curso(sesion, alquiler, usuario, hoy or fechas.hoy())
+    sesion.commit()
+    return alquiler
+
+
+def poner_en_curso(sesion: Session, alquiler: Alquiler, usuario: Usuario, hoy: date) -> None:
+    """Entrega la unidad al cliente: ``confirmado`` → ``en_curso`` y la unidad a ``alquilado``.
+
+    Lo usan la entrega en el local y la entrega a domicilio (HU-07), con las mismas reglas:
+    entre la fecha de inicio y la de fin, y con la unidad físicamente disponible. La unidad y
+    el alquiler deben estar bloqueados. No hace commit.
+    """
     validar_transicion(alquiler.estado, EstadoAlquiler.EN_CURSO)
     if not alquiler.fecha_inicio <= hoy <= alquiler.fecha_fin:
         raise FueraDeLasFechasDelAlquiler(
@@ -551,8 +567,6 @@ def entregar_vehiculo(
     motivo = f"Entrega del alquiler #{alquiler.id}"
     cambiar_estado_vehiculo(sesion, vehiculo, EstadoVehiculo.ALQUILADO, usuario, motivo)
     _cambiar_estado(sesion, alquiler, EstadoAlquiler.EN_CURSO, usuario)
-    sesion.commit()
-    return alquiler
 
 
 def recibir_vehiculo(sesion: Session, alquiler_id: int, usuario: Usuario) -> Alquiler:

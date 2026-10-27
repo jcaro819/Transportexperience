@@ -202,7 +202,8 @@ def cancelar_con_devolucion(
         sesion, alquiler_id, administrador, datos.motivo
     )
     return CancelacionConDevolucionRespuesta(
-        alquiler=_respuesta(alquiler), devolucion=PagoResumen.model_validate(devolucion)
+        alquiler=_respuesta(alquiler),
+        devolucion=PagoResumen.model_validate(devolucion) if devolucion else None,
     )
 
 
