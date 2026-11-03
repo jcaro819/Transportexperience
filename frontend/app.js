@@ -193,8 +193,8 @@ function injectClientUi() {
       <section class="page-hero compact tx-account-hero">
         <div>
           <span class="eyebrow">MI CUENTA</span>
-          <h1 id="txAccountGreeting">Tus alquileres en un solo lugar</h1>
-          <p>Consulta tus reservas, completa pagos pendientes y revisa fechas y vehículos asignados.</p>
+          <h1 id="txAccountGreeting">Tu cuenta</h1>
+          <p>Consulta tus reservas y, más adelante, administra aquí tus datos, preferencias y ajustes.</p>
           <div class="tx-account-actions">
             <button class="btn btn-primary" data-view-button="catalogo">+ Nuevo alquiler</button>
             <button class="btn btn-ghost" id="txRefreshRentals">Actualizar</button>
@@ -204,6 +204,7 @@ function injectClientUi() {
       </section>
 
       <section class="section tx-rentals-section">
+        <div class="section-heading"><div><span class="eyebrow">RESERVAS</span><h2>Tus alquileres</h2></div><p>Gestiona pagos pendientes y revisa el estado de tus reservas.</p></div>
         <div class="tx-account-summary">
           <article><span>Reservas</span><strong id="txRentalTotal">0</strong><small>Total de alquileres</small></article>
           <article><span>Pendientes</span><strong id="txRentalPending">0</strong><small>Esperando pago</small></article>
@@ -247,6 +248,8 @@ function injectClientUi() {
     .tx-api-badge{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:800;padding:6px 9px;border-radius:999px;background:#e8f7ef;color:#0d7a50;margin-left:8px}
     .tx-api-badge.off{background:#fff1d9;color:#996008}
     .tx-payment-note{font-size:11px;color:var(--muted);margin-top:8px}
+    .tx-account-button{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+    .tx-account-button span{font-size:16px;line-height:1}
     .tx-pending-shortcut{white-space:nowrap}
     .tx-pending-shortcut span{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;margin-left:3px;border-radius:999px;background:#fff;color:#8a5900;font-size:10px;font-weight:800}
     .tx-availability.checking{display:flex;align-items:center;gap:10px;color:var(--muted)}
@@ -370,23 +373,31 @@ function updateSessionUi() {
   if (!state.user) {
     headerLoginButton.textContent = "Iniciar sesión";
     headerLoginButton.dataset.viewButton = "login";
+    headerLoginButton.removeAttribute("aria-label");
+    headerLoginButton.classList.remove("tx-account-button");
     syncPendingShortcut(0);
     return;
   }
 
   if (state.user.rol === "cliente") {
-    headerLoginButton.textContent = "Mis alquileres";
+    headerLoginButton.innerHTML = '<span aria-hidden="true">👤</span> Tú';
+    headerLoginButton.setAttribute("aria-label", "Abrir tu cuenta");
+    headerLoginButton.classList.add("tx-account-button");
     headerLoginButton.dataset.viewButton = "cuenta";
   } else if (["administrador", "operador"].includes(state.user.rol)) {
     headerLoginButton.textContent = "Panel";
+    headerLoginButton.removeAttribute("aria-label");
+    headerLoginButton.classList.remove("tx-account-button");
     headerLoginButton.dataset.viewButton = "admin";
   } else {
-    headerLoginButton.textContent = "Mi sesión";
+    headerLoginButton.innerHTML = '<span aria-hidden="true">👤</span> Tú';
+    headerLoginButton.setAttribute("aria-label", "Abrir tu cuenta");
+    headerLoginButton.classList.add("tx-account-button");
     headerLoginButton.dataset.viewButton = "inicio";
   }
 
   const greeting = document.getElementById("txAccountGreeting");
-  if (greeting) greeting.textContent = `Hola, ${state.user.nombre_completo.split(" ")[0]}. Estos son tus alquileres.`;
+  if (greeting) greeting.textContent = `Hola, ${state.user.nombre_completo.split(" ")[0]}. Esta es tu cuenta.`;
 }
 
 // ---------------------------------------------------------
