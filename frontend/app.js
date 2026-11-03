@@ -179,6 +179,15 @@ function injectClientUi() {
   const main = document.querySelector("main");
   if (!main || document.getElementById("view-cuenta")) return;
 
+  const headerActions = document.querySelector(".header-actions");
+  if (headerActions && !document.getElementById("txPendingShortcut")) {
+    headerActions.insertAdjacentHTML("afterbegin", `
+      <button class="btn btn-soft tx-pending-shortcut" id="txPendingShortcut" type="button" hidden>
+        💳 Pendientes <span id="txPendingShortcutCount">0</span>
+      </button>
+    `);
+  }
+
   main.insertAdjacentHTML("beforeend", `
     <section class="view tx-account-view" id="view-cuenta" data-view="cuenta">
       <section class="page-hero compact tx-account-hero">
@@ -238,6 +247,12 @@ function injectClientUi() {
     .tx-api-badge{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:800;padding:6px 9px;border-radius:999px;background:#e8f7ef;color:#0d7a50;margin-left:8px}
     .tx-api-badge.off{background:#fff1d9;color:#996008}
     .tx-payment-note{font-size:11px;color:var(--muted);margin-top:8px}
+    .tx-pending-shortcut{white-space:nowrap}
+    .tx-pending-shortcut span{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;margin-left:3px;border-radius:999px;background:#fff;color:#8a5900;font-size:10px;font-weight:800}
+    .tx-availability.checking{display:flex;align-items:center;gap:10px;color:var(--muted)}
+    .tx-spinner{width:18px;height:18px;border:2px solid rgba(18,86,61,.18);border-top-color:#12563d;border-radius:50%;animation:tx-spin .72s linear infinite;flex:0 0 auto}
+    .tx-rental-card.tx-pending-focus{outline:2px solid rgba(217,151,36,.5);box-shadow:0 0 0 5px rgba(217,151,36,.10)}
+    @keyframes tx-spin{to{transform:rotate(360deg)}}
     button:disabled{opacity:.55;cursor:not-allowed;transform:none!important}
     @media(max-width:760px){
       .tx-account-summary{grid-template-columns:1fr}
@@ -253,6 +268,12 @@ function injectClientUi() {
     clearSession();
     showView("inicio");
     showToast("Sesión cerrada.");
+  });
+
+  document.getElementById("txPendingShortcut")?.addEventListener("click", async () => {
+    showView("cuenta");
+    await loadMyRentals();
+    focusFirstPendingRental();
   });
 }
 
@@ -312,12 +333,44 @@ menuToggle?.addEventListener("click", () => {
   menuToggle.setAttribute("aria-expanded", String(open));
 });
 
+function syncPendingShortcut(count = 0) {
+  const shortcut = document.getElementById("txPendingShortcut");
+  const badge = document.getElementById("txPendingShortcutCount");
+  if (!shortcut || !badge) return;
+
+  badge.textContent = String(count);
+  shortcut.hidden = !(state.user?.rol === "cliente" && count > 0);
+}
+
+async function refreshPendingShortcut() {
+  if (!state.token || state.user?.rol !== "cliente") {
+    syncPendingShortcut(0);
+    return;
+  }
+
+  try {
+    const data = await api("/alquileres/mios?estado=pendiente_pago&tamano=100", { auth: true });
+    syncPendingShortcut(data.total ?? data.elementos?.length ?? 0);
+  } catch (error) {
+    console.warn("No se pudo actualizar el contador de pendientes.", error);
+  }
+}
+
+function focusFirstPendingRental() {
+  const first = document.querySelector('[data-rental-status="pendiente_pago"]');
+  if (!first) return;
+  first.classList.add("tx-pending-focus");
+  first.scrollIntoView({ behavior: "smooth", block: "center" });
+  setTimeout(() => first.classList.remove("tx-pending-focus"), 1800);
+}
+
 function updateSessionUi() {
   if (!headerLoginButton) return;
 
   if (!state.user) {
     headerLoginButton.textContent = "Iniciar sesión";
     headerLoginButton.dataset.viewButton = "login";
+    syncPendingShortcut(0);
     return;
   }
 
@@ -544,11 +597,11 @@ function reservationBlock(model, detail) {
           <input type="date" id="txEndDate" min="${today}" value="${tomorrow}">
         </label>
       </div>
-      <div id="txAvailability" class="tx-availability">
-        Elige las fechas y consulta la disponibilidad real.
+      <div id="txAvailability" class="tx-availability checking">
+        <span class="tx-spinner" aria-hidden="true"></span>
+        <span>Verificando disponibilidad para estas fechas...</span>
       </div>
-      <button class="btn btn-soft" id="txCheckAvailability">Consultar disponibilidad</button>
-      <button class="btn btn-primary" id="txCreateRental" disabled>Reservar vehículo</button>
+      <button class="btn btn-primary" id="txCreateRental" disabled>Verificando disponibilidad...</button>
     </div>
   `;
 }
@@ -602,63 +655,101 @@ function setupReservationForm(model) {
   const start = document.getElementById("txStartDate");
   const end = document.getElementById("txEndDate");
   const availabilityBox = document.getElementById("txAvailability");
-  const checkButton = document.getElementById("txCheckAvailability");
   const createButton = document.getElementById("txCreateRental");
 
-  function resetAvailability() {
-    createButton.disabled = true;
-    createButton.dataset.ready = "false";
-    availabilityBox.className = "tx-availability";
-    availabilityBox.textContent = "Consulta otra vez después de cambiar las fechas.";
+  // Delay mínimo intencional para que en la demo se perciba la validación.
+  const DEMO_AVAILABILITY_DELAY_MS = 900;
+  const INPUT_DEBOUNCE_MS = 350;
+
+  let availabilityTimer;
+  let requestVersion = 0;
+
+  function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  start.addEventListener("change", () => {
-    end.min = start.value;
-    if (end.value < start.value) end.value = start.value;
-    resetAvailability();
-  });
-  end.addEventListener("change", resetAvailability);
+  function showCheckingState() {
+    createButton.disabled = true;
+    createButton.dataset.ready = "false";
+    createButton.textContent = "Verificando disponibilidad...";
+    availabilityBox.className = "tx-availability checking";
+    availabilityBox.innerHTML = `
+      <span class="tx-spinner" aria-hidden="true"></span>
+      <span>Verificando disponibilidad para estas fechas...</span>
+    `;
+  }
 
-  checkButton.addEventListener("click", async () => {
+  async function checkAvailability() {
     if (!start.value || !end.value) {
-      showToast("Selecciona ambas fechas.");
+      createButton.disabled = true;
+      availabilityBox.className = "tx-availability no";
+      availabilityBox.textContent = "Selecciona ambas fechas.";
       return;
     }
 
-    checkButton.disabled = true;
-    checkButton.textContent = "Consultando...";
+    const currentVersion = ++requestVersion;
+    showCheckingState();
 
     try {
       const params = new URLSearchParams({
         fecha_inicio: start.value,
         fecha_fin: end.value,
       });
-      const data = await api(`/catalogo/modelos/${model.id}/disponibilidad?${params}`);
+
+      // La consulta real y el delay artificial ocurren en paralelo:
+      // nunca ralentiza más de 900 ms si el backend ya tarda más que eso.
+      const [data] = await Promise.all([
+        api(`/catalogo/modelos/${model.id}/disponibilidad?${params}`),
+        sleep(DEMO_AVAILABILITY_DELAY_MS),
+      ]);
+
+      // Si el usuario cambió fechas mientras esperaba, ignoramos la respuesta vieja.
+      if (currentVersion !== requestVersion) return;
 
       if (data.disponible) {
         const subtotal = model.price * data.dias;
         availabilityBox.className = "tx-availability ok";
         availabilityBox.innerHTML = `
           <strong>${data.unidades_libres} unidad${data.unidades_libres === 1 ? "" : "es"} libre${data.unidades_libres === 1 ? "" : "s"}.</strong>
-          ${data.dias} día${data.dias === 1 ? "" : "s"} × ${formatCOP(model.price)} = <strong>${formatCOP(subtotal)}</strong>.
+          ${data.dias} día${data.dias === 1 ? "" : "s"} × ${formatCOP(model.price)}
+          = <strong>${formatCOP(subtotal)}</strong>.
         `;
         createButton.disabled = false;
         createButton.dataset.ready = "true";
+        createButton.textContent = `Reservar por ${formatCOP(subtotal)}`;
       } else {
         availabilityBox.className = "tx-availability no";
         availabilityBox.textContent = "No hay unidades libres durante todo ese rango.";
         createButton.disabled = true;
+        createButton.textContent = "Sin disponibilidad";
       }
     } catch (error) {
+      if (currentVersion !== requestVersion) return;
       availabilityBox.className = "tx-availability no";
       availabilityBox.textContent = error.message;
-    } finally {
-      checkButton.disabled = false;
-      checkButton.textContent = "Consultar disponibilidad";
+      createButton.disabled = true;
+      createButton.textContent = "No se pudo verificar";
     }
+  }
+
+  function scheduleAvailabilityCheck() {
+    requestVersion += 1;
+    clearTimeout(availabilityTimer);
+    showCheckingState();
+    availabilityTimer = setTimeout(checkAvailability, INPUT_DEBOUNCE_MS);
+  }
+
+  start.addEventListener("change", () => {
+    end.min = start.value;
+    if (end.value < start.value) end.value = start.value;
+    scheduleAvailabilityCheck();
   });
 
+  end.addEventListener("change", scheduleAvailabilityCheck);
+
   createButton.addEventListener("click", async () => {
+    if (createButton.dataset.ready !== "true") return;
+
     if (!state.user) {
       dialog.close();
       showView("login");
@@ -690,14 +781,18 @@ function setupReservationForm(model) {
       showToast(`Reserva #${rental.id} creada. Tienes 15 minutos para pagar.`);
       showView("cuenta");
       await loadMyRentals();
+      await refreshPendingShortcut();
+      focusFirstPendingRental();
       await refreshCatalog();
     } catch (error) {
       if (error.status === 401) handleExpiredSession();
       else showToast(error.message);
-      createButton.disabled = false;
-      createButton.textContent = "Reservar vehículo";
+      scheduleAvailabilityCheck();
     }
   });
+
+  // Primera validación automática al abrir la ficha.
+  scheduleAvailabilityCheck();
 }
 
 document.getElementById("closeDialog")?.addEventListener("click", () => dialog.close());
@@ -757,6 +852,7 @@ loginForm?.addEventListener("submit", async e => {
     updateSessionUi();
 
     if (data.usuario.rol === "cliente") {
+      await refreshPendingShortcut();
       showView("cuenta");
       showToast("Sesión iniciada. Ya puedes reservar y pagar alquileres.");
     } else if (["administrador", "operador"].includes(data.usuario.rol)) {
@@ -784,7 +880,7 @@ function rentalCard(rental) {
   const icon = iconForType(rental.vehiculo?.modelo?.nombre || "");
 
   return `
-    <article class="tx-rental-card">
+    <article class="tx-rental-card" data-rental-status="${escapeHtml(rental.estado)}">
       <div class="tx-rental-main">
         <div class="tx-rental-icon">${icon}</div>
         <div>
@@ -814,9 +910,11 @@ function renderRentals() {
   const pending = document.getElementById("txRentalPending");
   const active = document.getElementById("txRentalActive");
 
+  const pendingCount = state.rentals.filter(r => r.estado === "pendiente_pago").length;
   total.textContent = state.rentals.length;
-  pending.textContent = state.rentals.filter(r => r.estado === "pendiente_pago").length;
+  pending.textContent = pendingCount;
   active.textContent = state.rentals.filter(r => ["confirmado", "en_curso"].includes(r.estado)).length;
+  syncPendingShortcut(pendingCount);
 
   if (!state.rentals.length) {
     list.innerHTML = `
@@ -854,7 +952,12 @@ async function loadMyRentals() {
 
   try {
     const data = await api("/alquileres/mios?tamano=100", { auth: true });
-    state.rentals = data.elementos || [];
+    state.rentals = [...(data.elementos || [])].sort((a, b) => {
+      const aPending = a.estado === "pendiente_pago" ? 0 : 1;
+      const bPending = b.estado === "pendiente_pago" ? 0 : 1;
+      if (aPending !== bPending) return aPending - bPending;
+      return new Date(b.creado_en) - new Date(a.creado_en);
+    });
     renderRentals();
   } catch (error) {
     if (error.status === 401) handleExpiredSession();
@@ -897,6 +1000,7 @@ async function payRental(id) {
       : `Pago registrado con estado: ${status}.`);
 
     await loadMyRentals();
+    await refreshPendingShortcut();
     await refreshCatalog();
   } catch (error) {
     if (error.status === 401) handleExpiredSession();
@@ -921,6 +1025,7 @@ async function cancelRental(id) {
 
     showToast(`Reserva #${id} cancelada.`);
     await loadMyRentals();
+    await refreshPendingShortcut();
     await refreshCatalog();
   } catch (error) {
     if (error.status === 401) handleExpiredSession();
@@ -1103,6 +1208,7 @@ async function restoreSession() {
   try {
     state.user = await api("/usuarios/yo", { auth: true });
     updateSessionUi();
+    if (state.user.rol === "cliente") await refreshPendingShortcut();
   } catch {
     clearSession();
   }
