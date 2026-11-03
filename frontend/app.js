@@ -371,10 +371,10 @@ function updateSessionUi() {
   if (!headerLoginButton) return;
 
   if (!state.user) {
-    headerLoginButton.textContent = "Iniciar sesión";
+    headerLoginButton.innerHTML = '<span aria-hidden="true">👤</span> Tú';
+    headerLoginButton.setAttribute("aria-label", "Iniciar sesión o abrir tu cuenta");
+    headerLoginButton.classList.add("tx-account-button");
     headerLoginButton.dataset.viewButton = "login";
-    headerLoginButton.removeAttribute("aria-label");
-    headerLoginButton.classList.remove("tx-account-button");
     syncPendingShortcut(0);
     return;
   }
