@@ -60,6 +60,54 @@ en bases de desarrollo: el script se niega a correr si `ENTORNO` no es `desarrol
 | Cliente | `cliente@transportexperience.test` |
 | Domiciliario | `domiciliario@transportexperience.test` |
 
+## Respaldo y restauración (SRS 3.3.2)
+
+El script `scripts/respaldo_bd.py` usa `pg_dump` y `pg_restore` **dentro del contenedor**
+de Postgres: no hay que instalar nada más. Necesita `docker compose up -d`.
+
+### Respaldar
+
+```bash
+python -m scripts.respaldo_bd respaldar                  # crea backups/<base>-<fecha>.dump
+python -m scripts.respaldo_bd respaldar --conservar 10   # y deja solo los 10 más recientes
+```
+
+- Respalda la base de `DATABASE_URL` (la del `.env`) en el formato propio de Postgres
+  (`-Fc`): comprimido y restaurable completo o por partes.
+- Queda en `backups/`, que **no se sube a git**: los respaldos tienen datos personales.
+- El archivo se escribe primero como `.parcial` y se renombra al terminar: nunca queda un
+  respaldo a medias con apariencia de completo.
+- Para respaldar a diario en Windows: Programador de tareas → "Crear tarea básica" →
+  acción "Iniciar un programa": `.venv\Scripts\python.exe` con argumentos
+  `-m scripts.respaldo_bd respaldar --conservar 14`, y como carpeta de inicio la del
+  proyecto.
+
+### Restaurar
+
+**Primero, probar el respaldo sin tocar nada**, restaurándolo en otra base:
+
+```bash
+python -m scripts.respaldo_bd restaurar backups/transportexperience-2026-11-02_070509.dump --base transportexperience_prueba
+```
+
+Si la base no existe, se crea. Revísala en Adminer (http://localhost:8080) y bórrala al
+terminar (`DROP DATABASE transportexperience_prueba;`).
+
+**Para recuperar la base de trabajo** (reemplaza **todos** sus datos por los del respaldo):
+
+1. Detén la API (Ctrl+C en la terminal de `uvicorn`), para que nadie escriba mientras tanto.
+2. Restaura sobre la base del `.env`; sin `--confirmar`, el script se niega:
+
+   ```bash
+   python -m scripts.respaldo_bd restaurar backups/ARCHIVO.dump --confirmar
+   ```
+
+3. Corre `alembic upgrade head`: si el respaldo es de una versión anterior del código, lo
+   pone al día.
+4. Arranca la API de nuevo.
+
+La restauración se detiene ante el primer error (`--exit-on-error`) y lo muestra.
+
 ## Comandos habituales
 
 ```bash
@@ -69,6 +117,7 @@ ruff format .          # formatear el código
 alembic revision --autogenerate -m "descripcion"   # nueva migración
 alembic upgrade head   # aplicar migraciones pendientes
 python -m scripts.generar_diagrama_er   # regenerar docs/uml/modelo-datos.md
+python -m scripts.respaldo_bd respaldar   # respaldo de la base (ver arriba)
 docker compose down    # apagar la base (conserva los datos)
 ```
 

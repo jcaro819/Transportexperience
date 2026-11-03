@@ -12,6 +12,7 @@ Qué significa "disponible" (CLAUDE.md 7.2):
 Los modelos o tipos inactivos no aparecen en el catálogo.
 """
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date, datetime
 
@@ -22,13 +23,16 @@ from app.auditoria import registrar_auditoria
 from app.comun import fechas
 from app.comun.errores import PermisoDenegado
 from app.comun.paginacion import ParametrosPagina, ResultadoPagina, paginar
-from app.modulos.alquileres.modelos import Alquiler
-from app.modulos.alquileres.servicio import (
+from app.modulos.alquileres.consultas import (
     consulta_alquiler_en_curso,
     consulta_alquileres_vigentes,
     consulta_vehiculos_ocupados,
 )
-from app.modulos.domicilios.servicio import consulta_domicilios_sin_finalizar
+from app.modulos.alquileres.modelos import Alquiler
+from app.modulos.domicilios.consultas import (
+    consulta_domicilios_sin_finalizar,
+    consulta_vehiculo_en_ruta_de,
+)
 from app.modulos.inventario.esquemas import CierreNovedad, FiltrosCatalogo, Modalidad, NovedadCrear
 from app.modulos.inventario.estados import es_transicion_valida, validar_transicion
 from app.modulos.inventario.excepciones import (
@@ -44,15 +48,18 @@ from app.modulos.inventario.excepciones import (
     VehiculoVendido,
 )
 from app.modulos.inventario.modelos import (
+    CategoriaProducto,
     EstadoNovedad,
     EstadoVehiculo,
     ModeloVehiculo,
     NovedadVehiculo,
+    Producto,
     TipoNovedad,
     TipoVehiculo,
     Vehiculo,
 )
 from app.modulos.usuarios.modelos import Rol, Usuario
+from app.modulos.ventas.consultas import consulta_compra_pendiente_de_vehiculo
 
 # Estados temporales: la unidad vuelve a estar libre cuando termina lo que la ocupa.
 _RESERVABLES_A_FUTURO = (
@@ -87,7 +94,7 @@ class ResultadoDisponibilidad:
         return self.unidades_libres > 0
 
 
-def _unidades_libres(inicio: date, fin: date, hoy: date, momento: datetime) -> Select:
+def consulta_unidades_libres(inicio: date, fin: date, hoy: date, momento: datetime) -> Select:
     """Consulta (id, modelo_id) de las unidades libres durante todo [inicio, fin]."""
     estados = (EstadoVehiculo.DISPONIBLE,) if inicio <= hoy else _RESERVABLES_A_FUTURO
     return select(Vehiculo.id, Vehiculo.modelo_id).where(
@@ -130,7 +137,7 @@ def listar_modelos(
     hoy = hoy or fechas.hoy()
     momento = momento or fechas.ahora()
 
-    libres = _unidades_libres(hoy, hoy, hoy, momento).subquery()
+    libres = consulta_unidades_libres(hoy, hoy, hoy, momento).subquery()
     conteo = (
         select(libres.c.modelo_id, func.count().label("cantidad"))
         .group_by(libres.c.modelo_id)
@@ -162,7 +169,7 @@ def listar_modelos(
     return ResultadoPagina(elementos, pagina.total, pagina.pagina, pagina.tamano)
 
 
-def _modelo_visible(sesion: Session, modelo_id: int) -> ModeloVehiculo:
+def obtener_modelo_visible(sesion: Session, modelo_id: int) -> ModeloVehiculo:
     modelo = sesion.scalars(_modelos_visibles().where(ModeloVehiculo.id == modelo_id)).first()
     if modelo is None:
         raise ModeloNoEncontrado()
@@ -179,8 +186,8 @@ def obtener_modelo(
     """Ficha de un modelo con sus unidades libres hoy (código, ubicación, batería)."""
     hoy = hoy or fechas.hoy()
     momento = momento or fechas.ahora()
-    modelo = _modelo_visible(sesion, modelo_id)
-    libres = _unidades_libres(hoy, hoy, hoy, momento).with_only_columns(Vehiculo.id)
+    modelo = obtener_modelo_visible(sesion, modelo_id)
+    libres = consulta_unidades_libres(hoy, hoy, hoy, momento).with_only_columns(Vehiculo.id)
     unidades = sesion.scalars(
         select(Vehiculo)
         .where(Vehiculo.modelo_id == modelo.id, Vehiculo.id.in_(libres))
@@ -205,11 +212,11 @@ def consultar_disponibilidad(
         raise FechasInvalidas("La fecha de inicio ya pasó.")
     if fecha_fin < fecha_inicio:
         raise FechasInvalidas("La fecha de fin es anterior a la de inicio.")
-    modelo = _modelo_visible(sesion, modelo_id)
+    modelo = obtener_modelo_visible(sesion, modelo_id)
     if modelo.tarifa_diaria is None:
         raise ModeloNoSeAlquila()
 
-    libres = _unidades_libres(fecha_inicio, fecha_fin, hoy, momento).subquery()
+    libres = consulta_unidades_libres(fecha_inicio, fecha_fin, hoy, momento).subquery()
     cantidad = sesion.scalar(
         select(func.count()).select_from(libres).where(libres.c.modelo_id == modelo.id)
     )
@@ -220,6 +227,21 @@ def consultar_disponibilidad(
         dias=(fecha_fin - fecha_inicio).days + 1,
         unidades_libres=cantidad or 0,
     )
+
+
+def listar_productos(
+    sesion: Session,
+    parametros: ParametrosPagina,
+    categoria: CategoriaProducto | None = None,
+    solo_disponibles: bool = False,
+) -> ResultadoPagina:
+    """Accesorios y repuestos activos, para comprar (HU-04). Ordenados por nombre."""
+    consulta = select(Producto).where(Producto.activo).order_by(Producto.nombre, Producto.id)
+    if categoria is not None:
+        consulta = consulta.where(Producto.categoria == categoria)
+    if solo_disponibles:
+        consulta = consulta.where(Producto.stock > 0)
+    return paginar(sesion, consulta, parametros)
 
 
 # --- Gestión de la flota (HU-09, SRS 3.1.8) -----------------------------------------------
@@ -258,6 +280,33 @@ def bloquear_vehiculo(sesion: Session, vehiculo_id: int) -> Vehiculo:
     if vehiculo is None:
         raise VehiculoNoEncontrado()
     return vehiculo
+
+
+def bloquear_inventario(
+    sesion: Session, vehiculo_ids: Iterable[int], producto_ids: Iterable[int] = ()
+) -> tuple[dict[int, Vehiculo], dict[int, Producto]]:
+    """``FOR UPDATE`` sobre varias unidades y productos, en el orden global del sistema.
+
+    El orden es siempre el mismo: primero los vehículos por ``id``, luego los productos por
+    ``id``, y solo después las filas de la operación (alquiler, venta). Dos transacciones
+    que bloquean en el mismo orden nunca quedan esperándose la una a la otra (*deadlock*).
+    Por eso una operación debe pedir aquí, de una vez, todo lo que va a tocar.
+    """
+    vehiculos = sesion.scalars(
+        select(Vehiculo)
+        .where(Vehiculo.id.in_(sorted(set(vehiculo_ids))))
+        .order_by(Vehiculo.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    ).all()
+    productos = sesion.scalars(
+        select(Producto)
+        .where(Producto.id.in_(sorted(set(producto_ids))))
+        .order_by(Producto.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    ).all()
+    return {v.id: v for v in vehiculos}, {p.id: p for p in productos}
 
 
 def cambiar_estado_vehiculo(
@@ -334,12 +383,20 @@ def reportar_novedad(
 ) -> ResultadoOperacion:
     """Registra una novedad. Si es crítica, la unidad pasa a mantenimiento automáticamente.
 
-    Pueden reportar el administrador, el operador y el domiciliario. Los alquileres
+    Pueden reportar el administrador, el operador y el domiciliario (este, solo sobre el
+    vehículo de un domicilio que tenga asignado: no ve la flota). Los alquileres
     vigentes de la unidad NO se cancelan: se devuelven en ``alquileres_afectados`` para que
     el personal decida qué hacer con cada uno.
     """
     _exigir_rol(usuario, ROLES_QUE_REPORTAN)
     vehiculo = bloquear_vehiculo(sesion, vehiculo_id)
+    if usuario.rol == Rol.DOMICILIARIO:
+        # El domiciliario no ve la flota: solo reporta sobre el vehículo que lleva.
+        en_ruta = consulta_vehiculo_en_ruta_de(usuario.id, vehiculo.id)
+        if sesion.scalars(en_ruta).first() is None:
+            raise PermisoDenegado(
+                "Solo puedes reportar novedades del vehículo de un domicilio que tengas asignado."
+            )
     if vehiculo.estado == EstadoVehiculo.VENDIDO:
         raise VehiculoVendido()
 
@@ -413,6 +470,13 @@ def _verificar_que_puede_volver(
         )
     if sesion.scalars(consulta_domicilios_sin_finalizar(vehiculo.id)).first() is not None:
         raise NoPuedeVolverAServicio("La unidad participa en un domicilio sin finalizar.")
+    compra = consulta_compra_pendiente_de_vehiculo(vehiculo.id, fechas.ahora())
+    if sesion.scalars(compra).first() is not None:
+        # Si volviera a "disponible", otro cliente podría tomarla mientras se paga la compra.
+        raise NoPuedeVolverAServicio(
+            "La unidad está apartada por una compra pendiente de pago. Espera a que se pague "
+            "o expire (máximo 15 minutos)."
+        )
 
 
 def cerrar_novedad(

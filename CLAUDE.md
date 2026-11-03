@@ -103,10 +103,10 @@ correspondiente, y si el equipo corrige el SRS, actualiza este archivo.
    y la documentación.
 5. **La numeración de secciones del SRS no coincide con su tabla de contenido.** No afecta
    el código, pero conviene arreglarlo antes de entregar.
-6. **HU-11 pide "firma digital de conformidad"** en el plan. Propuesta: registro de
-   conformidad con usuario, fecha y hash del PDF. La tabla `actas` ya existe con esos
-   campos (`conforme_por_id`, `conforme_en`, `hash_pdf`), pero **sigue pendiente de
-   confirmar con el equipo**.
+6. **HU-11 pide "firma digital de conformidad"** en el plan. **Se decidió** (Sprint 4)
+   implementarla como registro de conformidad con usuario, fecha y hash del PDF, en la
+   tabla `actas` (`conforme_por_id`, `conforme_en`, `hash_pdf`). **Pendiente de
+   confirmación del equipo.** Ver "Cómo quedó HU-11".
 7. **Estados del domicilio:** HU-07 lista tres y el SRS 3.1.7 seis. Se usan los seis del
    SRS, que cubren los de HU-07.
 8. **Autenticación:** el SRS 3.9.4 dice OAuth y el backlog JWT. Se usa el flujo OAuth2
@@ -130,8 +130,8 @@ correspondiente, y si el equipo corrige el SRS, actualiza este archivo.
 5. **Zonas de cobertura como polígonos guardados en la base.** El cliente marca el punto en
    el mapa, el frontend envía latitud y longitud, y el backend valida que esté dentro.
    Sin Google Maps.
-6. **Rastreo GPS por consulta cada 5 segundos** (HU-08), no WebSocket. *Pendiente de
-   confirmar con Julián (frontend).*
+6. **Rastreo GPS por consulta cada 5 segundos** (HU-08), no WebSocket. *Confirmado en
+   las decisiones del Sprint 3.*
 
 ### Decisiones tomadas en la revisión del modelo de datos (29/09/2026)
 
@@ -172,36 +172,308 @@ correspondiente, y si el equipo corrige el SRS, actualiza este archivo.
 3. **Los alquileres vigentes de una unidad que sale de servicio no se cancelan solos.** La
    respuesta los informa en `alquileres_afectados`.
 
-### Decisiones pendientes para HU-03
+### Decisiones del Sprint 2 (27/10/2026)
 
-1. **Máximo de días por alquiler.** Hay que definir cuántos días puede durar como máximo un
-   alquiler. Va **configurable en base de datos** por el administrador, no como constante en
-   el código (SRS 3.5.3).
-2. **Vehículo que pasa a mantenimiento durante un alquiler en curso.** La devolución debe
-   finalizar el alquiler **sin intentar pasar el vehículo a `disponible`**: se queda en
-   `mantenimiento` hasta que el taller cierre su novedad.
-3. **Alquileres afectados por una unidad que sale de servicio (propuesta, sin implementar):**
-   - Reasignación **asistida por el administrador**: un endpoint para mover el alquiler a
-     otra unidad libre del mismo modelo en esas fechas, con el mismo precio, bloqueando las
-     dos unidades en la misma transacción.
-   - Si no hay unidad libre, el administrador decide entre esperar a que la unidad vuelva o
-     cancelar con devolución (pago de compensación, sección 7.3).
-   - Consulta de **"alquileres en riesgo"**: alquileres futuros de unidades en
-     mantenimiento, para que nadie los olvide.
-   - La reasignación automática queda para después.
+1. **Máximo de días por alquiler: 30**, configurable en base de datos (tabla
+   `parametros_sistema`, clave `max_dias_alquiler`; SRS 3.5.3). Se lee en cada reserva.
+2. **Vehículo reservado para compra que pasa a mantenimiento y luego se aprueba el pago:**
+   la venta **no se completa**, se registra un pago de compensación (devolución) y se avisa
+   al administrador. *Implementado en HU-04* (ver "Cómo quedó HU-04"); la ejecución de la
+   devolución en la pasarela llega con HU-05.
+3. **Alquileres afectados por mantenimiento:** reasignación **asistida por el
+   administrador** (`POST /alquileres/{id}/reasignacion`: otra unidad libre del mismo
+   modelo, mismas fechas y precio, las dos unidades bloqueadas en la misma transacción) y
+   la consulta de **alquileres en riesgo** (`GET /alquileres/en-riesgo`). **Sin
+   reasignación automática.** Si no hay unidad libre, el administrador decide entre esperar
+   o cancelar con devolución (llega con HU-05).
+4. **El cliente solo cancela un alquiler mientras está en `pendiente_pago`.** Uno pagado se
+   cancela con devolución, por el administrador (HU-05).
+5. **Devolución de un vehículo que entró en mantenimiento durante el alquiler:** el alquiler
+   se finaliza y el vehículo **se queda en `mantenimiento`** hasta que el taller cierre su
+   novedad. *Implementado en HU-03.*
 
-### Decisiones pendientes para HU-04 y HU-05
+### Cómo quedó HU-03 (27/10/2026)
 
-1. **Vehículo reservado para compra que pasa a mantenimiento y luego se aprueba el pago.**
-   Opciones: devolver el dinero con un pago de compensación, o impedir la inactivación
-   mientras haya una compra pendiente. **Se decide al llegar a HU-04.**
+- **El cliente reserva un modelo, no una unidad**: el sistema asigna la primera unidad
+  libre en esas fechas (el catálogo muestra modelos, no unidades).
+- **Crear una reserva bloquea todas las unidades del modelo**, siempre en orden de `id`:
+  serializa las reservas de un mismo modelo y evita *deadlocks*. La reasignación usa el
+  mismo orden.
+- **Pago con la pasarela falsa** (`app/modulos/pagos/pasarela.py`): interfaz
+  `PasarelaPagos` + `PasarelaFalsa`. `POST /alquileres/{id}/pago` cobra y, si se aprueba,
+  confirma. HU-05 agrega Wompi y el webhook, que llamará a `alquileres.servicio.confirmar_pago`.
+- **Pendientes vencidos:** se expiran al reservar (los de las unidades del modelo) y al
+  intentar pagar o cancelar. Las consultas muestran `expirado` sin escribir en la base.
+- **Hecho en HU-04:** el barrido previo a reservar también expira las compras vencidas que
+  apartan unidades del modelo (devolviendo su stock).
+- **Sin endpoint** para que el administrador edite `parametros_sistema`; por ahora se
+  cambia en la base (adminer). *Pendiente de decidir con el equipo si se agrega.*
 
-### Casos pendientes para HU-06
+### Cómo quedó HU-04 (27/10/2026)
 
-1. **El vehículo del domiciliario sale de su domicilio asignado.** El domiciliario no puede
-   listar la flota (`GET /vehiculos` es solo del taller), así que el vehículo que usa y sobre
-   el que puede reportar novedades lo debe obtener de su domicilio asignado
-   (`domicilios.vehiculo_transporte_id`).
+- **Carrito**: `POST /ventas` con `vehiculos` (por modelo; el sistema asigna las unidades,
+  como en HU-03) y `productos` (por cantidad). Una sola venta, un solo pago.
+- **Listado de accesorios y repuestos** en el catálogo público: `GET /catalogo/productos`.
+- **Orden global de bloqueo** (`inventario.servicio.bloquear_inventario`): vehículos por
+  `id`, luego productos por `id`, luego la operación. Alquileres y ventas lo comparten.
+- **Expirar antes de operar**: `ventas/liberacion.py` expira las compras vencidas que
+  apartan lo pedido (devuelve stock y suelta unidades) en la misma transacción, también al
+  reservar un alquiler.
+- **No se vende** una unidad con alquileres `pendiente_pago`, `confirmado` o `en_curso`
+  (sin importar la fecha). Una unidad apartada para compra no vuelve a servicio mientras
+  la compra esté vigente.
+- **Decisión 2**: si al aprobarse el pago una unidad ya no está `reservado`, la venta se
+  cancela con `motivo_cancelacion`, se devuelve lo apartado y se registra un pago de
+  compensación `pendiente`. El aviso al administrador es `GET /ventas/devoluciones-pendientes`
+  más una advertencia en el log (no hay notificaciones: HU-14 está fuera del MVP).
+- **Comprobante preliminar** en JSON (`GET /ventas/{id}/comprobante`). El PDF llega con HU-05.
+- **Modelo de datos**: nueva columna `ventas.motivo_cancelacion` (migración `c74d60acf0af`).
+
+### Decisiones de HU-05 (27/10/2026)
+
+Las 5 decisiones de "Cómo quedó HU-04" quedaron **aprobadas** por el equipo.
+
+1. **PSE lento:** mientras un alquiler o una compra tenga un pago `pendiente`, el bloqueo de
+   15 minutos **no vence**. Expira solo cuando la pasarela reporta el pago como rechazado,
+   expirado o con error, o tras un máximo de **60 minutos** con el pago pendiente
+   (`max_minutos_pago_pendiente` en `parametros_sistema`). Si después llega un pago
+   aprobado, se registra la devolución, igual que en la decisión 2 del Sprint 2.
+2. **El pago se guarda como `pendiente` y se confirma en la base ANTES de llamar a Wompi.**
+3. **Webhook de Wompi** con verificación de firma e idempotencia (7.3), más una **consulta
+   de respaldo** del estado de la transacción a la API de Wompi, porque en desarrollo Wompi
+   no puede llegar a 127.0.0.1. **Sin túneles.**
+4. **Comprobante en PDF con ReportLab.**
+
+Las llaves de sandbox las pone el responsable en el `.env`: **nunca se piden por chat ni
+se escriben en el código.**
+
+### Cómo quedó HU-05 (27/10/2026)
+
+- **Cobro en tres pasos** (`pagos/procesamiento.py`): (1) con la operación bloqueada se
+  guarda el pago `pendiente` y se hace commit; (2) se llama a la pasarela fuera de toda
+  transacción; si no responde, el pago queda `pendiente`; (3) se aplica el resultado. El
+  paso 3 también lo disparan el webhook y la consulta de respaldo; los tres son
+  idempotentes (un pago ya resuelto no cambia).
+- **Bloqueo extendido:** al empezar el cobro, `expira_en` de la operación pasa a
+  `ahora + max_minutos_pago_pendiente`, y el plazo original queda en
+  `pagos.bloqueo_original_hasta`. Si el cobro falla, se restaura ese plazo (si ya pasó,
+  la operación expira). Así nadie retiene un vehículo encadenando pagos fallidos.
+- **Un solo cobro en curso por operación**, y no se cancela una operación con un pago
+  pendiente (`pago_en_curso`): si el banco lo aprobara después, habría que devolver.
+- **Wompi sandbox** (`pagos/wompi.py`): `GET /merchants/info` para los tokens de aceptación
+  (el endpoint viejo `/merchants/:llave` se retira el 31/10/2026), `POST /transactions`
+  con firma de integridad, consulta de respaldo con `GET /transactions?reference=` (llave
+  privada). URL del sandbox fija en el código. Timeouts cortos (SRS: < 3 s).
+- **Tarjeta tokenizada en el frontend**: el número nunca llega al backend, solo el token.
+- **Configuración:** nueva variable `WOMPI_SECRETO_INTEGRIDAD`. La API no arranca con
+  llaves que no sean de sandbox (`pub_test_`, `prv_test_`, `test_events_`,
+  `test_integrity_`), ni con `PAGOS_PROVEEDOR=wompi` y las llaves de ejemplo.
+- **Webhook** `POST /pagos/webhooks/wompi`: guarda siempre el cuerpo crudo; procesa solo
+  con firma válida, ambiente `test`, referencia conocida y monto igual; responde 200.
+- **Consulta de respaldo**: `GET /pagos/{referencia}` pregunta a la pasarela si el pago
+  sigue pendiente, y `python -m scripts.sincronizar_pagos` lo hace con todos.
+- **Devoluciones**: `GET /pagos/devoluciones-pendientes` y
+  `POST /pagos/{referencia}/devolucion-ejecutada` (el administrador hace el reembolso en el
+  panel de Wompi y lo registra). Nueva `POST /alquileres/{id}/cancelacion-con-devolucion`
+  (administrador; decisiones 3 y 4 del Sprint 2). `confirmado → cancelado` solo por ahí.
+- **Comprobante PDF**: `GET /pagos/{referencia}/comprobante` (ReportLab).
+- **Modelo de datos**: `pagos.url_redireccion`, `pagos.bloqueo_original_hasta` y el
+  parámetro `max_minutos_pago_pendiente` (migración `7f6b572858d8`).
+- **Pendiente de validar con las llaves reales**: el flujo contra el sandbox de Wompi
+  (los tests usan un transporte simulado). El ejemplo de checksum de eventos de la
+  documentación de Wompi no corresponde a su propia cadena (ver `tests/pagos/test_wompi.py`):
+  hay que confirmar la firma con un evento real.
+
+### Decisiones del Sprint 3 (27/10/2026)
+
+Las dos cosas extra de HU-05 (cancelación con devolución por el administrador y registro
+de la devolución ejecutada) quedaron **aprobadas**.
+
+1. **El domicilio se agrega a un alquiler o compra mientras está en `pendiente_pago`**,
+   antes de pagar; el total se recalcula con la tarifa de la zona. Dirección fuera de
+   cobertura: **se bloquea**.
+2. **La asignación del domiciliario la hace el administrador u operador a mano**, con una
+   lista de domiciliarios disponibles. **Sin asignación automática.**
+3. **El código de rastreo permite una consulta pública** que muestra solo el estado y las
+   horas de cada cambio, sin dirección ni datos personales (SRS 3.6.4). *(HU-07)*
+4. **GPS: consulta cada 5 segundos**, con el simulador sobre Bucaramanga (sección 8).
+   *(HU-08)*
+5. **Pendiente menor para el Sprint 4:** limitar el tamaño del cuerpo del webhook de pagos.
+
+### Cómo quedó HU-06 (27/10/2026)
+
+- **Punto dentro de polígono** propio (`domicilios/geometria.py`): trazado de rayos, el
+  borde cuenta como adentro, soporta huecos y MultiPolygon. En un borde compartido entre
+  dos zonas se cobra la tarifa más baja.
+- **Solicitud** (`POST /domicilios`): solo con la operación en `pendiente_pago`, vigente y
+  sin un pago en curso (si no, el total cambiaría bajo un cobro ya enviado). Suma
+  `valor_envio` y recalcula `total`. Un solo domicilio vigente por operación; para cambiar
+  la dirección se cancela y se pide otro.
+- **Si la operación expira o se cancela**, su domicilio pendiente se cancela con ella
+  (`domicilios/liberacion.py`, llamado desde el cambio de estado de alquileres y ventas).
+  `cancelacion-con-devolucion` se rechaza si el domicilio ya está asignado: primero hay que
+  cancelar la entrega (HU-07).
+- **Asignación** (`/domicilios/{id}/asignacion`): operación pagada; domiciliario activo y
+  **sin entregas en ruta** ("disponible"); vehículo de transporte opcional, `disponible`,
+  sin alquiler hoy y distinto de la unidad que se entrega. Orden de bloqueo: vehículo,
+  domiciliario, domicilio. Tests de concurrencia: la misma moto o el mismo domiciliario
+  en cuatro asignaciones simultáneas quedan en una sola.
+- **Nota del vehículo del domiciliario, resuelta**: `GET /domicilios/asignados` le muestra
+  su `vehiculo_transporte`, y `reportar_novedad` ahora rechaza al domiciliario si la unidad
+  no es la de una entrega suya en ruta.
+- **Sin cambios en las tablas** (solo relaciones ORM nuevas en `Domicilio`).
+- **Para HU-07** (resuelto, ver abajo): los cambios de estado de la entrega, la
+  cancelación de una entrega asignada, el alquiler al entregar y el rastreo público.
+
+### Decisiones de HU-07 (27/10/2026)
+
+Los 5 puntos de "Cómo quedó HU-06" quedaron **aprobados**.
+
+1. **Los cambios de estado (recogido, en_camino, entregado) los hace el domiciliario
+   asignado**; el administrador y el operador también pueden, para corregir.
+2. **Al entregar el domicilio de un alquiler, el alquiler pasa a `en_curso` y el vehículo
+   a `alquilado`**, igual que la entrega en el local.
+3. **Un domicilio asignado o en ruta solo lo cancela el administrador u operador, con
+   motivo.** El cliente solo cancela antes de pagar.
+4. **Si un domicilio pagado se cancela, se registra la devolución del valor del envío**
+   con el mecanismo de devoluciones de HU-05; la reserva o compra sigue vigente.
+5. **Consulta pública por código de rastreo: solo estado y hora de cada cambio**, sin
+   dirección ni datos personales.
+
+### Cómo quedó HU-07 (27/10/2026)
+
+- `POST /domicilios/{id}/estado` con `recogido`, `en_camino` o `entregado`, sin saltar
+  pasos. Un domiciliario que no es el asignado recibe 404 (no se revela la entrega).
+- **Entregar** reutiliza `alquileres.servicio.poner_en_curso`, el mismo núcleo de la
+  entrega en el local: si el alquiler no se puede entregar (fuera de fechas, unidad en
+  mantenimiento), nada cambia. El vehículo de transporte vuelve a `disponible` (si entró
+  en mantenimiento en la ruta, se queda). Se guarda `entregado_en`.
+- **La entrega en el local se rechaza si el alquiler tiene un domicilio vigente**, para
+  no entregar dos veces.
+- `POST /domicilios/{id}/cancelacion-por-despacho` (motivo): solo con la operación
+  pagada; libera el vehículo de transporte y registra la devolución del envío.
+- **Nunca se devuelve más de lo cobrado**: `pagos.servicio.registrar_devolucion`
+  descuenta las devoluciones anteriores del mismo cobro (p. ej., envío devuelto y luego
+  `cancelacion-con-devolucion` del alquiler devuelve solo el resto). Si no queda nada,
+  no registra nada.
+- `GET /domicilios/rastreo/{codigo}`: público; solo `codigo_rastreo`, `estado` y
+  `cambios` (`estado`, `en`). Hay un test que verifica que no aparezcan la dirección, el
+  teléfono, el correo ni las coordenadas.
+- **Orden de bloqueo** al avanzar o cancelar: las unidades (transporte y lo que se
+  entrega), la operación y el domicilio.
+- **Sin cambios en las tablas.**
+
+### Decisiones de HU-08 (27/10/2026)
+
+HU-07 quedó **aprobada**.
+
+1. **Las posiciones llegan por HTTP** a un endpoint del backend, autenticadas con una
+   **clave propia de cada vehículo** (no con el JWT de usuarios). La clave se guarda
+   cifrada (hash), nunca en claro.
+2. **El simulador es un programa aparte** (`python -m simulador_gps`) que mueve vehículos
+   por calles de Bucaramanga con velocidades realistas y envía posiciones cada 5 segundos
+   por el **mismo endpoint** que usaría un GPS real. `GPS_FUENTE` en el `.env` decide si se
+   usa.
+3. **El mapa de la flota es solo para administrador y operador.** El cliente sigue viendo
+   solo el estado de su domicilio.
+4. **Indicador en tiempo real**: un vehículo sin posición hace más de 30 segundos aparece
+   "sin señal" (umbral configurable en base de datos).
+5. **7 días de historial**, con un script de limpieza en `scripts/`; la consulta de "última
+   posición de cada vehículo" debe ser rápida (índice adecuado). Precisión: 6 decimales.
+6. **Consulta cada 5 segundos desde el frontend**, no WebSocket.
+
+### Cómo quedó HU-08 (27/10/2026)
+
+- **Clave GPS**: `POST /rastreo/vehiculos/{id}/clave` (solo administrador) genera
+  `gps_` + 256 bits aleatorios, la muestra una vez y guarda su **SHA-256** en
+  `vehiculos.hash_clave_gps` (único). SHA-256 y no bcrypt: la clave es aleatoria (no hay
+  diccionario que probar) y bcrypt costaría ~0,25 s de CPU en cada posición. Emitir otra
+  revoca la anterior. Cada clave se emite para una `fuente` (`simulador` o `dispositivo`).
+- **`POST /rastreo/posiciones`** con `X-Clave-Gps`: solo acepta la fuente de `GPS_FUENTE`
+  (así, con `dispositivo`, el simulador queda fuera aunque tenga clave). Redondea a 6
+  decimales; rechaza horas futuras (> 1 min) o de más de 7 días. **No toca la fila del
+  vehículo**, para no competir cada 5 s con los bloqueos de reservas y ventas.
+- **Mapa** `GET /rastreo/flota`: `LATERAL ... ORDER BY registrado_en DESC LIMIT 1` por
+  vehículo, sobre el índice `(vehiculo_id, registrado_en DESC)`. Verificado con `EXPLAIN`:
+  un Index Scan de una fila por vehículo, 0,12 ms con 345.600 posiciones (20 vehículos × 1
+  día cada 5 s). Hay un test que lo mide. La señal usa la hora de **llegada** al servidor,
+  no el reloj del dispositivo. Umbral: parámetro `segundos_sin_senal` = 30.
+- **Recorrido** `GET /rastreo/vehiculos/{id}/recorrido` (última hora por defecto).
+- **Limpieza**: `python -m scripts.limpiar_posiciones_gps [--dias 7]`.
+- **Simulador** (`simulador_gps/`): `rutas.py` (5 recorridos aproximados por calles reales
+  de Bucaramanga), `movimiento.py` (lógica pura: haversine, ida y vuelta, velocidad por
+  tipo, paradas, error del GPS de 3-8 m, batería) y `simulador.py` (cliente HTTP: inicia
+  sesión como administrador, emite claves de fuente `simulador` y reporta). Se prueba de
+  punta a punta contra la API con el cliente de pruebas, y se corrió de verdad contra
+  uvicorn en una base temporal.
+- **Modelo de datos**: `vehiculos.hash_clave_gps`, `fuente_gps`, `clave_gps_emitida_en` y
+  el parámetro `segundos_sin_senal` (migración `845c1b8b60d3`).
+
+### Decisiones del Sprint 4 (27/10/2026)
+
+Los 4 puntos de "Cómo quedó HU-08" quedaron **aprobados**. Sprint 3 cerrado.
+
+1. **HU-10 incluye la gestión del inventario para el administrador**: crear y editar tipos
+   de vehículo, modelos, unidades y productos (SRS 3.1.4), con auditoría. **Alertas de bajo
+   stock**: un endpoint con los productos en o bajo su stock mínimo, sin correo ni SMS
+   (HU-14 está fuera del MVP).
+2. **HU-11: actas de entrega y recepción**, generadas al entregar o recibir un vehículo (en
+   el local y por domicilio), exportables a PDF (ReportLab) y Excel (openpyxl). Firma de
+   conformidad: registro con usuario, fecha y hash del PDF (tabla `actas`), **pendiente de
+   confirmar con el equipo**.
+3. **Requisitos no funcionales pendientes para cerrar en este sprint**: el script de
+   respaldo y restauración de Postgres documentado (SRS 3.3.2), y limitar el tamaño del
+   cuerpo del webhook de pagos.
+
+### Cómo quedó HU-10 (27/10/2026)
+
+- **Rutas bajo `/inventario`** (`inventario/rutas_gestion.py`, servicio en
+  `inventario/gestion.py`, esquemas en `inventario/esquemas_gestion.py`): consultar es del
+  administrador y el operador; crear, editar y ajustar, solo del administrador.
+- **`PATCH` parciales** (solo cambia lo enviado; null no vale en campos obligatorios).
+  Cada cambio se audita con el antes y el después **solo de lo que cambió** (tarifas y
+  precios incluidos); editar sin cambios no deja registro.
+- **El stock no se edita**: `POST /inventario/productos/{id}/ajustes` suma o resta sobre
+  la fila bloqueada (`FOR UPDATE`), con motivo, y nunca deja el stock en negativo. Test de
+  concurrencia: 6 ajustes y 6 compras simultáneos dejan el stock exacto.
+- **No se editan** el estado de una unidad (tiene sus flujos), ni el código ni el modelo
+  de una unidad, ni el código de un producto: son su identidad.
+- **Unidades**: entran `disponible`; código en mayúsculas y único; `nivel_bateria` solo si
+  el tipo usa batería; una vendida no se edita; editar bloquea la fila (regla 1 de 7.1).
+- **Alertas**: `GET /inventario/alertas-stock` (activos con `stock <= stock_minimo`, los
+  más urgentes primero) y `GET /inventario/resumen` (unidades por estado y productos en
+  alerta). `Producto.bajo_stock` es una propiedad, no una columna.
+- **Sin cambios en las tablas.**
+
+### Cómo quedó HU-11 (27/10/2026)
+
+Los 5 puntos de "Cómo quedó HU-10" quedaron **aprobados**, incluido el resumen.
+
+- **Firma de conformidad: se decidió como registro de usuario, fecha y hash (SHA-256) del
+  PDF del acta** (tabla `actas`: `conforme_por_id`, `conforme_en`, `hash_pdf`). *Decidido
+  así para implementar HU-11; sigue **pendiente de confirmación del equipo**.* No es una
+  firma digital con certificado.
+- **Las actas nacen solas** (`reportes/registro.py`), en la misma transacción de la
+  operación: entrega y recepción en el local (`/alquileres/{id}/entrega` y `/devolucion`)
+  y entrega por domicilio (al marcar `entregado`; una compra lleva un acta por unidad, los
+  accesorios no). Si la operación falla, no queda acta. Cuerpo opcional
+  `{estado_vehiculo, nivel_bateria}`; sin él, "Sin observaciones.".
+- **No hay actas** de la entrega de una compra en el local (no existe ese flujo: una compra
+  pagada se recoge sin registro) ni de recepción por domicilio (no existe recogida a
+  domicilio). *Si el equipo las quiere, son historias nuevas.*
+- **PDF determinista** (`reportes/documentos.py`, ReportLab con `invariant=True`): la misma
+  acta produce los mismos bytes, así que su SHA-256 es la huella. La conformidad la da el
+  cliente de la operación, una sola vez; `/verificacion` regenera el PDF y compara.
+  **Instantánea (arreglo posterior, rama `hu-11-actas-instantanea`):** al crear el acta
+  se guarda en `actas.instantanea` (JSONB) la copia de lo que dice, ya formateada
+  (nombres, vehículo, fechas...), y el PDF se arma **solo desde ahí**. Si alguien cambia
+  su nombre o se edita el modelo después, el PDF y su SHA-256 no cambian (hay un test).
+  Las actas anteriores a la columna no la tienen y se arman con los datos actuales; el
+  PDF es idéntico mientras nada haya cambiado, así que sus huellas no se rompen.
+- **Exportación** a Excel (openpyxl, una fila por acta, con filtros) y a PDF (tabla
+  horizontal), por rango de días de Colombia (por defecto 30, máximo 92).
+- **Sin cambios en las tablas** (`actas` ya existía); solo relaciones ORM nuevas en `Acta` y
+  `Alquiler.cliente`. Nueva dependencia: `openpyxl`.
 
 ---
 
@@ -428,7 +700,15 @@ No los dejes para el final, porque son los que el profesor va a revisar contra e
 - **Tiempos de respuesta (3.4.1, 3.4.2):** consulta de disponibilidad < 3s, catálogo < 4s.
   Pon índices en la base desde el principio y un test que mida.
 - **Respaldos (3.3.2):** un script de backup de Postgres y su instrucción de restauración.
-  No hace falta más, pero tiene que existir y estar documentado.
+  No hace falta más, pero tiene que existir y estar documentado. **Hecho (Sprint 4):**
+  `python -m scripts.respaldo_bd respaldar|restaurar` (`pg_dump -Fc` y `pg_restore`
+  dentro del contenedor), documentado en el README. Restaurar sobre la base del `.env`
+  exige `--confirmar`; `--base` restaura en otra base para probar un respaldo. Hay un
+  test de ida y vuelta real (respalda la base de pruebas, la restaura en otra y compara).
+- **Límite del cuerpo del webhook de pagos (Sprint 4):** 64 KiB
+  (`pagos.rutas.LIMITE_CUERPO_WEBHOOK`). Se lee por partes y se corta al pasar el
+  límite (`app/comun/peticiones.py`), sin cargar el cuerpo entero a memoria; responde 413
+  con `cuerpo_demasiado_grande` y no guarda el evento.
 - **Registro de fallas (3.3.4):** logging estructurado, y que un error en un pago o una
   reserva conserve el estado anterior.
 
@@ -483,7 +763,29 @@ En este orden. No saltes pasos, y para después de cada bloque para que yo revis
 
 De ahí en adelante seguimos el backlog sprint por sprint.
 
-**Bloque 1 completo** (pendiente del pull request del paso 10). **El siguiente es el
-Sprint 2** (HU-03 alquileres, HU-04 compra, HU-05 pagos), una rama por historia saliendo de
-`main`. Antes de HU-03, revisar sus decisiones pendientes en la sección 4. Espera mi
-confirmación antes de empezar.
+**Bloque 1 completo.** **Sprint 2 en curso** (una rama por historia saliendo de `main`):
+
+11. HU-03 alquileres. **Hecho (PR #7).**
+12. HU-04 compra. **Hecho (PR #8).**
+13. HU-05 pagos. **Hecho (PR #9).** Falta probarlo contra el sandbox real cuando estén
+    las llaves (ver "Cómo quedó HU-05").
+
+**Sprint 2 completo.** **Sprint 3 en curso** (HU-06, HU-07, HU-08):
+
+14. HU-06 domicilios. **Hecho (PR #10).**
+15. HU-07 estado del domicilio y rastreo. **Hecho (PR #11).**
+16. HU-08 rastreo GPS (simulador, consulta cada 5 s). **Hecho (PR #12).**
+
+**Sprint 3 completo.** **Sprint 4 en curso**:
+
+17. HU-10 inventario y alertas de bajo stock. **Hecho (PR #13).**
+18. HU-11 actas de entrega y recepción, PDF y Excel. **Hecho (PR #14).** Arreglo de la
+    instantánea del acta: rama `hu-11-actas-instantanea`, PR #16 en revisión.
+19. Requisitos no funcionales: script de respaldo y restauración (SRS 3.3.2) y límite
+    del tamaño del cuerpo del webhook de pagos. **Hecho (PR #15).**
+
+**Backlog del MVP completo** (100 SP, HU-01 a HU-12 sin HU-13 ni HU-14). Pendientes que
+no son del backlog: probar Wompi contra el sandbox real cuando estén las llaves, y que
+el equipo confirme el mecanismo de conformidad de las actas (contradicción 6).
+
+Espera mi confirmación antes de empezar cada historia.

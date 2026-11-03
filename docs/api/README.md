@@ -1,6 +1,9 @@
 # API de TransportExperience: guía para el frontend
 
-Todo lo necesario para consumir el backend del **Sprint 1** (HU-12, HU-02, HU-09, HU-01).
+Todo lo necesario para consumir el backend del **Sprint 1** (HU-12, HU-02, HU-09, HU-01) y
+del **Sprint 2** (alquileres, compras y pagos: HU-03, HU-04, HU-05) y los
+domicilios y el rastreo GPS del Sprint 3 (HU-06, HU-07, HU-08) y el inventario y las
+actas del Sprint 4 (HU-10, HU-11).
 El contrato completo y exacto (esquemas, campos, ejemplos) está en
 [`openapi.json`](openapi.json), que se genera desde el código. La forma más cómoda de
 explorarlo es la documentación interactiva: **http://127.0.0.1:8000/docs**.
@@ -33,6 +36,12 @@ alembic upgrade head             # crea las tablas
 python -m seeds.cargar           # datos de ejemplo y usuarios de prueba
 uvicorn app.main:app --reload    # API en http://127.0.0.1:8000
 ```
+
+**Al actualizar el repositorio**, vuelve a correr `alembic upgrade head`: HU-03 agregó la
+tabla `parametros_sistema` (máximo de días por alquiler), HU-04 la columna
+`ventas.motivo_cancelacion`, HU-05 dos columnas en `pagos` y el parámetro
+`max_minutos_pago_pendiente`, y HU-08 la clave GPS de los vehículos y el parámetro
+`segundos_sin_senal`.
 
 Si todo va bien, `http://127.0.0.1:8000/salud` responde
 `{"estado": "ok", "base_datos": "ok"}`.
@@ -113,13 +122,22 @@ Toda respuesta de error, sin excepción, tiene esta estructura:
 | `no_autenticado` | 401 | Falta el token o no es válido |
 | `sesion_expirada` | 401 | El token venció: hay que iniciar sesión de nuevo |
 | `credenciales_invalidas` | 401 | Correo o contraseña incorrectos |
+| `clave_gps_invalida` | 401 | Falta la clave del dispositivo GPS (`X-Clave-Gps`) o no es válida |
 | `cuenta_inactiva` | 403 | La cuenta fue desactivada |
 | `permiso_denegado` | 403 | El rol no puede hacer eso |
+| `fuente_gps_desactivada` | 403 | La clave es de una fuente (simulador o dispositivo) que el servidor no está aceptando (`GPS_FUENTE`) |
 | `recurso_no_encontrado` | 404 | La dirección no existe |
 | `usuario_no_encontrado` | 404 | El usuario no existe |
 | `modelo_no_encontrado` | 404 | El modelo no existe o salió del catálogo |
 | `vehiculo_no_encontrado` | 404 | La unidad no existe |
 | `novedad_no_encontrada` | 404 | La novedad no existe o es de otra unidad |
+| `tipo_no_encontrado` | 404 | El tipo de vehículo no existe |
+| `alquiler_no_encontrado` | 404 | El alquiler no existe o es de otro cliente |
+| `acta_no_encontrada` | 404 | El acta no existe o no es tuya |
+| `venta_no_encontrada` | 404 | La compra no existe o es de otro cliente |
+| `domicilio_no_encontrado` | 404 | El domicilio no existe o no es tuyo |
+| `pago_no_encontrado` | 404 | El pago no existe o es de otro cliente |
+| `producto_no_encontrado` | 404 | El accesorio o repuesto no existe o ya no se vende |
 | `metodo_no_permitido` | 405 | La dirección no admite ese método |
 | `correo_ya_registrado` | 409 | Ya hay una cuenta con ese correo |
 | `cambio_sobre_si_mismo` | 409 | Un administrador intenta desactivarse o quitarse el rol |
@@ -128,9 +146,46 @@ Toda respuesta de error, sin excepción, tiene esta estructura:
 | `transicion_invalida` | 409 | La unidad no puede pasar a ese estado |
 | `no_puede_volver_a_servicio` | 409 | La unidad aún no puede volver (el `mensaje` dice por qué) |
 | `novedad_ya_cerrada` | 409 | La novedad ya estaba cerrada |
+| `conformidad_ya_registrada` | 409 | El acta ya tiene la conformidad |
+| `nombre_duplicado` | 409 | Ya existe un tipo de vehículo con ese nombre |
+| `codigo_duplicado` | 409 | Ya existe una unidad o un producto con ese código |
+| `ajuste_de_stock_invalido` | 409 | El ajuste dejaría el stock en negativo |
+| `sin_unidades_disponibles` | 409 | No hay unidades libres de ese modelo en esas fechas |
+| `reserva_expirada` | 409 | Pasaron los 15 minutos sin pagar; hay que reservar de nuevo |
+| `transicion_de_alquiler_invalida` | 409 | El alquiler no está en el estado que la acción necesita (p. ej., pagar uno ya pagado) |
+| `alquiler_no_cancelable` | 409 | Solo se cancelan reservas en `pendiente_pago` |
+| `fuera_de_las_fechas_del_alquiler` | 409 | Se intenta entregar fuera de las fechas del alquiler |
+| `vehiculo_no_listo_para_entrega` | 409 | La unidad está en mantenimiento o sigue con otro cliente (el `mensaje` dice cuál) |
+| `reasignacion_invalida` | 409 | No se puede mover el alquiler a esa unidad |
+| `modelo_no_se_vende` | 409 | El modelo solo se alquila |
+| `sin_unidades_para_venta` | 409 | No hay suficientes unidades disponibles para la venta (el `mensaje` dice cuántas hay) |
+| `stock_insuficiente` | 409 | No alcanza el stock del producto (el `mensaje` dice cuánto queda) |
+| `venta_expirada` | 409 | Pasaron los 15 minutos sin pagar la compra; hay que comprar de nuevo |
+| `transicion_de_venta_invalida` | 409 | La compra no está en el estado que la acción necesita (p. ej., pagar una ya pagada) |
+| `venta_no_cancelable` | 409 | Solo se cancelan compras en `pendiente_pago` |
+| `pago_en_curso` | 409 | Ya hay un pago esperando respuesta del banco: no se puede pagar otra vez, cancelar ni cambiar el domicilio |
+| `ya_tiene_domicilio` | 409 | La reserva o compra ya tiene un domicilio |
+| `operacion_no_admite_domicilio` | 409 | El domicilio solo se agrega o se quita antes de pagar |
+| `transicion_de_domicilio_invalida` | 409 | El domicilio no está en el estado que la acción necesita |
+| `domicilio_sin_pagar` | 409 | No se asigna un domicilio cuya operación no está pagada |
+| `domiciliario_no_disponible` | 409 | El domiciliario tiene una entrega en ruta, está inactivo o no es domiciliario |
+| `vehiculo_de_transporte_no_disponible` | 409 | La unidad elegida como transporte no se puede usar (el `mensaje` dice por qué) |
+| `devolucion_no_pendiente` | 409 | Ese pago no es una devolución pendiente |
 | `rango_de_tarifa_invalido` | 422 | `tarifa_min` es mayor que `tarifa_max` |
+| `bateria_no_aplica` | 422 | Se envió `nivel_bateria` para un tipo que no usa batería |
+| `modelo_sin_precio` | 422 | Un modelo debe conservar tarifa diaria, precio de venta o ambos |
 | `fechas_invalidas` | 422 | Fecha de inicio en el pasado o fin antes del inicio |
+| `rango_de_reporte_invalido` | 422 | `desde` posterior a `hasta`, o más de 92 días |
+| `fuera_de_cobertura` | 422 | El punto marcado está fuera de las zonas de entrega |
+| `duracion_excedida` | 422 | El alquiler supera el máximo de días (hoy, 30) |
+| `metodo_de_pago_no_disponible` | 422 | El método de pago no existe o está deshabilitado |
+| `terminos_no_aceptados` | 422 | Con Wompi, falta `acepta_terminos: true` |
+| `datos_de_pago_incompletos` | 422 | Con Wompi, falta `tarjeta.token` o los datos de `pse` |
+| `posicion_fuera_de_tiempo` | 422 | La hora de la posición está en el futuro o tiene más de 7 días |
+| `rango_de_recorrido_invalido` | 422 | `desde` no es anterior a `hasta` o pasa de 7 días atrás |
 | `error_interno` | 500 | Falla inesperada; no se hizo ningún cambio |
+| `pasarela_no_disponible` | 503 | La pasarela de pagos no responde; no se cobró nada |
+| `cuerpo_demasiado_grande` | 413 | El cuerpo del webhook de pagos pasa de 64 KiB |
 
 ---
 
@@ -166,7 +221,7 @@ dentro de la ficha de un modelo o los 7 días de horario del portal).
 
 ---
 
-## 7. Endpoints del Sprint 1
+## 7. Endpoints
 
 "Público" = sin iniciar sesión. En `/docs`, cada ruta muestra sus parámetros, el cuerpo que
 espera y ejemplos de respuesta.
@@ -191,6 +246,7 @@ espera y ejemplos de respuesta.
 | `GET` | `/catalogo/modelos` | Público | Catálogo con `disponibles_hoy`; filtros `tipo_id`, `tarifa_min`, `tarifa_max`, `modalidad` (`alquiler`/`venta`), `solo_disponibles` |
 | `GET` | `/catalogo/modelos/{modelo_id}` | Público | Ficha del modelo con cada unidad libre hoy (código, ubicación, batería) |
 | `GET` | `/catalogo/modelos/{modelo_id}/disponibilidad` | Público | Unidades libres entre `fecha_inicio` y `fecha_fin` |
+| `GET` | `/catalogo/productos` | Público | Accesorios y repuestos con precio y `stock`; filtros `categoria` (`accesorio`/`repuesto`), `solo_disponibles` |
 
 ### Gestión de la flota (HU-09)
 
@@ -215,6 +271,284 @@ operador.
 | `PUT` | `/portal/horarios/{dia}` | Administrador | Abrir un día o cambiar su horario (`lunes` ... `domingo`) |
 | `DELETE` | `/portal/horarios/{dia}` | Administrador | Cerrar un día |
 
+### Alquileres (HU-03)
+
+| Método | Ruta | Quién | Para qué |
+|---|---|---|---|
+| `POST` | `/alquileres` | Cliente | Reservar un modelo (`modelo_id`, `fecha_inicio`, `fecha_fin`); el sistema asigna la unidad |
+| `GET` | `/alquileres/mios` | Cliente | Mis alquileres; filtro `estado` |
+| `GET` | `/alquileres/{alquiler_id}` | Cliente (solo los suyos), administrador, operador | Ver un alquiler |
+| `POST` | `/alquileres/{alquiler_id}/pago` | Cliente | Pagar la reserva (ver **Pagos**) |
+| `POST` | `/alquileres/{alquiler_id}/cancelacion` | Cliente | Cancelar una reserva **sin pagar** (`motivo` opcional) |
+| `GET` | `/alquileres` | Administrador, operador | Todos los alquileres; filtros `estado`, `vehiculo_id`, `cliente_id` |
+| `POST` | `/alquileres/{alquiler_id}/entrega` | Administrador, operador | Entregar el vehículo: `confirmado` → `en_curso`; genera el acta de entrega |
+| `POST` | `/alquileres/{alquiler_id}/devolucion` | Administrador, operador | Recibir el vehículo: `en_curso` → `finalizado`; genera el acta de recepción |
+| `GET` | `/alquileres/en-riesgo` | Administrador, operador | Alquileres sin entregar cuya unidad está en mantenimiento |
+| `POST` | `/alquileres/{alquiler_id}/cancelacion-con-devolucion` | Administrador | Cancelar un alquiler pagado y sin entregar (`motivo`) y registrar la devolución |
+| `POST` | `/alquileres/{alquiler_id}/reasignacion` | Administrador | Mover el alquiler a otra unidad libre del mismo modelo (`vehiculo_id` opcional) |
+
+**Flujo del cliente.**
+
+1. Consulta `/catalogo/modelos/{modelo_id}/disponibilidad` con las fechas.
+2. `POST /alquileres`: la respuesta trae el `total` y `expira_en`. **La unidad se guarda
+   15 minutos**; muestra una cuenta regresiva hasta `expira_en`.
+3. `POST /alquileres/{id}/pago` (ver **Pagos**). Revisa `pago.estado`:
+   - `aprobado`: el alquiler queda `confirmado`.
+   - `rechazado` o `error`: sigue `pendiente_pago`; puede reintentar antes de `expira_en`.
+   - `pendiente` (PSE): envía al cliente a `pago.url_redireccion` y consulta
+     `GET /pagos/{referencia}` hasta que cambie. Mientras tanto la reserva no vence.
+4. Si no paga a tiempo, el alquiler aparece como `expirado` y la unidad queda libre.
+
+**Estados del alquiler:** `pendiente_pago` → `confirmado` → `en_curso` → `finalizado`;
+`pendiente_pago` también puede terminar en `cancelado` o `expirado`. El cliente solo
+cancela mientras está `pendiente_pago` y sin un pago en proceso; un alquiler pagado lo
+cancela el administrador con `/cancelacion-con-devolucion`.
+
+**Mostrador.** Se entrega entre `fecha_inicio` y `fecha_fin`. Si la unidad entró en
+mantenimiento, la entrega se rechaza: el administrador la **reasigna** a otra unidad del
+mismo modelo, que conserva fechas y precio. Si la unidad entra en mantenimiento mientras
+el cliente la tiene, la devolución finaliza el alquiler y la unidad se queda en
+mantenimiento.
+
+Cada alquiler trae su `vehiculo` con `codigo`, `modelo` y `estado` físico actual.
+
+### Compras (HU-04)
+
+| Método | Ruta | Quién | Para qué |
+|---|---|---|---|
+| `POST` | `/ventas` | Cliente | Comprar: `vehiculos` (`modelo_id`, `cantidad`) y `productos` (`producto_id`, `cantidad`) |
+| `GET` | `/ventas/mias` | Cliente | Mis compras; filtro `estado` |
+| `GET` | `/ventas/{venta_id}` | Cliente (solo las suyas), administrador, operador | Ver una compra |
+| `POST` | `/ventas/{venta_id}/pago` | Cliente | Pagar la compra (ver **Pagos**) |
+| `POST` | `/ventas/{venta_id}/cancelacion` | Cliente | Cancelar una compra **sin pagar** (`motivo` opcional) |
+| `GET` | `/ventas/{venta_id}/comprobante` | Cliente (solo las suyas), administrador, operador | Comprobante preliminar (JSON) |
+| `GET` | `/ventas` | Administrador, operador | Todas las ventas; filtros `estado`, `cliente_id` |
+| `GET` | `/ventas/devoluciones-pendientes` | Administrador | Compras pagadas que no se completaron y cuyo dinero hay que devolver |
+
+**Flujo del cliente.**
+
+1. Arma el carrito con `/catalogo/modelos?modalidad=venta` (vehículos) y
+   `/catalogo/productos` (accesorios y repuestos). Ejemplo de cuerpo:
+   `{"vehiculos": [{"modelo_id": 3, "cantidad": 1}], "productos": [{"producto_id": 7, "cantidad": 2}]}`.
+   Cada modelo o producto va una sola vez; para más unidades, usa `cantidad`.
+2. `POST /ventas`: el sistema asigna las unidades, descuenta el stock y **guarda todo
+   15 minutos** (`expira_en`). Cada ítem trae `tipo` (`vehiculo`/`producto`), `descripcion`
+   y `codigo`.
+3. `POST /ventas/{id}/pago`. Revisa `venta.estado`:
+   - `pagada`: compra completa.
+   - `pendiente_pago` con `pago.estado` = `rechazado` o `error`: puede reintentar antes
+     de `expira_en`.
+   - `pendiente_pago` con `pago.estado` = `pendiente` (PSE): igual que en alquileres.
+   - `cancelada` con `devolucion`: una unidad entró en mantenimiento antes del pago; la
+     compra no se completa y se le devolverá el dinero. Muestra `motivo_cancelacion`.
+4. `GET /ventas/{id}/comprobante`: comprobante **preliminar** en JSON (no es factura). El
+   comprobante de pago en PDF es `GET /pagos/{referencia}/comprobante`.
+
+Una unidad con alquileres pendientes, confirmados o en curso no se vende. Una unidad
+apartada para compra no se puede alquilar.
+
+### Pagos (HU-05)
+
+| Método | Ruta | Quién | Para qué |
+|---|---|---|---|
+| `GET` | `/pagos/configuracion` | Público | Proveedor, métodos habilitados y, con Wompi, la llave pública y los enlaces de términos |
+| `GET` | `/pagos/pse/bancos` | Público | Bancos de PSE (`codigo`, `nombre`); lista corta, sin paginar |
+| `GET` | `/pagos/{referencia}` | Cliente (los suyos), administrador, operador | Estado del pago; si está `pendiente`, el backend le pregunta a la pasarela |
+| `GET` | `/pagos/{referencia}/comprobante` | Cliente (los suyos), administrador, operador | Comprobante en **PDF** |
+| `GET` | `/pagos/devoluciones-pendientes` | Administrador | Dinero por devolver (alquileres y compras) |
+| `POST` | `/pagos/{referencia}/devolucion-ejecutada` | Administrador | Registrar que la devolución se hizo en Wompi (`nota`) |
+| `POST` | `/pagos/webhooks/wompi` | Wompi (no el frontend) | Eventos de la pasarela; verifica firma, descarta repetidos; máximo 64 KiB |
+
+**Cuerpo para pagar** (`POST /alquileres/{id}/pago` y `POST /ventas/{id}/pago`):
+
+```json
+{ "metodo_pago": "tarjeta", "acepta_terminos": true,
+  "tarjeta": { "token": "tok_test_...", "cuotas": 1 } }
+```
+
+```json
+{ "metodo_pago": "pse", "acepta_terminos": true,
+  "pse": { "tipo_persona": "natural", "tipo_documento": "CC",
+           "documento": "1098765432", "banco": "1" } }
+```
+
+- **Con la pasarela falsa** (desarrollo, `proveedor: "falso"`) basta
+  `{"metodo_pago": "tarjeta"}`: aprueba al instante y no mueve dinero.
+- **Con Wompi sandbox** (`proveedor: "wompi"`):
+  1. `GET /pagos/configuracion`: muestra `terminos_url` y `datos_personales_url` con una
+     casilla para aceptarlos; envía `acepta_terminos: true`.
+  2. **Tarjeta**: tokeniza en el navegador con `POST {url_api}/tokens/cards` y
+     `Authorization: Bearer {llave_publica}`. **El número de la tarjeta nunca se envía a
+     nuestro backend**: solo el `token`. Tarjeta de prueba que aprueba:
+     `4242 4242 4242 4242`; que rechaza: `4111 1111 1111 1111`.
+  3. **PSE**: el banco sale de `/pagos/pse/bancos` (en sandbox, `1` aprueba y `2`
+     rechaza). La respuesta trae `pago.url_redireccion`: envía al cliente ahí. Al volver,
+     consulta `GET /pagos/{referencia}` cada 3 a 5 segundos hasta que deje de estar
+     `pendiente`.
+- **La verdad del pago la da la pasarela**, no la página de retorno: nunca muestres "pago
+  exitoso" sin que `GET /pagos/{referencia}` diga `aprobado`.
+- Mientras un pago está `pendiente`, la reserva o la compra **no vence** (hasta 60
+  minutos). Si el banco lo rechaza, vuelve a su plazo de 15 minutos; si ya pasó, expira.
+- Si un pago se aprueba cuando la reserva o la compra ya había expirado, se registra una
+  **devolución** (`tipo: "compensacion"`) y el administrador la ve en
+  `/pagos/devoluciones-pendientes`.
+
+### Domicilios (HU-06, HU-07)
+
+| Método | Ruta | Quién | Para qué |
+|---|---|---|---|
+| `GET` | `/domicilios/zonas` | Público | Zonas de cobertura: `poligono` (GeoJSON) y `tarifa_envio`, para dibujarlas en el mapa |
+| `GET` | `/domicilios/cobertura` | Público | Zona y tarifa del punto marcado (`latitud`, `longitud`); fuera de cobertura, `fuera_de_cobertura` |
+| `POST` | `/domicilios` | Cliente | Agregar el domicilio a una reserva o compra **sin pagar** (`alquiler_id` o `venta_id`, `direccion`, `indicaciones`, `latitud`, `longitud`) |
+| `GET` | `/domicilios/mios` | Cliente | Mis domicilios |
+| `POST` | `/domicilios/{domicilio_id}/cancelacion` | Cliente | Quitar el domicilio antes de pagar (el envío sale del total) |
+| `GET` | `/domicilios/{domicilio_id}` | Cliente (los suyos), domiciliario (los asignados), administrador, operador | Ver un domicilio |
+| `GET` | `/domicilios` | Administrador, operador | Todos; con `estado=pendiente`, los que esperan domiciliario |
+| `GET` | `/domicilios/domiciliarios-disponibles` | Administrador, operador | Domiciliarios activos sin entregas en ruta |
+| `POST` | `/domicilios/{domicilio_id}/asignacion` | Administrador, operador | Asignar `domiciliario_id` y, si usa uno, `vehiculo_transporte_id` |
+| `GET` | `/domicilios/asignados` | Domiciliario | Mis entregas en ruta, con dirección, contacto del cliente y vehículo |
+| `POST` | `/domicilios/{domicilio_id}/estado` | Domiciliario asignado; administrador u operador para corregir | Avanzar: `{"estado": "recogido" \| "en_camino" \| "entregado"}`, sin saltar pasos |
+| `POST` | `/domicilios/{domicilio_id}/cancelacion-por-despacho` | Administrador, operador | Cancelar una entrega pagada (`motivo`); devuelve el envío |
+| `GET` | `/domicilios/rastreo/{codigo}` | Público | Seguir el pedido: estado y hora de cada cambio, sin datos personales |
+
+**Flujo del cliente.**
+
+1. Muestra el mapa con `/domicilios/zonas`. El cliente marca el punto; el frontend envía
+   `latitud` y `longitud` (GeoJSON usa `[longitud, latitud]`: ¡ojo con el orden al dibujar!).
+2. `GET /domicilios/cobertura` dice la zona y la tarifa antes de confirmar.
+3. Después de `POST /alquileres` o `POST /ventas`, y **antes de pagar**, `POST /domicilios`.
+   La respuesta trae `valor_envio` y `total_operacion`: ese total es el que se paga.
+4. Para cambiar la dirección: `POST /domicilios/{id}/cancelacion` y solicitar de nuevo.
+   Con un pago en curso no se puede (`pago_en_curso`).
+5. Si la reserva o la compra expira o se cancela, su domicilio se cancela solo.
+
+Cada domicilio trae un `codigo_rastreo` (p. ej. `TX-7KQ2M9PA`). Con él, cualquiera
+consulta `GET /domicilios/rastreo/{codigo}` sin iniciar sesión: responde solo
+`{codigo_rastreo, estado, cambios: [{estado, en}]}`, sin dirección ni datos personales
+(SRS 3.6.4). El código no distingue mayúsculas.
+
+**Despacho.** Con la operación pagada, el administrador o el operador elige un domiciliario
+de `/domicilios/domiciliarios-disponibles` y lo asigna (no hay asignación automática).
+El vehículo de transporte es opcional; si se usa, debe estar disponible y libre hoy.
+
+**Domiciliario.** `/domicilios/asignados` le muestra sus entregas y el
+`vehiculo_transporte`: es el único vehículo sobre el que puede reportar novedades
+(`POST /vehiculos/{vehiculo_id}/novedades`).
+
+**Estado de la entrega (HU-07).** `asignado → recogido → en_camino → entregado`, con
+`POST /domicilios/{id}/estado`. Lo hace el domiciliario asignado; el administrador y el
+operador también, para corregir. Al marcar `entregado`:
+- si es un **alquiler**, este pasa a `en_curso` y la unidad a `alquilado`, con las mismas
+  reglas que la entrega en el local (entre `fecha_inicio` y `fecha_fin`; si no se puede,
+  responde el error y nada cambia);
+- el vehículo de transporte vuelve a la flota.
+
+Un alquiler con domicilio vigente no se entrega en el local
+(`vehiculo_no_listo_para_entrega`).
+
+**Cancelar una entrega.** Antes de pagar la quita el cliente
+(`/domicilios/{id}/cancelacion`). Después, solo el administrador o el operador, con
+`/domicilios/{id}/cancelacion-por-despacho` y un `motivo`: se registra la devolución del
+**envío** (`devolucion`) y la reserva o la compra sigue vigente (se recoge en el local).
+Nunca se devuelve más de lo cobrado: si después se cancela el alquiler con devolución, se
+descuenta lo ya devuelto.
+
+### Actas de entrega y recepción (HU-11)
+
+Las actas **no se crean a mano**: nacen solas al entregar o recibir un vehículo, en el
+local (`/alquileres/{id}/entrega` y `/devolucion`) y por domicilio (al marcar
+`entregado`). Una compra entregada a domicilio lleva un acta por cada unidad (los
+accesorios no llevan acta).
+
+| Método | Ruta | Quién | Para qué |
+|---|---|---|---|
+| `GET` | `/actas` | Administrador, operador | Todas; filtros `tipo` (`entrega`/`recepcion`), `vehiculo_id`, `desde`, `hasta` |
+| `GET` | `/actas/mias` | Cliente | Las actas de mis alquileres y compras |
+| `GET` | `/actas/{acta_id}` | Cliente (las suyas), administrador, operador | Ver un acta, con su `conformidad` |
+| `GET` | `/actas/{acta_id}/pdf` | Cliente (las suyas), administrador, operador | El acta en PDF |
+| `POST` | `/actas/{acta_id}/conformidad` | Cliente de la operación | Dar la conformidad (una sola vez) |
+| `GET` | `/actas/{acta_id}/verificacion` | Cliente (las suyas), administrador, operador | ¿El PDF de hoy es el que se aceptó? |
+| `GET` | `/actas/exportacion/excel` | Administrador, operador | Reporte en Excel (`desde`, `hasta`, `tipo`; por defecto, 30 días; máximo 92) |
+| `GET` | `/actas/exportacion/pdf` | Administrador, operador | El mismo reporte en PDF |
+
+**Anotar el estado al entregar o recibir.** `POST /alquileres/{id}/entrega` y
+`/devolucion` aceptan un cuerpo **opcional**
+`{"estado_vehiculo": "Sin rayones.", "nivel_bateria": 90}`; sin cuerpo, el acta dice
+"Sin observaciones.". Al marcar un domicilio `entregado`, lo mismo va en
+`{"estado": "entregado", "acta": {...}}`. `nivel_bateria` solo para vehículos con batería.
+
+**Conformidad del cliente** *(mecanismo pendiente de confirmación del equipo)*. El cliente
+ve el PDF y pulsa "Estoy conforme" → `POST /actas/{id}/conformidad`. Queda su usuario, la
+fecha y la **huella SHA-256 del PDF** (`conformidad.hash_pdf`). El PDF de un acta es
+siempre idéntico, así que cualquiera puede verificarlo: calcula el SHA-256 del archivo
+(`crypto.subtle.digest("SHA-256", ...)`) y lo compara, o usa `/verificacion`.
+
+### Gestión del inventario (HU-10)
+
+Consultar: administrador y operador. Crear, editar y ajustar: solo el administrador. Todo
+cambio queda en auditoría con el antes y el después.
+
+| Método | Ruta | Quién | Para qué |
+|---|---|---|---|
+| `GET` | `/inventario/resumen` | Administrador, operador | Unidades por estado y cuántos productos están en alerta |
+| `GET` | `/inventario/alertas-stock` | Administrador, operador | Productos activos en o bajo su `stock_minimo`, los más urgentes primero |
+| `GET` | `/inventario/tipos` | Administrador, operador | Tipos de vehículo, activos o no |
+| `POST` | `/inventario/tipos` | Administrador | Crear un tipo (`nombre`, `usa_bateria`) |
+| `PATCH` | `/inventario/tipos/{tipo_id}` | Administrador | Editar; `{"activo": false}` lo oculta del catálogo con sus modelos |
+| `GET` | `/inventario/modelos` | Administrador, operador | Modelos con sus tarifas, activos o no; filtros `tipo_id`, `activo` |
+| `POST` | `/inventario/modelos` | Administrador | Crear un modelo (`tarifa_diaria`, `precio_venta` o ambos) |
+| `PATCH` | `/inventario/modelos/{modelo_id}` | Administrador | Editar la ficha, la tarifa o el precio |
+| `POST` | `/inventario/unidades` | Administrador | Registrar una unidad (`codigo`, `modelo_id`, `nivel_bateria`...); entra `disponible` |
+| `PATCH` | `/inventario/unidades/{vehiculo_id}` | Administrador | Editar batería, ubicación u observaciones |
+| `GET` | `/inventario/productos` | Administrador, operador | Productos, activos o no; filtros `categoria`, `activo`, `solo_bajo_stock` |
+| `POST` | `/inventario/productos` | Administrador | Crear un producto con su stock inicial y su `stock_minimo` |
+| `PATCH` | `/inventario/productos/{producto_id}` | Administrador | Editar nombre, precio, mínimo, activo... (no el stock) |
+| `POST` | `/inventario/productos/{producto_id}/ajustes` | Administrador | Entrada o salida de stock: `{"cantidad": 5, "motivo": "..."}` (negativa para restar) |
+
+- En los `PATCH`, **solo cambia lo que envías**; omitir un campo es no tocarlo.
+- **El stock no se edita**: se ajusta con `/ajustes`, que suma o resta sobre el valor más
+  reciente aunque haya compras al mismo tiempo. Nunca deja el stock en negativo.
+- **El estado de una unidad no se edita aquí**: cambia con sus flujos (alquiler, venta,
+  mantenimiento). Tampoco el código ni el modelo de una unidad, que son su identidad.
+- Cambiar la tarifa o el precio aplica a operaciones nuevas; las hechas conservan el suyo.
+- Los códigos se guardan en mayúsculas (`mon-0010` → `MON-0010`).
+- **Alertas de bajo stock**: el frontend consulta `/inventario/alertas-stock` (o el número
+  en `/inventario/resumen`); no se envía correo ni SMS (HU-14 está fuera del MVP).
+
+### Rastreo GPS (HU-08)
+
+| Método | Ruta | Quién | Para qué |
+|---|---|---|---|
+| `GET` | `/rastreo/flota` | Administrador, operador | Mapa de la flota: última posición de cada vehículo con GPS y su `senal`; filtro `senal` |
+| `GET` | `/rastreo/vehiculos/{vehiculo_id}/recorrido` | Administrador, operador | Posiciones entre `desde` y `hasta` (por defecto, la última hora; máximo 7 días atrás) |
+| `POST` | `/rastreo/vehiculos/{vehiculo_id}/clave` | Administrador | Emitir la clave GPS de una unidad (`fuente`: `dispositivo` o `simulador`); se muestra una sola vez |
+| `POST` | `/rastreo/posiciones` | Dispositivo GPS o simulador (encabezado `X-Clave-Gps`, no JWT) | Reportar una posición cada 5 s |
+
+**Mapa de la flota.** Consulta `GET /rastreo/flota` **cada 5 segundos** (no hay WebSocket)
+y dibuja cada `posicion` (`latitud`, `longitud`, con 6 decimales). Usa `senal` para el
+indicador en tiempo real:
+
+| `senal` | Significa |
+|---|---|
+| `en_linea` | Reportó hace menos del umbral (30 s, configurable en la base) |
+| `sin_senal` | No reporta hace más del umbral: muéstralo distinto (gris, parpadeando...) |
+| `sin_datos` | Tiene GPS pero nunca ha reportado; `posicion` es `null` |
+
+`segundos_sin_reportar` dice hace cuánto llegó la última posición. El mapa es solo del
+administrador y el operador: el cliente sigue viendo solo el estado de su domicilio.
+
+**Ver posiciones moverse en desarrollo** (sin hardware): con la API corriendo y
+`GPS_FUENTE=simulador` en el `.env`, en otra terminal:
+
+```powershell
+.venv\Scripts\activate
+python -m simulador_gps
+```
+
+Mueve 5 vehículos de la flota por calles de Bucaramanga y envía sus posiciones cada 5 s por
+el mismo endpoint que usaría un GPS real. Detenlo con Ctrl+C: a los 30 s los vehículos
+pasan a `sin_senal`.
+
 ### Sistema
 
 | Método | Ruta | Quién | Para qué |
@@ -225,8 +559,5 @@ operador.
 
 ## 8. Preguntas abiertas para el frontend
 
-1. **Rastreo GPS (HU-08, Sprint 3): ¿consulta cada 5 segundos o WebSocket?** La propuesta
-   del backend es que el mapa **consulte la API cada 5 segundos** (más simple de construir y
-   de probar). Necesitamos tu confirmación antes de empezar ese módulo.
-2. **Puerto del frontend**: si no es 5173, 3000 ni 4200, dinos cuál para dejarlo en
+1. **Puerto del frontend**: si no es 5173, 3000 ni 4200, dinos cuál para dejarlo en
    `.env.example`.

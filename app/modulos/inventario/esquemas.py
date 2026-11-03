@@ -12,6 +12,7 @@ from fastapi import Depends, Query
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from app.modulos.inventario.modelos import (
+    CategoriaProducto,
     EstadoNovedad,
     EstadoVehiculo,
     ModeloVehiculo,
@@ -137,6 +138,21 @@ class DisponibilidadRango(BaseModel):
     dias: int = Field(description="Días del rango, contando inicio y fin.")
     unidades_libres: int
     disponible: bool = Field(description="true si hay al menos una unidad libre.")
+
+
+class ProductoCatalogo(BaseModel):
+    """Accesorio o repuesto a la venta (HU-04). Se compra por cantidad."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    codigo: str
+    nombre: str
+    categoria: CategoriaProducto
+    descripcion: str | None
+    imagen_url: str | None
+    precio_venta: int = Field(description="Pesos por unidad.")
+    stock: int = Field(description="Unidades disponibles para la venta ahora.")
 
 
 # --- Gestión de la flota (HU-09): solo administrador y operador ---------------------------

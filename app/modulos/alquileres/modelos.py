@@ -14,13 +14,18 @@ en el mismo milisegundo.
 
 from datetime import date, datetime
 from enum import StrEnum
+from typing import TYPE_CHECKING
 
 from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, Text, func, literal_column
 from sqlalchemy.dialects.postgresql import ExcludeConstraint
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.comun.modelos import ConMarcasDeTiempo, Dinero, tipo_estado
 from app.db import Base
+
+if TYPE_CHECKING:
+    from app.modulos.inventario.modelos import Vehiculo
+    from app.modulos.usuarios.modelos import Usuario
 
 
 class EstadoAlquiler(StrEnum):
@@ -86,3 +91,11 @@ class Alquiler(ConMarcasDeTiempo, Base):
     )
     expira_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     motivo_cancelacion: Mapped[str | None] = mapped_column(Text)
+
+    vehiculo: Mapped["Vehiculo"] = relationship()
+    cliente: Mapped["Usuario"] = relationship()
+
+    @property
+    def dias(self) -> int:
+        """Días cobrados, contando inicio y fin: del 5 al 7 son 3."""
+        return (self.fecha_fin - self.fecha_inicio).days + 1

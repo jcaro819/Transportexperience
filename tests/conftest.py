@@ -27,6 +27,8 @@ SECRETO_JWT_PRUEBAS = "secreto-fijo-solo-para-los-tests-de-transportexperience-0
 os.environ["ENTORNO"] = "pruebas"
 os.environ["JWT_SECRETO"] = SECRETO_JWT_PRUEBAS
 os.environ["PAGOS_PROVEEDOR"] = "falso"
+# Secreto de eventos fijo para firmar webhooks de prueba. No es de ninguna cuenta real.
+os.environ["WOMPI_SECRETO_EVENTOS"] = "test_events_secreto_de_las_pruebas"
 os.environ["GPS_FUENTE"] = "simulador"
 
 from app.config import Configuracion  # noqa: E402

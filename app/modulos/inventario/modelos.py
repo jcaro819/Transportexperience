@@ -23,6 +23,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.comun.modelos import ConMarcasDeTiempo, Dinero, tipo_estado
 from app.db import Base
+from app.modulos.rastreo.modelos import FuenteGps
 
 
 class EstadoVehiculo(StrEnum):
@@ -117,6 +118,12 @@ class Vehiculo(ConMarcasDeTiempo, Base):
     nivel_bateria: Mapped[int | None] = mapped_column(SmallInteger)
     ubicacion: Mapped[str | None] = mapped_column(String(150))
     observaciones: Mapped[str | None] = mapped_column(Text)
+    # GPS (HU-08): SHA-256 de la clave del dispositivo, nunca la clave en claro. La clave es
+    # aleatoria y larga (256 bits), por eso basta un hash rápido; bcrypt costaría ~0,25 s de
+    # CPU en cada posición, y llegan cada 5 s por vehículo.
+    hash_clave_gps: Mapped[str | None] = mapped_column(String(64), unique=True)
+    fuente_gps: Mapped[FuenteGps | None] = mapped_column(tipo_estado(FuenteGps, "fuente_gps"))
+    clave_gps_emitida_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     modelo: Mapped[ModeloVehiculo] = relationship()
 
@@ -145,6 +152,11 @@ class Producto(ConMarcasDeTiempo, Base):
     # HU-10: alerta de bajo stock cuando stock <= stock_minimo.
     stock_minimo: Mapped[int] = mapped_column(default=0, server_default="0")
     activo: Mapped[bool] = mapped_column(default=True, server_default=true())
+
+    @property
+    def bajo_stock(self) -> bool:
+        """HU-10: en o bajo el mínimo, el producto aparece en las alertas."""
+        return self.stock <= self.stock_minimo
 
 
 class NovedadVehiculo(Base):

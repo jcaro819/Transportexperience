@@ -10,12 +10,17 @@ cubre el ``total`` (subtotal + envío).
 
 from datetime import datetime
 from enum import StrEnum
+from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.comun.modelos import ConMarcasDeTiempo, Dinero, tipo_estado
 from app.db import Base
+
+if TYPE_CHECKING:
+    from app.modulos.inventario.modelos import Producto, Vehiculo
+    from app.modulos.usuarios.modelos import Usuario
 
 
 class EstadoVenta(StrEnum):
@@ -47,7 +52,10 @@ class Venta(ConMarcasDeTiempo, Base):
     valor_envio: Mapped[int] = mapped_column(Dinero, default=0, server_default="0")
     total: Mapped[int] = mapped_column(Dinero)
     expira_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Por qué se canceló: lo escribe el cliente, o el sistema si hubo que devolver el dinero.
+    motivo_cancelacion: Mapped[str | None] = mapped_column(Text)
 
+    cliente: Mapped["Usuario"] = relationship()
     items: Mapped[list["ItemVenta"]] = relationship(
         back_populates="venta", cascade="all, delete-orphan"
     )
@@ -74,3 +82,5 @@ class ItemVenta(Base):
     subtotal: Mapped[int] = mapped_column(Dinero)
 
     venta: Mapped[Venta] = relationship(back_populates="items")
+    vehiculo: Mapped["Vehiculo | None"] = relationship()
+    producto: Mapped["Producto | None"] = relationship()

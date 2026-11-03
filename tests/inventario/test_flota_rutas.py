@@ -6,6 +6,9 @@ completo visto desde la API.
 
 import pytest
 
+from app.comun.fechas import hoy
+from app.modulos.domicilios.modelos import EstadoDomicilio
+from app.modulos.inventario.modelos import EstadoVehiculo
 from app.modulos.usuarios.modelos import Rol
 from tests.conftest import encabezado_de
 
@@ -45,12 +48,17 @@ def test_el_domiciliario_solo_puede_reportar(
 def test_el_domiciliario_reporta_una_falla_critica_por_la_api(
     cliente_api, crear_usuario, fabrica
 ) -> None:
-    vehiculo = fabrica.vehiculo(codigo="MON-0001")
+    vehiculo = fabrica.vehiculo(codigo="MON-0001", estado=EstadoVehiculo.ASIGNADO_A_DOMICILIO)
+    domiciliario = crear_usuario(Rol.DOMICILIARIO)
+    alquiler = fabrica.alquiler(fabrica.vehiculo(), hoy(), hoy())
+    fabrica.domicilio(
+        alquiler, EstadoDomicilio.EN_CAMINO, domiciliario=domiciliario, vehiculo_transporte=vehiculo
+    )
 
     respuesta = cliente_api.post(
         f"/vehiculos/{vehiculo.id}/novedades",
         json={"tipo": "falla", "descripcion": "Se apagó en plena ruta.", "es_critica": True},
-        headers=encabezado_de(crear_usuario(Rol.DOMICILIARIO)),
+        headers=encabezado_de(domiciliario),
     )
 
     assert respuesta.status_code == 201

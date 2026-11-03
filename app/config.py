@@ -10,13 +10,15 @@ datos, editables por el administrador (SRS 3.5.3).
 """
 
 from functools import lru_cache
-from typing import Literal
+from typing import Literal, Self
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # El valor de .env.example: si llega aquí, alguien copió el ejemplo sin cambiarlo.
 SECRETO_JWT_DE_EJEMPLO = "cambia_este_secreto"
+# Las llaves de Wompi de .env.example terminan así: no son llaves reales.
+SUFIJO_DE_EJEMPLO = "_xxxxxxxx"
 LONGITUD_MINIMA_SECRETO_JWT = 32
 
 
@@ -53,6 +55,7 @@ class Configuracion(BaseSettings):
     wompi_llave_publica: str = ""
     wompi_llave_privada: str = ""
     wompi_secreto_eventos: str = ""
+    wompi_secreto_integridad: str = ""
 
     @property
     def lista_cors_origenes(self) -> list[str]:
@@ -86,6 +89,41 @@ class Configuracion(BaseSettings):
         if valor and not valor.startswith("prv_test_"):
             raise ValueError("Solo se permiten llaves de sandbox de Wompi (prv_test_...)")
         return valor
+
+    @field_validator("wompi_secreto_eventos")
+    @classmethod
+    def _solo_secreto_de_eventos_de_pruebas(cls, valor: str) -> str:
+        """Rechaza cualquier secreto de eventos que no sea de sandbox."""
+        if valor and not valor.startswith("test_events_"):
+            raise ValueError("Solo se permiten secretos de sandbox de Wompi (test_events_...)")
+        return valor
+
+    @field_validator("wompi_secreto_integridad")
+    @classmethod
+    def _solo_secreto_de_integridad_de_pruebas(cls, valor: str) -> str:
+        """Rechaza cualquier secreto de integridad que no sea de sandbox."""
+        if valor and not valor.startswith("test_integrity_"):
+            raise ValueError("Solo se permiten secretos de sandbox de Wompi (test_integrity_...)")
+        return valor
+
+    @model_validator(mode="after")
+    def _wompi_completo(self) -> Self:
+        """Con ``PAGOS_PROVEEDOR=wompi`` deben estar las cuatro llaves, y no las de ejemplo."""
+        if self.pagos_proveedor != "wompi":
+            return self
+        llaves = {
+            "WOMPI_LLAVE_PUBLICA": self.wompi_llave_publica,
+            "WOMPI_LLAVE_PRIVADA": self.wompi_llave_privada,
+            "WOMPI_SECRETO_EVENTOS": self.wompi_secreto_eventos,
+            "WOMPI_SECRETO_INTEGRIDAD": self.wompi_secreto_integridad,
+        }
+        faltantes = [n for n, v in llaves.items() if not v or v.endswith(SUFIJO_DE_EJEMPLO)]
+        if faltantes:
+            raise ValueError(
+                "PAGOS_PROVEEDOR=wompi necesita tus llaves de sandbox en el .env (Wompi > "
+                f"Desarrolladores). Faltan o son de ejemplo: {', '.join(faltantes)}"
+            )
+        return self
 
 
 @lru_cache

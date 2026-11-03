@@ -1,7 +1,20 @@
 # Modelo de datos del MVP — TransportExperience
 
-20 tablas en una sola migración inicial
-(`alembic/versions/2026_09_29_1050-05ddce1f9e8a_modelo_inicial_del_mvp.py`).
+21 tablas: 20 en la migración inicial
+(`alembic/versions/2026_09_29_1050-05ddce1f9e8a_modelo_inicial_del_mvp.py`) y
+`parametros_sistema`, agregada con HU-03
+(`alembic/versions/2026_10_27_0447-1211e36c3ef7_parametros_del_sistema.py`).
+HU-04 agregó la columna `ventas.motivo_cancelacion`
+(`alembic/versions/2026_10_27_0519-c74d60acf0af_motivo_de_cancelacion_de_ventas.py`).
+HU-05 agregó `pagos.url_redireccion` y `pagos.bloqueo_original_hasta`, y el parámetro
+`max_minutos_pago_pendiente` = 60
+(`alembic/versions/2026_10_27_0543-7f6b572858d8_pagos_pendientes_y_pse.py`).
+HU-08 agregó a `vehiculos` la clave GPS (`hash_clave_gps`, `fuente_gps`,
+`clave_gps_emitida_en`) y el parámetro `segundos_sin_senal` = 30
+(`alembic/versions/2026_10_27_0658-845c1b8b60d3_clave_gps_de_los_vehiculos.py`).
+El arreglo de HU-11 agregó `actas.instantanea` (JSONB): la copia de lo que dice el acta,
+de la que sale siempre su PDF
+(`alembic/versions/2026_10_27_0946-ce778c5c8489_instantanea_de_las_actas.py`).
 El diagrama de abajo se genera desde los modelos con `python -m scripts.generar_diagrama_er`;
 no se edita a mano.
 
@@ -19,6 +32,7 @@ no se edita a mano.
 | reportes | `actas` | HU-11 |
 | portal | `contenido_portal`, `horarios_atencion` | HU-01, SRS 3.5.3 |
 | (transversal) | `auditoria` | SRS 3.5.4 |
+| (transversal) | `parametros_sistema` (p. ej., `max_dias_alquiler` = 30) | SRS 3.5.3, HU-03 |
 
 ## Reglas que garantiza la base de datos
 
@@ -63,6 +77,9 @@ la base: viven en el `servicio.py` de cada módulo y tienen sus propios tests.
 - **Bloqueo de 15 minutos.** Un alquiler o una venta en `pendiente_pago` tiene `expira_en`.
   Al crear una reserva nueva, el servicio primero marca como `expirado` los bloqueos
   vencidos de ese vehículo, en la misma transacción.
+- **Parámetros de negocio** en `parametros_sistema` (clave → valor entero), no en el
+  código: el máximo de días por alquiler se lee en cada reserva, así un cambio del
+  administrador aplica de inmediato.
 - **Zonas** como GeoJSON en `jsonb`, sin PostGIS. La validación de "punto dentro del
   polígono" es una función propia en Python, con tests y sin dependencias nuevas (HU-06).
 - **Actas (HU-11):** los campos de conformidad (`conforme_por_id`, `conforme_en`,
@@ -90,6 +107,7 @@ erDiagram
         integer conforme_por_id FK
         timestamptz conforme_en
         varchar hash_pdf
+        jsonb instantanea
     }
     alquileres {
         integer id PK
@@ -226,7 +244,15 @@ erDiagram
         integer pago_compensado_id FK
         timestamptz aprobado_en
         text detalle_error
+        varchar url_redireccion
+        timestamptz bloqueo_original_hasta
         timestamptz creado_en
+        timestamptz actualizado_en
+    }
+    parametros_sistema {
+        varchar clave PK
+        integer valor
+        text descripcion
         timestamptz actualizado_en
     }
     posiciones_gps {
@@ -282,6 +308,9 @@ erDiagram
         smallint nivel_bateria
         varchar ubicacion
         text observaciones
+        varchar hash_clave_gps UK
+        varchar fuente_gps "simulador | dispositivo"
+        timestamptz clave_gps_emitida_en
         timestamptz creado_en
         timestamptz actualizado_en
     }
@@ -293,6 +322,7 @@ erDiagram
         bigint valor_envio
         bigint total
         timestamptz expira_en
+        text motivo_cancelacion
         timestamptz creado_en
         timestamptz actualizado_en
     }

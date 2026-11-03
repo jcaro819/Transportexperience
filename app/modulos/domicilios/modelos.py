@@ -12,14 +12,18 @@ porque un solo pago cubre el total. Una dirección fuera de cobertura se bloquea
 from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, Text, func, true
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.comun.modelos import ConMarcasDeTiempo, Coordenada, Dinero, tipo_estado
 from app.db import Base
+
+if TYPE_CHECKING:
+    from app.modulos.inventario.modelos import Vehiculo
+    from app.modulos.usuarios.modelos import Usuario
 
 
 class EstadoDomicilio(StrEnum):
@@ -107,6 +111,11 @@ class Domicilio(ConMarcasDeTiempo, Base):
     vehiculo_transporte_id: Mapped[int | None] = mapped_column(ForeignKey("vehiculos.id"))
     entregado_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     motivo_cancelacion: Mapped[str | None] = mapped_column(Text)
+
+    zona: Mapped[ZonaCobertura] = relationship()
+    cliente: Mapped["Usuario"] = relationship(foreign_keys=[cliente_id])
+    domiciliario: Mapped["Usuario | None"] = relationship(foreign_keys=[domiciliario_id])
+    vehiculo_transporte: Mapped["Vehiculo | None"] = relationship()
 
 
 class HistorialEstadoDomicilio(Base):

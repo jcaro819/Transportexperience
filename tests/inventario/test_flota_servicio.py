@@ -13,7 +13,7 @@ from app.auditoria import RegistroAuditoria
 from app.comun.errores import PermisoDenegado
 from app.comun.paginacion import ParametrosPagina
 from app.modulos.alquileres.modelos import EstadoAlquiler
-from app.modulos.domicilios.modelos import Domicilio, ZonaCobertura
+from app.modulos.domicilios.modelos import Domicilio, EstadoDomicilio, ZonaCobertura
 from app.modulos.inventario import servicio
 from app.modulos.inventario.esquemas import CierreNovedad, FiltrosCatalogo, NovedadCrear
 from app.modulos.inventario.excepciones import (
@@ -274,6 +274,10 @@ def test_cerrando_primero_las_demas_criticas_si_vuelve(sesion, fabrica, operador
 def test_el_domiciliario_reporta_una_novedad_critica(sesion, fabrica, crear_usuario) -> None:
     domiciliario = crear_usuario(Rol.DOMICILIARIO)
     vehiculo = fabrica.vehiculo(estado=EstadoVehiculo.ASIGNADO_A_DOMICILIO)
+    alquiler = fabrica.alquiler(fabrica.vehiculo(), HOY, HOY)
+    fabrica.domicilio(
+        alquiler, EstadoDomicilio.ASIGNADO, domiciliario=domiciliario, vehiculo_transporte=vehiculo
+    )
 
     resultado = _reportar(sesion, vehiculo, domiciliario, critica=True, tipo=TipoNovedad.FALLA)
 
@@ -281,6 +285,16 @@ def test_el_domiciliario_reporta_una_novedad_critica(sesion, fabrica, crear_usua
     assert resultado.novedad.reportada_por_id == domiciliario.id
     [registro] = _cambios_de_estado(sesion, vehiculo)
     assert registro.usuario_id == domiciliario.id
+
+
+def test_el_domiciliario_no_reporta_sobre_una_unidad_que_no_lleva(
+    sesion, fabrica, crear_usuario
+) -> None:
+    domiciliario = crear_usuario(Rol.DOMICILIARIO)
+    ajena = fabrica.vehiculo()
+    with pytest.raises(PermisoDenegado, match="asignado"):
+        _reportar(sesion, ajena, domiciliario, critica=True, tipo=TipoNovedad.FALLA)
+    assert ajena.estado == EstadoVehiculo.DISPONIBLE
 
 
 @pytest.mark.parametrize("devolver", [False, True], ids=["solo_cerrar", "cerrar_y_devolver"])

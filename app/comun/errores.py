@@ -168,6 +168,7 @@ def respuestas_error(*estados: int) -> dict[int | str, dict[str, Any]]:
         403: "El rol no tiene permiso",
         404: "No encontrado",
         409: "Conflicto con el estado actual",
+        413: "Cuerpo demasiado grande",
         422: "Datos inválidos",
     }
     return {e: {"model": ErrorRespuesta, "description": descripciones[e]} for e in estados}

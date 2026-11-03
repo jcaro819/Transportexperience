@@ -20,6 +20,7 @@ from app.modulos.rastreo.modelos import PosicionGps
 from app.modulos.reportes.modelos import Acta
 from app.modulos.usuarios.modelos import Usuario
 from app.modulos.ventas.modelos import ItemVenta, Venta
+from app.parametros import ParametroSistema
 
 __all__ = [
     "Acta",
@@ -34,6 +35,7 @@ __all__ = [
     "ModeloVehiculo",
     "NovedadVehiculo",
     "Pago",
+    "ParametroSistema",
     "PosicionGps",
     "Producto",
     "RegistroAuditoria",

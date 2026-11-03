@@ -35,6 +35,104 @@ RUTAS_SPRINT_1 = {
     ("delete", "/portal/horarios/{dia}"),
 }
 
+# Lo que HU-03 (Sprint 2) promete al frontend.
+RUTAS_HU_03 = {
+    ("post", "/alquileres"),
+    ("get", "/alquileres"),
+    ("get", "/alquileres/mios"),
+    ("get", "/alquileres/en-riesgo"),
+    ("get", "/alquileres/{alquiler_id}"),
+    ("post", "/alquileres/{alquiler_id}/pago"),
+    ("post", "/alquileres/{alquiler_id}/cancelacion"),
+    ("post", "/alquileres/{alquiler_id}/entrega"),
+    ("post", "/alquileres/{alquiler_id}/devolucion"),
+    ("post", "/alquileres/{alquiler_id}/reasignacion"),
+}
+
+# Lo que HU-04 (Sprint 2) promete al frontend.
+RUTAS_HU_04 = {
+    ("get", "/catalogo/productos"),
+    ("post", "/ventas"),
+    ("get", "/ventas"),
+    ("get", "/ventas/mias"),
+    ("get", "/ventas/devoluciones-pendientes"),
+    ("get", "/ventas/{venta_id}"),
+    ("post", "/ventas/{venta_id}/pago"),
+    ("post", "/ventas/{venta_id}/cancelacion"),
+    ("get", "/ventas/{venta_id}/comprobante"),
+}
+
+# Lo que HU-05 (Sprint 2) promete al frontend.
+RUTAS_HU_05 = {
+    ("get", "/pagos/configuracion"),
+    ("get", "/pagos/pse/bancos"),
+    ("get", "/pagos/{referencia}"),
+    ("get", "/pagos/{referencia}/comprobante"),
+    ("get", "/pagos/devoluciones-pendientes"),
+    ("post", "/pagos/{referencia}/devolucion-ejecutada"),
+    ("post", "/pagos/webhooks/wompi"),
+    ("post", "/alquileres/{alquiler_id}/cancelacion-con-devolucion"),
+}
+
+# Lo que HU-06 (Sprint 3) promete al frontend.
+RUTAS_HU_06 = {
+    ("get", "/domicilios/zonas"),
+    ("get", "/domicilios/cobertura"),
+    ("post", "/domicilios"),
+    ("get", "/domicilios"),
+    ("get", "/domicilios/mios"),
+    ("get", "/domicilios/asignados"),
+    ("get", "/domicilios/domiciliarios-disponibles"),
+    ("get", "/domicilios/{domicilio_id}"),
+    ("post", "/domicilios/{domicilio_id}/cancelacion"),
+    ("post", "/domicilios/{domicilio_id}/asignacion"),
+}
+
+# Lo que HU-07 (Sprint 3) promete al frontend.
+RUTAS_HU_07 = {
+    ("post", "/domicilios/{domicilio_id}/estado"),
+    ("post", "/domicilios/{domicilio_id}/cancelacion-por-despacho"),
+    ("get", "/domicilios/rastreo/{codigo}"),
+}
+
+# Lo que HU-08 (Sprint 3) promete al frontend y a los dispositivos.
+RUTAS_HU_08 = {
+    ("post", "/rastreo/posiciones"),
+    ("get", "/rastreo/flota"),
+    ("get", "/rastreo/vehiculos/{vehiculo_id}/recorrido"),
+    ("post", "/rastreo/vehiculos/{vehiculo_id}/clave"),
+}
+
+# Lo que HU-10 (Sprint 4) promete al frontend.
+RUTAS_HU_10 = {
+    ("get", "/inventario/resumen"),
+    ("get", "/inventario/alertas-stock"),
+    ("get", "/inventario/tipos"),
+    ("post", "/inventario/tipos"),
+    ("patch", "/inventario/tipos/{tipo_id}"),
+    ("get", "/inventario/modelos"),
+    ("post", "/inventario/modelos"),
+    ("patch", "/inventario/modelos/{modelo_id}"),
+    ("post", "/inventario/unidades"),
+    ("patch", "/inventario/unidades/{vehiculo_id}"),
+    ("get", "/inventario/productos"),
+    ("post", "/inventario/productos"),
+    ("patch", "/inventario/productos/{producto_id}"),
+    ("post", "/inventario/productos/{producto_id}/ajustes"),
+}
+
+# Lo que HU-11 (Sprint 4) promete al frontend.
+RUTAS_HU_11 = {
+    ("get", "/actas"),
+    ("get", "/actas/mias"),
+    ("get", "/actas/{acta_id}"),
+    ("get", "/actas/{acta_id}/pdf"),
+    ("post", "/actas/{acta_id}/conformidad"),
+    ("get", "/actas/{acta_id}/verificacion"),
+    ("get", "/actas/exportacion/excel"),
+    ("get", "/actas/exportacion/pdf"),
+}
+
 # Códigos que no vienen de una clase ErrorDeNegocio sino de los manejadores globales.
 CODIGOS_GENERALES = {
     "datos_invalidos",
@@ -70,6 +168,46 @@ def test_openapi_exportado_esta_actualizado() -> None:
 def test_el_contrato_incluye_todas_las_rutas_del_sprint_1() -> None:
     faltantes = RUTAS_SPRINT_1 - _operaciones()
     assert not faltantes, f"Rutas del Sprint 1 que no están en el contrato: {sorted(faltantes)}"
+
+
+def test_el_contrato_incluye_todas_las_rutas_de_hu_11() -> None:
+    faltantes = RUTAS_HU_11 - _operaciones()
+    assert not faltantes, f"Rutas de HU-11 que no están en el contrato: {sorted(faltantes)}"
+
+
+def test_el_contrato_incluye_todas_las_rutas_de_hu_10() -> None:
+    faltantes = RUTAS_HU_10 - _operaciones()
+    assert not faltantes, f"Rutas de HU-10 que no están en el contrato: {sorted(faltantes)}"
+
+
+def test_el_contrato_incluye_todas_las_rutas_de_hu_08() -> None:
+    faltantes = RUTAS_HU_08 - _operaciones()
+    assert not faltantes, f"Rutas de HU-08 que no están en el contrato: {sorted(faltantes)}"
+
+
+def test_el_contrato_incluye_todas_las_rutas_de_hu_07() -> None:
+    faltantes = RUTAS_HU_07 - _operaciones()
+    assert not faltantes, f"Rutas de HU-07 que no están en el contrato: {sorted(faltantes)}"
+
+
+def test_el_contrato_incluye_todas_las_rutas_de_hu_06() -> None:
+    faltantes = RUTAS_HU_06 - _operaciones()
+    assert not faltantes, f"Rutas de HU-06 que no están en el contrato: {sorted(faltantes)}"
+
+
+def test_el_contrato_incluye_todas_las_rutas_de_hu_05() -> None:
+    faltantes = RUTAS_HU_05 - _operaciones()
+    assert not faltantes, f"Rutas de HU-05 que no están en el contrato: {sorted(faltantes)}"
+
+
+def test_el_contrato_incluye_todas_las_rutas_de_hu_04() -> None:
+    faltantes = RUTAS_HU_04 - _operaciones()
+    assert not faltantes, f"Rutas de HU-04 que no están en el contrato: {sorted(faltantes)}"
+
+
+def test_el_contrato_incluye_todas_las_rutas_de_hu_03() -> None:
+    faltantes = RUTAS_HU_03 - _operaciones()
+    assert not faltantes, f"Rutas de HU-03 que no están en el contrato: {sorted(faltantes)}"
 
 
 @pytest.mark.parametrize(("metodo", "ruta"), sorted(_operaciones()))
