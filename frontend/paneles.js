@@ -652,3 +652,141 @@ async function openAssignDialog(deliveryId) {
 document.getElementById("txOpsRefresh")?.addEventListener("click", e => {
   runWithButton(e.currentTarget, "Actualizando...", loadOperatorPanel);
 });
+
+// ---------------------------------------------------------
+// Panel del domiciliario (HU-07): sus entregas en ruta
+// ---------------------------------------------------------
+
+// asignado → recogido → en_camino → entregado, sin saltar pasos.
+const NEXT_DELIVERY_STEP = {
+  asignado: { estado: "recogido", label: "Marcar recogido" },
+  recogido: { estado: "en_camino", label: "Salir en camino" },
+  en_camino: { estado: "entregado", label: "Marcar entregado" },
+};
+
+let courierDeliveries = [];
+
+function courierCard(delivery) {
+  const next = NEXT_DELIVERY_STEP[delivery.estado];
+  const operation = delivery.alquiler_id ? `Alquiler #${Number(delivery.alquiler_id)}` : `Compra #${Number(delivery.venta_id)}`;
+  const lat = Number(delivery.latitud);
+  const lon = Number(delivery.longitud);
+  const phone = delivery.cliente?.telefono;
+
+  return `
+    <article class="tx-rental-card">
+      <div class="tx-rental-main">
+        <div class="tx-rental-icon">📦</div>
+        <div>
+          <small>${escapeHtml(delivery.codigo_rastreo)} · ${operation}</small>
+          <h3>${escapeHtml(delivery.cliente?.nombre_completo || "Cliente")}</h3>
+          <span class="tx-status ${delivery.estado === "asignado" ? "tx-status-pending" : "tx-status-ok"}">${escapeHtml(deliveryStatusLabel(delivery.estado))}</span>
+        </div>
+      </div>
+      <div class="tx-rental-dates">
+        <strong>${escapeHtml(delivery.direccion)}</strong>
+        ${delivery.indicaciones ? `<span>${escapeHtml(delivery.indicaciones)}</span>` : ""}
+        <small>${escapeHtml(delivery.zona?.nombre || "")}${phone ? ` · <a href="tel:${escapeHtml(phone)}">Tel. ${escapeHtml(phone)}</a>` : ""}</small>
+        ${delivery.vehiculo_transporte ? `<small>Vas en ${escapeHtml(delivery.vehiculo_transporte.codigo)}</small>` : ""}
+        <small><a href="https://www.openstreetmap.org/?mlat=${lat}&amp;mlon=${lon}#map=18/${lat}/${lon}" target="_blank" rel="noopener">Ver el punto en el mapa</a></small>
+      </div>
+      <div class="tx-rental-actions">
+        ${next ? `<button class="btn btn-primary small-btn" data-advance-delivery="${Number(delivery.id)}">${escapeHtml(next.label)}</button>` : ""}
+      </div>
+    </article>
+  `;
+}
+
+async function loadCourierPanel() {
+  const list = document.getElementById("txCourierList");
+  const errorBox = document.getElementById("txCourierError");
+  if (!list) return;
+
+  if (!userHasRole(["domiciliario"])) {
+    list.innerHTML = `<div class="empty-state"><div>🔐</div><h3>Inicia sesión como domiciliario</h3><p>Esta sección muestra las entregas asignadas a un domiciliario.</p></div>`;
+    return;
+  }
+
+  const greeting = document.getElementById("txCourierGreeting");
+  if (greeting) greeting.textContent = `Hola, ${state.user.nombre_completo.split(" ")[0]}. Estas son tus entregas.`;
+  // Si la lista es de otra sesión, no se muestra mientras carga.
+  if (list.dataset.owner !== String(state.user.id)) {
+    list.dataset.owner = String(state.user.id);
+    list.innerHTML = `<div class="empty-state"><div>⏳</div><h3>Cargando tus entregas</h3></div>`;
+  }
+
+  try {
+    courierDeliveries = await fetchAllPages("/domicilios/asignados");
+    hidePanelError(errorBox);
+  } catch (error) {
+    if (error.status === 401) handleExpiredSession();
+    else showPanelError(errorBox, error);
+    return;
+  }
+
+  if (!courierDeliveries.length) {
+    list.innerHTML = `<div class="empty-state"><div>🛵</div><h3>No tienes entregas en ruta</h3><p>Cuando el despacho te asigne un domicilio aparecerá aquí. Usa "Actualizar" para revisar.</p></div>`;
+    return;
+  }
+
+  list.innerHTML = courierDeliveries.map(courierCard).join("");
+  list.querySelectorAll("[data-advance-delivery]").forEach(btn => {
+    btn.addEventListener("click", () => advanceDelivery(Number(btn.dataset.advanceDelivery), btn));
+  });
+}
+
+async function advanceDelivery(id, button) {
+  const delivery = courierDeliveries.find(d => d.id === id);
+  const next = delivery && NEXT_DELIVERY_STEP[delivery.estado];
+  if (!next) return;
+
+  // Al entregar queda el acta (HU-11): se pide el estado en que se entrega.
+  if (next.estado === "entregado") {
+    openDeliveredDialog(delivery);
+    return;
+  }
+
+  await runWithButton(button, "Guardando...", async () => {
+    try {
+      await postJson(`/domicilios/${id}/estado`, { estado: next.estado });
+      showToast(`${delivery.codigo_rastreo}: ${deliveryStatusLabel(next.estado).toLowerCase()}.`);
+      await loadCourierPanel();
+    } catch (error) {
+      handlePanelActionError(error);
+    }
+  });
+}
+
+function openDeliveredDialog(delivery) {
+  const content = openPanelDialog(`
+    <span class="eyebrow">ENTREGA A DOMICILIO</span>
+    <h2>${escapeHtml(delivery.codigo_rastreo)}</h2>
+    <p>${escapeHtml(delivery.cliente?.nombre_completo || "")} · ${escapeHtml(delivery.direccion)}. Queda registrada el acta de entrega.</p>
+    ${actaFormHtml("Confirmar entrega")}
+  `);
+
+  const form = content.querySelector("#txActaForm");
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    await runWithButton(form.querySelector('[type="submit"]'), "Guardando...", async () => {
+      try {
+        await postJson(`/domicilios/${delivery.id}/estado`, { estado: "entregado", acta: readActaForm(form) });
+        dialog.close();
+        showToast(`${delivery.codigo_rastreo} entregado. Quedó el acta de entrega.`);
+        await loadCourierPanel();
+      } catch (error) {
+        handleDialogError(content, error);
+      }
+    });
+  });
+}
+
+document.getElementById("txCourierRefresh")?.addEventListener("click", e => {
+  runWithButton(e.currentTarget, "Actualizando...", loadCourierPanel);
+});
+
+document.getElementById("txCourierLogout")?.addEventListener("click", () => {
+  clearSession();
+  showView("inicio");
+  showToast("Sesión cerrada.");
+});

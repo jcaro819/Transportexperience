@@ -141,7 +141,7 @@
     <section class="view admin-view" id="view-admin" data-view="admin">
       <aside class="admin-sidebar">
         <div class="auth-brand"><span class="brand-mark small"><svg viewBox="0 0 48 48"><path d="M9 27h17l8-12h5L29 33H12a7 7 0 1 1-3-6Zm4 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm24 0a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg></span><strong>TransportExperience</strong></div>
-        <nav class="admin-nav"><button class="active" data-admin-tab="resumen">▦ Resumen</button><button data-admin-tab="usuarios">👥 Usuarios</button><button data-admin-tab="flota">🛴 Flota</button><button data-admin-tab="mantenimiento">🛠 Mantenimiento</button><button data-admin-tab="operacion" data-roles="administrador,operador">🧾 Operación</button><button data-admin-tab="rastreo" data-roles="administrador,operador">📍 Rastreo</button><button disabled>📊 Reportes <span>Próx.</span></button></nav>
+        <nav class="admin-nav"><button class="active" data-admin-tab="resumen">▦ Resumen</button><button data-admin-tab="usuarios">👥 Usuarios</button><button data-admin-tab="flota">🛴 Flota</button><button data-admin-tab="mantenimiento">🛠 Mantenimiento</button><button data-admin-tab="operacion" data-roles="administrador,operador" hidden>🧾 Operación</button><button data-admin-tab="rastreo" data-roles="administrador,operador" hidden>📍 Rastreo</button><button disabled>📊 Reportes <span>Próx.</span></button></nav>
         <button class="logout" data-view-button="inicio">↪ Cerrar demo</button>
       </aside>
       <div class="admin-main">
@@ -161,6 +161,11 @@
 
         <section class="admin-tab" data-admin-content="rastreo"><article class="panel"><div class="panel-heading"><div><small>HU-08</small><h3>Mapa de la flota</h3></div><div class="tx-fleet-legend"><span><i class="dot available"></i>En línea</span><span><i class="dot tx-dot-off"></i>Sin señal</span><small id="txFleetUpdated">Sin consultar</small></div></div><div id="txFleetError" class="tx-availability no" hidden></div><div id="txFleetMap" class="tx-fleet-map" aria-label="Mapa de la flota"></div><div class="table-wrap"><table><thead><tr><th>Unidad</th><th>Estado</th><th>Señal</th><th>Último reporte</th></tr></thead><tbody id="txFleetRows"></tbody></table></div></article></section>
       </div>
+    </section>
+
+    <section class="view" id="view-entregas" data-view="entregas">
+      <section class="page-hero compact"><div><span class="eyebrow">DOMICILIARIO · HU-07</span><h1 id="txCourierGreeting">Mis entregas</h1><p>Tus domicilios en ruta. Avanza el estado a medida que recoges y entregas cada pedido.</p><div class="tx-account-actions"><button class="btn btn-primary" id="txCourierRefresh">Actualizar</button><button class="btn btn-ghost" id="txCourierLogout">Cerrar sesión</button></div></div></section>
+      <section class="section tx-rentals-section"><div id="txCourierError" class="tx-availability no tx-panel-error" hidden></div><div id="txCourierList" class="tx-rentals-list"></div></section>
     </section>
   </main>
 

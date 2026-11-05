@@ -310,6 +310,7 @@ function showView(name) {
   if (name === "catalogo") refreshCatalog();
   if (name === "cuenta") loadMyRentals();
   if (name === "admin") loadAdminData();
+  if (name === "entregas") loadCourierPanel(); // paneles.js
 }
 
 document.querySelectorAll("[data-view-button], [data-view-link]").forEach(el => {
@@ -393,7 +394,7 @@ function updateSessionUi() {
     headerLoginButton.innerHTML = '<span aria-hidden="true">👤</span> Tú';
     headerLoginButton.setAttribute("aria-label", "Abrir tu cuenta");
     headerLoginButton.classList.add("tx-account-button");
-    headerLoginButton.dataset.viewButton = "inicio";
+    headerLoginButton.dataset.viewButton = state.user.rol === "domiciliario" ? "entregas" : "inicio";
   }
 
   const greeting = document.getElementById("txAccountGreeting");
@@ -870,7 +871,7 @@ loginForm?.addEventListener("submit", async e => {
       showView("admin");
       showToast(`Sesión iniciada como ${roleLabel(data.usuario.rol)}.`);
     } else {
-      showView("inicio");
+      showView(data.usuario.rol === "domiciliario" ? "entregas" : "inicio");
       showToast(`Sesión iniciada como ${roleLabel(data.usuario.rol)}.`);
     }
   } catch (error) {
@@ -1260,12 +1261,14 @@ window.showToast = showToast;
   updateSessionUi();
 
   const initial = location.hash.replace("#", "");
-  const allowed = ["inicio", "catalogo", "login", "admin", "cuenta"];
+  const allowed = ["inicio", "catalogo", "login", "admin", "cuenta", "entregas"];
   const target = allowed.includes(initial) ? initial : "inicio";
 
   if (target === "admin" && !["administrador", "operador"].includes(state.user?.rol)) {
     showView("inicio");
   } else if (target === "cuenta" && state.user?.rol !== "cliente") {
+    showView("inicio");
+  } else if (target === "entregas" && state.user?.rol !== "domiciliario") {
     showView("inicio");
   } else {
     showView(target);
