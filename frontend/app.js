@@ -1065,6 +1065,11 @@ document.querySelectorAll("[data-admin-tab]").forEach(btn => {
       return;
     }
 
+    if (btn.dataset.roles && !btn.dataset.roles.split(",").includes(state.user?.rol)) {
+      showToast("Tu rol no tiene acceso a esta sección.");
+      return;
+    }
+
     document.querySelectorAll(".admin-nav [data-admin-tab]").forEach(b => {
       b.classList.toggle("active", b.dataset.adminTab === tab);
     });
@@ -1077,6 +1082,7 @@ document.querySelectorAll("[data-admin-tab]").forEach(btn => {
 
     if (tab === "usuarios") await loadAdminUsers();
     if (tab === "flota") await loadAdminFleet();
+    onPanelTabShown(tab); // paneles.js
   });
 });
 
@@ -1186,6 +1192,7 @@ function updateAdminMetrics() {
 async function loadAdminData() {
   if (!state.user || !["administrador", "operador"].includes(state.user.rol)) return;
   updateAdminIdentity();
+  syncPanelTabs(); // paneles.js
   await loadAdminFleet();
   if (state.user.rol === "administrador") await loadAdminUsers();
 }
