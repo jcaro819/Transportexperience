@@ -310,8 +310,8 @@ function showView(name) {
   if (name === "catalogo") refreshCatalog();
   if (name === "cuenta") loadMyRentals();
   if (name === "admin") loadAdminData();
-  if (name === "entregas") loadCourierPanel(); // paneles.js
-  if (name === "mis-actas") loadMyActas(); // paneles.js
+  if (name === "entregas") callPanels("loadCourierPanel"); // paneles.js
+  if (name === "mis-actas") callPanels("loadMyActas"); // paneles.js
 }
 
 document.querySelectorAll("[data-view-button], [data-view-link]").forEach(el => {
@@ -370,7 +370,7 @@ function focusFirstPendingRental() {
 }
 
 function updateSessionUi() {
-  syncRoleLinks(); // paneles.js
+  callPanels("syncRoleLinks"); // paneles.js
   if (!headerLoginButton) return;
 
   if (!state.user) {
@@ -1085,7 +1085,7 @@ document.querySelectorAll("[data-admin-tab]").forEach(btn => {
 
     if (tab === "usuarios") await loadAdminUsers();
     if (tab === "flota") await loadAdminFleet();
-    onPanelTabShown(tab); // paneles.js
+    callPanels("onPanelTabShown", tab); // paneles.js
   });
 });
 
@@ -1195,7 +1195,7 @@ function updateAdminMetrics() {
 async function loadAdminData() {
   if (!state.user || !["administrador", "operador"].includes(state.user.rol)) return;
   updateAdminIdentity();
-  syncPanelTabs(); // paneles.js
+  callPanels("syncPanelTabs"); // paneles.js
   await loadAdminFleet();
   if (state.user.rol === "administrador") await loadAdminUsers();
 }
@@ -1252,7 +1252,14 @@ function showToast(message) {
 }
 window.showToast = showToast;
 
-(async function init() {
+// Llama a una función de paneles.js solo si ya existe: si ese archivo carga tarde o falla,
+// las pantallas de app.js siguen funcionando.
+function callPanels(name, ...args) {
+  const fn = window[name];
+  return typeof fn === "function" ? fn(...args) : undefined;
+}
+
+async function init() {
   await Promise.allSettled([
     checkHealth(),
     loadPortal(),
@@ -1279,4 +1286,9 @@ window.showToast = showToast;
   }
 
   if (target !== "catalogo") refreshCatalog();
-})();
+}
+
+// DOMContentLoaded llega cuando ya corrieron todos los <script> de la página (también
+// paneles.js, que se carga después de este archivo).
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+else init();

@@ -1515,3 +1515,6 @@ function openConformityDialog(acta) {
     });
   });
 }
+
+// Si este archivo carga después del arranque de app.js, los enlaces por rol se ponen al día.
+syncRoleLinks();
