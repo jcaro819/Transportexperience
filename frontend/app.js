@@ -179,6 +179,18 @@ function injectClientUi() {
   const main = document.querySelector("main");
   if (!main || document.getElementById("view-cuenta")) return;
 
+  const loginFormForRegisterLink = document.getElementById("loginForm");
+  if (loginFormForRegisterLink && !document.getElementById("txGoRegister")) {
+    loginFormForRegisterLink.insertAdjacentHTML("afterend", `
+      <div class="tx-register-link">
+        <span>¿No tienes cuenta?</span>
+        <button type="button" class="text-button" id="txGoRegister" data-view-button="registro">
+          Crear cuenta
+        </button>
+      </div>
+    `);
+  }
+
   const headerActions = document.querySelector(".header-actions");
   if (headerActions && !document.getElementById("txPendingShortcut")) {
     headerActions.insertAdjacentHTML("afterbegin", `
@@ -215,11 +227,113 @@ function injectClientUi() {
         </div>
       </section>
     </section>
+
+    <section class="view auth-view" id="view-registro" data-view="registro">
+      <div class="auth-panel">
+        <button class="back-link" data-view-button="login">← Volver a iniciar sesión</button>
+
+        <div class="auth-brand">
+          <span class="brand-mark small">
+            <svg viewBox="0 0 48 48"><path d="M9 27h17l8-12h5L29 33H12a7 7 0 1 1-3-6Zm4 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm24 0a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg>
+          </span>
+          <strong>TransportExperience</strong>
+        </div>
+
+        <span class="eyebrow">NUEVA CUENTA</span>
+        <h1>Crea tu cuenta</h1>
+        <p>Regístrate como cliente para reservar, comprar y gestionar tus pedidos.</p>
+
+        <form id="txRegisterForm">
+          <label>Nombre completo
+            <input
+              id="txRegisterName"
+              type="text"
+              minlength="3"
+              maxlength="150"
+              autocomplete="name"
+              placeholder="Ej. Julián Mejía"
+              required>
+          </label>
+
+          <label>Correo electrónico
+            <input
+              id="txRegisterEmail"
+              type="email"
+              maxlength="254"
+              autocomplete="email"
+              placeholder="correo@ejemplo.com"
+              required>
+          </label>
+
+          <label>Teléfono <small class="tx-optional">(opcional)</small>
+            <input
+              id="txRegisterPhone"
+              type="tel"
+              maxlength="20"
+              autocomplete="tel"
+              pattern="\+?[0-9 ]{7,20}"
+              placeholder="3001234567">
+          </label>
+
+          <label>Contraseña
+            <div class="password-field">
+              <input
+                id="txRegisterPassword"
+                type="password"
+                minlength="8"
+                maxlength="72"
+                autocomplete="new-password"
+                placeholder="Mínimo 8 caracteres"
+                required>
+              <button type="button" id="txToggleRegisterPassword">Mostrar</button>
+            </div>
+          </label>
+
+          <label>Confirmar contraseña
+            <input
+              id="txRegisterConfirm"
+              type="password"
+              minlength="8"
+              maxlength="72"
+              autocomplete="new-password"
+              placeholder="Repite tu contraseña"
+              required>
+          </label>
+
+          <div id="txRegisterStatus" class="tx-register-status" hidden></div>
+
+          <button class="btn btn-primary btn-full" id="txRegisterButton" type="submit">
+            Crear cuenta
+          </button>
+        </form>
+
+        <div class="tx-register-link">
+          <span>¿Ya tienes una cuenta?</span>
+          <button type="button" class="text-button" data-view-button="login">
+            Iniciar sesión
+          </button>
+        </div>
+      </div>
+
+      <div class="auth-visual">
+        <div class="auth-quote">
+          <span>“</span>
+          <h2>Tu movilidad empieza con una cuenta.</h2>
+          <p>Desde aquí podrás gestionar reservas, compras y domicilios desde un mismo perfil.</p>
+        </div>
+      </div>
+    </section>
   `);
 
   const style = document.createElement("style");
   style.id = "tx-v2-styles";
   style.textContent = `
+    .tx-register-link{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:18px;font-size:12px;color:var(--muted)}
+    .tx-register-link .text-button{font-weight:800}
+    .tx-register-status{padding:11px 12px;border-radius:10px;font-size:12px;line-height:1.5}
+    .tx-register-status.error{display:block;background:#fff1e8;color:#9a4d21}
+    .tx-register-status.ok{display:block;background:#eaf8f1;color:#145f43}
+    .tx-optional{font-weight:500;color:var(--muted)}
     .tx-account-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}
     .tx-rentals-section{padding-top:40px;background:#f6f9f7;min-height:55vh}
     .tx-account-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
@@ -278,6 +392,81 @@ function injectClientUi() {
     await loadMyRentals();
     focusFirstPendingRental();
   });
+
+  document.getElementById("txToggleRegisterPassword")?.addEventListener("click", e => {
+    const password = document.getElementById("txRegisterPassword");
+    const confirm = document.getElementById("txRegisterConfirm");
+    const show = password.type === "password";
+    password.type = show ? "text" : "password";
+    confirm.type = show ? "text" : "password";
+    e.currentTarget.textContent = show ? "Ocultar" : "Mostrar";
+  });
+
+  document.getElementById("txRegisterForm")?.addEventListener("submit", async e => {
+    e.preventDefault();
+
+    const form = e.currentTarget;
+    const name = document.getElementById("txRegisterName");
+    const email = document.getElementById("txRegisterEmail");
+    const phone = document.getElementById("txRegisterPhone");
+    const password = document.getElementById("txRegisterPassword");
+    const confirm = document.getElementById("txRegisterConfirm");
+    const button = document.getElementById("txRegisterButton");
+    const status = document.getElementById("txRegisterStatus");
+
+    status.hidden = true;
+    status.className = "tx-register-status";
+    status.textContent = "";
+
+    if (!form.reportValidity()) return;
+
+    if (password.value !== confirm.value) {
+      status.hidden = false;
+      status.className = "tx-register-status error";
+      status.textContent = "Las contraseñas no coinciden.";
+      confirm.focus();
+      return;
+    }
+
+    button.disabled = true;
+    const original = button.textContent;
+    button.textContent = "Creando cuenta...";
+
+    try {
+      const payload = {
+        nombre_completo: name.value.trim(),
+        correo: email.value.trim(),
+        contrasena: password.value,
+      };
+
+      const telefono = phone.value.trim();
+      if (telefono) payload.telefono = telefono;
+
+      const user = await api("/usuarios/registro", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const loginEmail = document.querySelector('#loginForm input[type="email"]');
+      const loginPassword = document.getElementById("passwordInput");
+
+      if (loginEmail) loginEmail.value = user.correo || payload.correo;
+      if (loginPassword) loginPassword.value = "";
+
+      form.reset();
+      showView("login");
+      showToast("Cuenta creada correctamente. Inicia sesión con tu nueva contraseña.");
+      loginPassword?.focus();
+    } catch (error) {
+      status.hidden = false;
+      status.className = "tx-register-status error";
+      status.textContent = error.message;
+    } finally {
+      button.disabled = false;
+      button.textContent = original;
+    }
+  });
 }
 
 injectClientUi();
@@ -300,7 +489,7 @@ function showView(name) {
   views.forEach(v => v.classList.toggle("active", v.dataset.view === name));
   navLinks.forEach(a => a.classList.toggle("active", a.dataset.viewLink === name));
 
-  const special = name === "login" || name === "admin";
+  const special = name === "login" || name === "registro" || name === "admin";
   if (footer) footer.style.display = special ? "none" : "";
   if (header) header.style.display = name === "admin" ? "none" : "";
   mainNav?.classList.remove("open");
@@ -1253,7 +1442,7 @@ window.showToast = showToast;
   updateSessionUi();
 
   const initial = location.hash.replace("#", "");
-  const allowed = ["inicio", "catalogo", "login", "admin", "cuenta"];
+  const allowed = ["inicio", "catalogo", "login", "registro", "admin", "cuenta"];
   const target = allowed.includes(initial) ? initial : "inicio";
 
   if (target === "admin" && !["administrador", "operador"].includes(state.user?.rol)) {
