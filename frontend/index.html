@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 </head>
 <body>
   <header class="site-header">
@@ -25,6 +26,7 @@
       <a href="#catalogo" data-view-link="catalogo">Catálogo</a>
       <a href="#como-funciona" data-anchor-link="como-funciona">Cómo funciona</a>
       <a href="#contacto" data-anchor-link="contacto">Contacto</a>
+      <a href="#mis-actas" data-view-link="mis-actas" data-roles="cliente" hidden>Mis actas</a>
     </nav>
 
     <div class="header-actions">
@@ -140,7 +142,7 @@
     <section class="view admin-view" id="view-admin" data-view="admin">
       <aside class="admin-sidebar">
         <div class="auth-brand"><span class="brand-mark small"><svg viewBox="0 0 48 48"><path d="M9 27h17l8-12h5L29 33H12a7 7 0 1 1-3-6Zm4 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm24 0a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg></span><strong>TransportExperience</strong></div>
-        <nav class="admin-nav"><button class="active" data-admin-tab="resumen">▦ Resumen</button><button data-admin-tab="usuarios">👥 Usuarios</button><button data-admin-tab="flota">🛴 Flota</button><button data-admin-tab="mantenimiento">🛠 Mantenimiento</button><button disabled>📍 Rastreo <span>Próx.</span></button><button disabled>📊 Reportes <span>Próx.</span></button></nav>
+        <nav class="admin-nav"><button class="active" data-admin-tab="resumen">▦ Resumen</button><button data-admin-tab="usuarios">👥 Usuarios</button><button data-admin-tab="flota">🛴 Flota</button><button data-admin-tab="mantenimiento">🛠 Mantenimiento</button><button data-admin-tab="operacion" data-roles="administrador,operador" hidden>🧾 Operación</button><button data-admin-tab="inventario" data-roles="administrador" hidden>📦 Inventario</button><button data-admin-tab="rastreo" data-roles="administrador,operador" hidden>📍 Rastreo</button><button data-admin-tab="actas" data-roles="administrador,operador" hidden>📊 Reportes</button></nav>
         <button class="logout" data-view-button="inicio">↪ Cerrar demo</button>
       </aside>
       <div class="admin-main">
@@ -155,7 +157,25 @@
         <section class="admin-tab" data-admin-content="flota"><article class="panel"><div class="panel-heading"><div><small>HU-09</small><h3>Gestión de flota</h3></div><div class="inline-actions"><input class="search-input" placeholder="Buscar por código"><button class="btn btn-primary small-btn">+ Registrar</button></div></div><div class="fleet-grid"><article><div class="vehicle-icon">🚲</div><div><small>TE-CI-001</small><h4>Urban Ride 3</h4><span class="status-chip active-chip">Disponible</span></div><button class="outline-danger" data-inactivate="TE-CI-001">Inactivar</button></article><article><div class="vehicle-icon">🛴</div><div><small>TE-MP-004</small><h4>Volt City S2</h4><span class="status-chip maintenance-chip">Mantenimiento</span></div><button class="table-action">Ver novedades</button></article><article><div class="vehicle-icon">🛼</div><div><small>TE-PA-002</small><h4>Street Glide</h4><span class="status-chip active-chip">Disponible</span></div><button class="outline-danger" data-inactivate="TE-PA-002">Inactivar</button></article></div></article></section>
 
         <section class="admin-tab" data-admin-content="mantenimiento"><article class="panel"><div class="panel-heading"><div><small>MANTENIMIENTO</small><h3>Novedades abiertas</h3></div></div><div class="maintenance-list"><article><span class="warning-icon">!</span><div><small>TE-MP-004 · Crítica</small><h4>Falla de freno trasero</h4><p>Unidad retirada temporalmente del catálogo.</p></div><button class="btn btn-soft">Revisar</button></article><article><span class="warning-icon soft">!</span><div><small>TE-MP-007 · Media</small><h4>Batería con carga irregular</h4><p>Pendiente de diagnóstico del operador.</p></div><button class="btn btn-soft">Revisar</button></article></div></article></section>
+
+        <section class="admin-tab" data-admin-content="operacion"><div id="txOpsError" class="tx-availability no tx-panel-error" hidden></div><div class="tx-panel-stack"><article class="panel"><div class="panel-heading"><div><small>HU-03</small><h3>Alquileres por entregar</h3></div><button class="btn btn-ghost small-btn" id="txOpsRefresh">Actualizar</button></div><div class="table-wrap"><table><thead><tr><th>Reserva</th><th>Unidad</th><th>Fechas</th><th>Total</th><th>Acción</th></tr></thead><tbody id="txDeliverRows"></tbody></table></div></article><article class="panel"><div class="panel-heading"><div><small>HU-03</small><h3>Alquileres por recibir</h3></div></div><div class="table-wrap"><table><thead><tr><th>Reserva</th><th>Unidad</th><th>Fechas</th><th>Total</th><th>Acción</th></tr></thead><tbody id="txReceiveRows"></tbody></table></div></article><article class="panel"><div class="panel-heading"><div><small>HU-06</small><h3>Domicilios por asignar</h3></div></div><div class="table-wrap"><table><thead><tr><th>Domicilio</th><th>Cliente y dirección</th><th>Zona</th><th>Pago</th><th>Acción</th></tr></thead><tbody id="txAssignRows"></tbody></table></div></article></div></section>
+
+        <section class="admin-tab" data-admin-content="inventario"><div id="txInvError" class="tx-availability no tx-panel-error" hidden></div><div class="metric-grid" id="txInvMetrics"></div><div class="tx-subtabs" role="tablist" aria-label="Secciones del inventario"><button class="active" data-inv-tab="alertas">Alertas de stock <span id="txInvAlertCount">0</span></button><button data-inv-tab="modelos">Modelos</button><button data-inv-tab="unidades">Unidades</button><button data-inv-tab="productos">Productos</button></div><article class="panel" id="txInvPanel"></article></section>
+
+        <section class="admin-tab" data-admin-content="actas"><div id="txActasError" class="tx-availability no tx-panel-error" hidden></div><article class="panel"><div class="panel-heading"><div><small>HU-11</small><h3>Actas de entrega y recepción</h3></div><button class="btn btn-primary small-btn" id="txActasExcel">Exportar a Excel</button></div><form class="tx-actas-filters" id="txActasFilters"><label>Desde<input type="date" name="desde" required></label><label>Hasta<input type="date" name="hasta" required></label><label>Tipo<select name="tipo"><option value="">Todas</option><option value="entrega">Entrega</option><option value="recepcion">Recepción</option></select></label><button class="btn btn-ghost small-btn" type="submit">Filtrar</button></form><div class="table-wrap"><table><thead><tr><th>Acta</th><th>Vehículo</th><th>Cliente</th><th>Registro</th><th>Conformidad</th><th>Acciones</th></tr></thead><tbody id="txActasRows"></tbody></table></div><div class="tx-pager" id="txActasPager"></div></article></section>
+
+        <section class="admin-tab" data-admin-content="rastreo"><article class="panel"><div class="panel-heading"><div><small>HU-08</small><h3>Mapa de la flota</h3></div><div class="tx-fleet-legend"><span><i class="dot available"></i>En línea</span><span><i class="dot tx-dot-off"></i>Sin señal</span><small id="txFleetUpdated">Sin consultar</small></div></div><div id="txFleetError" class="tx-availability no" hidden></div><div id="txFleetMap" class="tx-fleet-map" aria-label="Mapa de la flota"></div><div class="table-wrap"><table><thead><tr><th>Unidad</th><th>Estado</th><th>Señal</th><th>Último reporte</th></tr></thead><tbody id="txFleetRows"></tbody></table></div></article></section>
       </div>
+    </section>
+
+    <section class="view" id="view-entregas" data-view="entregas">
+      <section class="page-hero compact"><div><span class="eyebrow">DOMICILIARIO · HU-07</span><h1 id="txCourierGreeting">Mis entregas</h1><p>Tus domicilios en ruta. Avanza el estado a medida que recoges y entregas cada pedido.</p><div class="tx-account-actions"><button class="btn btn-primary" id="txCourierRefresh">Actualizar</button><button class="btn btn-ghost" id="txCourierLogout">Cerrar sesión</button></div></div></section>
+      <section class="section tx-rentals-section"><div id="txCourierError" class="tx-availability no tx-panel-error" hidden></div><div id="txCourierList" class="tx-rentals-list"></div></section>
+    </section>
+
+    <section class="view" id="view-mis-actas" data-view="mis-actas">
+      <section class="page-hero compact"><div><span class="eyebrow">MIS ACTAS · HU-11</span><h1>Actas de entrega y recepción</h1><p>Revisa el PDF de cada acta y, si estás de acuerdo con lo que dice, da tu conformidad. Queda registrada con tu usuario, la fecha y la huella (SHA-256) del PDF.</p></div></section>
+      <section class="section tx-rentals-section"><div id="txMyActasError" class="tx-availability no tx-panel-error" hidden></div><div id="txMyActasList" class="tx-rentals-list"></div></section>
     </section>
   </main>
 
@@ -163,6 +183,8 @@
 
   <dialog id="vehicleDialog" class="vehicle-dialog"><button class="dialog-close" id="closeDialog" aria-label="Cerrar">×</button><div id="dialogContent"></div></dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script src="app.js"></script>
+  <script src="paneles.js"></script>
 </body>
 </html>
