@@ -6,6 +6,7 @@ const STAFF_ROLES = ["administrador", "operador"];
 
 Object.assign(adminTitles, {
   operacion: "Mostrador y despacho",
+  inventario: "Inventario",
   rastreo: "Rastreo de la flota",
 });
 
@@ -23,13 +24,23 @@ function injectPanelStyles() {
     .tx-fleet-map{height:460px;border:1px solid var(--line);border-radius:14px;margin-bottom:18px;isolation:isolate;background:var(--bg)}
     .tx-panel-error{margin-bottom:14px}
     .tx-panel-stack{display:grid;gap:18px}
-    .tx-panel-stack td small,.tx-cell-note{display:block;color:var(--muted);font-size:11px;margin-top:3px}
+    .tx-panel-stack td small,#txInvPanel td small,#txFleetRows td small,.tx-cell-note{display:block;color:var(--muted);font-size:11px;margin-top:3px}
+    .tx-panel-stack td:first-child,#txInvPanel td:first-child,#txFleetRows td:first-child{display:table-cell}
+    .tx-panel-stack td strong,#txInvPanel td strong,#txFleetRows td strong{display:block}
+    #txInvPanel td .status-chip{margin-top:4px}
     .tx-row-actions{display:flex;gap:6px;flex-wrap:wrap}
     .tx-reservation-form select,.tx-reservation-form textarea{padding:11px;border:1px solid var(--line);border-radius:10px;font:inherit;background:#fff}
     .tx-reservation-form textarea{min-height:84px;resize:vertical}
     .tx-form-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
     .dialog-body .tx-form-actions .btn{width:auto}
     .tx-dialog-error{margin-top:14px}
+    .tx-reservation-form label.check-row{display:flex;align-items:center;gap:8px}
+    .tx-field-help{font-weight:500;color:var(--muted);font-size:11px}
+    .tx-subtabs{display:flex;gap:6px;flex-wrap:wrap;margin:18px 0 14px}
+    .tx-subtabs button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 14px;font-weight:700;font-size:12px;color:#42554f}
+    .tx-subtabs button.active{background:var(--ink);border-color:var(--ink);color:#fff}
+    .tx-subtabs button span{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;margin-left:4px;border-radius:999px;background:#fde8e8;color:#a33232;font-size:10px}
+    .tx-dialog-scroll{display:grid;gap:14px;max-height:62vh;overflow:auto;padding-right:4px}
     .tx-popup{display:grid;gap:3px;font-family:Inter,system-ui,sans-serif;font-size:12px}
     .tx-popup small{color:var(--muted)}
     @media(max-width:760px){.tx-fleet-map{height:340px}}
@@ -107,11 +118,12 @@ function onPanelTabShown(tab) {
   else stopFleetMap();
 
   if (tab === "operacion") loadOperatorPanel();
+  if (tab === "inventario") loadInventoryPanel();
 }
 
-async function postJson(path, body) {
+async function postJson(path, body, method = "POST") {
   return api(path, {
-    method: "POST",
+    method,
     auth: true,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body ?? {}),
@@ -789,4 +801,408 @@ document.getElementById("txCourierLogout")?.addEventListener("click", () => {
   clearSession();
   showView("inicio");
   showToast("Sesión cerrada.");
+});
+
+// ---------------------------------------------------------
+// Formularios genéricos de los paneles
+// ---------------------------------------------------------
+
+// Un campo: { name, label, type, value, required, options, numeric, attrs, help }.
+function formFieldHtml(field) {
+  const value = field.value ?? "";
+  const common = `name="${escapeHtml(field.name)}" ${field.required ? "required" : ""} ${field.attrs || ""}`;
+  const help = field.help ? `<span class="tx-field-help">${escapeHtml(field.help)}</span>` : "";
+
+  if (field.type === "checkbox") {
+    return `<label class="check-row"><input type="checkbox" ${common} ${value ? "checked" : ""}> ${escapeHtml(field.label)}</label>`;
+  }
+  if (field.type === "select") {
+    const options = field.options.map(o => `
+      <option value="${escapeHtml(o.value)}" ${String(o.value) === String(value) ? "selected" : ""}>${escapeHtml(o.label)}</option>
+    `).join("");
+    return `<label>${escapeHtml(field.label)}<select ${common}>${options}</select>${help}</label>`;
+  }
+  if (field.type === "textarea") {
+    return `<label>${escapeHtml(field.label)}<textarea ${common}>${escapeHtml(value)}</textarea>${help}</label>`;
+  }
+  return `<label>${escapeHtml(field.label)}<input type="${field.type || "text"}" ${common} value="${escapeHtml(value)}">${help}</label>`;
+}
+
+// Vacío es null; los números y las selecciones de ids se envían como número.
+function readFormValues(form, fields) {
+  const values = {};
+  fields.forEach(field => {
+    const input = form.elements[field.name];
+    if (field.type === "checkbox") {
+      values[field.name] = input.checked;
+    } else {
+      const raw = input.value.trim();
+      values[field.name] = raw === "" ? null : (field.type === "number" || field.numeric ? Number(raw) : raw);
+    }
+  });
+  return values;
+}
+
+// Para los PATCH parciales: solo lo que cambió respecto al original.
+function changedFields(values, original) {
+  return Object.fromEntries(Object.entries(values).filter(([key, value]) => value !== (original[key] ?? null)));
+}
+
+// onSubmit devuelve el texto del toast; si lanza un error, se muestra en el diálogo.
+function openFormDialog({ eyebrow, title, subtitle, fields, submitText, onSubmit, onDone }) {
+  const content = openPanelDialog(`
+    <span class="eyebrow">${escapeHtml(eyebrow)}</span>
+    <h2>${escapeHtml(title)}</h2>
+    ${subtitle ? `<p>${escapeHtml(subtitle)}</p>` : ""}
+    <form class="tx-reservation-form" id="txPanelForm">
+      <div class="tx-dialog-scroll">${fields.map(formFieldHtml).join("")}</div>
+      <div class="tx-form-actions">
+        <button type="button" class="btn btn-ghost" data-dialog-cancel>Cancelar</button>
+        <button type="submit" class="btn btn-primary">${escapeHtml(submitText)}</button>
+      </div>
+    </form>
+  `);
+
+  const form = content.querySelector("#txPanelForm");
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    await runWithButton(form.querySelector('[type="submit"]'), "Guardando...", async () => {
+      try {
+        const message = await onSubmit(readFormValues(form, fields));
+        dialog.close();
+        if (message) showToast(message);
+        await onDone?.();
+      } catch (error) {
+        handleDialogError(content, error);
+      }
+    });
+  });
+}
+
+// ---------------------------------------------------------
+// Inventario del administrador (HU-10)
+// ---------------------------------------------------------
+
+const ADMIN_ONLY = ["administrador"];
+
+const inventory = {
+  tab: "alertas",
+  summary: null,
+  alerts: [],
+  types: [],
+  models: [],
+  units: [],
+  products: [],
+};
+
+function categoryLabel(category) {
+  return ({ accesorio: "Accesorio", repuesto: "Repuesto" })[category] || category;
+}
+
+function activeChip(active) {
+  return `<span class="status-chip ${active ? "active-chip" : "inactive-chip"}">${active ? "Activo" : "Inactivo"}</span>`;
+}
+
+function unitStatusChip(status) {
+  const css = status === "disponible" ? "active-chip" : status === "mantenimiento" ? "maintenance-chip" : "inactive-chip";
+  return `<span class="status-chip ${css}">${escapeHtml(status.replaceAll("_", " "))}</span>`;
+}
+
+function priceOrDash(value) {
+  return value ? formatCOP(value) : "—";
+}
+
+async function loadInventoryPanel() {
+  if (!userHasRole(ADMIN_ONLY)) return;
+  const errorBox = document.getElementById("txInvError");
+
+  try {
+    const [summary, alerts, types, models, units, products] = await Promise.all([
+      api("/inventario/resumen", { auth: true }),
+      fetchAllPages("/inventario/alertas-stock"),
+      fetchAllPages("/inventario/tipos"),
+      fetchAllPages("/inventario/modelos"),
+      fetchAllPages("/vehiculos"),
+      fetchAllPages("/inventario/productos"),
+    ]);
+    Object.assign(inventory, { summary, alerts, types, models, units, products });
+    hidePanelError(errorBox);
+    renderInventory();
+  } catch (error) {
+    if (error.status === 401) handleExpiredSession();
+    else showPanelError(errorBox, error);
+  }
+}
+
+function renderInventory() {
+  const s = inventory.summary;
+  const byStatus = s.unidades_por_estado || {};
+  document.getElementById("txInvMetrics").innerHTML = `
+    <article><span>Unidades</span><strong>${Number(s.total_unidades)}</strong><small>en la flota</small></article>
+    <article><span>Disponibles</span><strong>${Number(byStatus.disponible || 0)}</strong><small>listas para alquilar o vender</small></article>
+    <article><span>En mantenimiento</span><strong>${Number(byStatus.mantenimiento || 0)}</strong><small>fuera del catálogo</small></article>
+    <article><span>Bajo stock</span><strong>${Number(s.productos_bajo_stock)}</strong><small>de ${Number(s.productos_activos)} productos activos</small></article>
+  `;
+  document.getElementById("txInvAlertCount").textContent = inventory.alerts.length;
+  document.querySelectorAll("[data-inv-tab]").forEach(btn => btn.classList.toggle("active", btn.dataset.invTab === inventory.tab));
+
+  const panel = document.getElementById("txInvPanel");
+  const views = {
+    alertas: inventoryAlertsHtml,
+    modelos: inventoryModelsHtml,
+    unidades: inventoryUnitsHtml,
+    productos: inventoryProductsHtml,
+  };
+  panel.innerHTML = views[inventory.tab]();
+
+  panel.querySelector("[data-inv-new]")?.addEventListener("click", () => {
+    ({ modelos: openModelForm, unidades: openUnitForm, productos: openProductForm })[inventory.tab]();
+  });
+  panel.querySelectorAll("[data-edit-model]").forEach(btn => btn.addEventListener("click", () => openModelForm(Number(btn.dataset.editModel))));
+  panel.querySelectorAll("[data-edit-unit]").forEach(btn => btn.addEventListener("click", () => openUnitForm(Number(btn.dataset.editUnit))));
+  panel.querySelectorAll("[data-edit-product]").forEach(btn => btn.addEventListener("click", () => openProductForm(Number(btn.dataset.editProduct))));
+  panel.querySelectorAll("[data-adjust-product]").forEach(btn => btn.addEventListener("click", () => openStockAdjustment(Number(btn.dataset.adjustProduct))));
+}
+
+function inventoryPanelHtml(title, newLabel, head, rows, empty) {
+  return `
+    <div class="panel-heading">
+      <div><small>HU-10</small><h3>${escapeHtml(title)}</h3></div>
+      ${newLabel ? `<button class="btn btn-primary small-btn" data-inv-new>${escapeHtml(newLabel)}</button>` : ""}
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr>${head.map(h => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead>
+      <tbody>${rows.length ? rows.join("") : messageRow(head.length, empty)}</tbody>
+    </table></div>
+  `;
+}
+
+function stockCell(product) {
+  return `<strong>${Number(product.stock)}</strong><small>mínimo ${Number(product.stock_minimo)}</small>
+    ${product.bajo_stock ? `<span class="status-chip tx-chip-danger">Bajo stock</span>` : ""}`;
+}
+
+function inventoryAlertsHtml() {
+  const rows = inventory.alerts.map(p => `
+    <tr>
+      <td><strong>${escapeHtml(p.nombre)}</strong><small>${escapeHtml(p.codigo)}</small></td>
+      <td>${escapeHtml(categoryLabel(p.categoria))}</td>
+      <td>${stockCell(p)}</td>
+      <td><button class="btn btn-primary small-btn" data-adjust-product="${Number(p.id)}">Ajustar stock</button></td>
+    </tr>
+  `);
+  return inventoryPanelHtml("Productos en o bajo su stock mínimo", null,
+    ["Producto", "Categoría", "Stock", "Acción"], rows, "Ningún producto está en o bajo su stock mínimo.");
+}
+
+function inventoryModelsHtml() {
+  const rows = inventory.models.map(m => `
+    <tr>
+      <td><strong>${escapeHtml(m.nombre)}</strong><small>${escapeHtml(m.marca || "Sin marca")}</small></td>
+      <td>${escapeHtml(m.tipo?.nombre || "")}</td>
+      <td>${priceOrDash(m.tarifa_diaria)}<small>${m.tarifa_diaria ? "por día" : "no se alquila"}</small></td>
+      <td>${priceOrDash(m.precio_venta)}<small>${m.precio_venta ? "venta" : "no se vende"}</small></td>
+      <td>${activeChip(m.activo)}</td>
+      <td><button class="table-action" data-edit-model="${Number(m.id)}">Editar</button></td>
+    </tr>
+  `);
+  return inventoryPanelHtml("Modelos del catálogo", "+ Nuevo modelo",
+    ["Modelo", "Tipo", "Tarifa", "Precio", "Estado", "Acción"], rows, "No hay modelos registrados.");
+}
+
+function inventoryUnitsHtml() {
+  const rows = inventory.units.map(u => `
+    <tr>
+      <td><strong>${escapeHtml(u.codigo)}</strong><small>${escapeHtml(u.modelo?.nombre || "")}</small></td>
+      <td>${unitStatusChip(u.estado)}</td>
+      <td>${u.nivel_bateria != null ? `${Number(u.nivel_bateria)}%` : "—"}</td>
+      <td>${escapeHtml(u.ubicacion || "—")}${u.observaciones ? `<small>${escapeHtml(u.observaciones)}</small>` : ""}</td>
+      <td>${u.estado === "vendido"
+        ? `<span class="tx-cell-note">Vendida: no se edita</span>`
+        : `<button class="table-action" data-edit-unit="${Number(u.id)}">Editar</button>`}</td>
+    </tr>
+  `);
+  return inventoryPanelHtml("Unidades de la flota", "+ Registrar unidad",
+    ["Unidad", "Estado", "Batería", "Ubicación", "Acción"], rows, "No hay unidades registradas.");
+}
+
+function inventoryProductsHtml() {
+  const rows = inventory.products.map(p => `
+    <tr>
+      <td><strong>${escapeHtml(p.nombre)}</strong><small>${escapeHtml(p.codigo)}</small></td>
+      <td>${escapeHtml(categoryLabel(p.categoria))}</td>
+      <td>${formatCOP(p.precio_venta)}</td>
+      <td>${stockCell(p)}</td>
+      <td>${activeChip(p.activo)}</td>
+      <td><div class="tx-row-actions">
+        <button class="table-action" data-edit-product="${Number(p.id)}">Editar</button>
+        <button class="table-action" data-adjust-product="${Number(p.id)}">Ajustar stock</button>
+      </div></td>
+    </tr>
+  `);
+  return inventoryPanelHtml("Accesorios y repuestos", "+ Nuevo producto",
+    ["Producto", "Categoría", "Precio", "Stock", "Estado", "Acciones"], rows, "No hay productos registrados.");
+}
+
+// --- Formularios del inventario -------------------------------------------
+
+function openModelForm(modelId) {
+  const model = inventory.models.find(m => m.id === modelId);
+  const original = model ? {
+    tipo_vehiculo_id: model.tipo?.id,
+    nombre: model.nombre,
+    marca: model.marca,
+    descripcion: model.descripcion,
+    imagen_url: model.imagen_url,
+    tarifa_diaria: model.tarifa_diaria,
+    precio_venta: model.precio_venta,
+    activo: model.activo,
+  } : {};
+
+  const fields = [
+    { name: "tipo_vehiculo_id", label: "Tipo de vehículo", type: "select", numeric: true, required: true, value: original.tipo_vehiculo_id,
+      options: inventory.types.map(t => ({ value: t.id, label: t.nombre })) },
+    { name: "nombre", label: "Nombre", required: true, value: original.nombre, attrs: 'minlength="2" maxlength="100"' },
+    { name: "marca", label: "Marca", value: original.marca, attrs: 'maxlength="60"' },
+    { name: "descripcion", label: "Descripción", type: "textarea", value: original.descripcion, attrs: 'maxlength="2000"' },
+    { name: "imagen_url", label: "URL de la imagen", type: "url", value: original.imagen_url, attrs: 'maxlength="500"' },
+    { name: "tarifa_diaria", label: "Tarifa diaria (pesos)", type: "number", value: original.tarifa_diaria, attrs: 'min="1" step="1"', help: "Vacía: el modelo no se alquila." },
+    { name: "precio_venta", label: "Precio de venta (pesos)", type: "number", value: original.precio_venta, attrs: 'min="1" step="1"', help: "Vacío: el modelo no se vende." },
+  ];
+  if (model) fields.push({ name: "activo", label: "Activo (visible en el catálogo)", type: "checkbox", value: original.activo });
+
+  openFormDialog({
+    eyebrow: model ? "EDITAR MODELO" : "NUEVO MODELO",
+    title: model ? model.nombre : "Nuevo modelo",
+    subtitle: model ? "Las operaciones ya hechas conservan el precio del momento." : "Necesita tarifa diaria, precio de venta o ambos.",
+    fields,
+    submitText: model ? "Guardar cambios" : "Crear modelo",
+    onDone: loadInventoryPanel,
+    onSubmit: async values => {
+      if (!model) {
+        const created = await postJson("/inventario/modelos", values);
+        return `Modelo "${created.nombre}" creado.`;
+      }
+      const changes = changedFields(values, original);
+      if (!Object.keys(changes).length) return "No había cambios para guardar.";
+      await postJson(`/inventario/modelos/${model.id}`, changes, "PATCH");
+      return `Modelo "${values.nombre}" actualizado.`;
+    },
+  });
+}
+
+function openUnitForm(unitId) {
+  const unit = inventory.units.find(u => u.id === unitId);
+  const original = unit ? {
+    nivel_bateria: unit.nivel_bateria,
+    ubicacion: unit.ubicacion,
+    observaciones: unit.observaciones,
+  } : {};
+
+  // El código y el modelo son la identidad de la unidad: solo se escogen al registrarla.
+  const fields = unit ? [] : [
+    { name: "codigo", label: "Código", required: true, attrs: 'pattern="[A-Za-z0-9][A-Za-z0-9\\-]{2,19}" maxlength="20"', help: "Letras, números y guiones (3 a 20). Se guarda en mayúsculas." },
+    { name: "modelo_id", label: "Modelo", type: "select", numeric: true, required: true,
+      options: inventory.models.filter(m => m.activo).map(m => ({ value: m.id, label: `${m.nombre} · ${m.tipo?.nombre || ""}` })) },
+  ];
+  fields.push(
+    { name: "nivel_bateria", label: "Nivel de batería (%)", type: "number", value: original.nivel_bateria, attrs: 'min="0" max="100" step="1"', help: "Solo si el tipo de vehículo usa batería." },
+    { name: "ubicacion", label: "Ubicación", value: original.ubicacion, attrs: 'maxlength="150"' },
+    { name: "observaciones", label: "Observaciones", type: "textarea", value: original.observaciones, attrs: 'maxlength="2000"' },
+  );
+
+  openFormDialog({
+    eyebrow: unit ? "EDITAR UNIDAD" : "REGISTRAR UNIDAD",
+    title: unit ? unit.codigo : "Nueva unidad",
+    subtitle: unit ? "El estado cambia con sus flujos (alquiler, venta, mantenimiento), no aquí." : "La unidad entra disponible.",
+    fields,
+    submitText: unit ? "Guardar cambios" : "Registrar unidad",
+    onDone: loadInventoryPanel,
+    onSubmit: async values => {
+      if (!unit) {
+        const created = await postJson("/inventario/unidades", values);
+        return `Unidad ${created.codigo} registrada.`;
+      }
+      const changes = changedFields(values, original);
+      if (!Object.keys(changes).length) return "No había cambios para guardar.";
+      await postJson(`/inventario/unidades/${unit.id}`, changes, "PATCH");
+      return `Unidad ${unit.codigo} actualizada.`;
+    },
+  });
+}
+
+function openProductForm(productId) {
+  const product = inventory.products.find(p => p.id === productId);
+  const original = product ? {
+    nombre: product.nombre,
+    categoria: product.categoria,
+    descripcion: product.descripcion,
+    imagen_url: product.imagen_url,
+    precio_venta: product.precio_venta,
+    stock_minimo: product.stock_minimo,
+    activo: product.activo,
+  } : {};
+
+  const fields = product ? [] : [
+    { name: "codigo", label: "Código", required: true, attrs: 'pattern="[A-Za-z0-9][A-Za-z0-9\\-]{2,19}" maxlength="20"', help: "Letras, números y guiones (3 a 20). Se guarda en mayúsculas." },
+  ];
+  fields.push(
+    { name: "nombre", label: "Nombre", required: true, value: original.nombre, attrs: 'minlength="2" maxlength="120"' },
+    { name: "categoria", label: "Categoría", type: "select", required: true, value: original.categoria,
+      options: [{ value: "accesorio", label: "Accesorio" }, { value: "repuesto", label: "Repuesto" }] },
+    { name: "descripcion", label: "Descripción", type: "textarea", value: original.descripcion, attrs: 'maxlength="2000"' },
+    { name: "imagen_url", label: "URL de la imagen", type: "url", value: original.imagen_url, attrs: 'maxlength="500"' },
+    { name: "precio_venta", label: "Precio de venta (pesos)", type: "number", required: true, value: original.precio_venta, attrs: 'min="1" step="1"' },
+  );
+  // El stock no se edita: entra al crear y luego se mueve con ajustes.
+  if (!product) fields.push({ name: "stock", label: "Stock inicial", type: "number", required: true, value: 0, attrs: 'min="0" step="1"' });
+  fields.push({ name: "stock_minimo", label: "Stock mínimo", type: "number", required: true, value: original.stock_minimo ?? 0, attrs: 'min="0" step="1"', help: "En o bajo este número aparece en las alertas." });
+  if (product) fields.push({ name: "activo", label: "Activo (a la venta)", type: "checkbox", value: original.activo });
+
+  openFormDialog({
+    eyebrow: product ? "EDITAR PRODUCTO" : "NUEVO PRODUCTO",
+    title: product ? product.nombre : "Nuevo producto",
+    subtitle: product ? `${product.codigo} · el stock se cambia con "Ajustar stock".` : null,
+    fields,
+    submitText: product ? "Guardar cambios" : "Crear producto",
+    onDone: loadInventoryPanel,
+    onSubmit: async values => {
+      if (!product) {
+        const created = await postJson("/inventario/productos", values);
+        return `Producto "${created.nombre}" creado.`;
+      }
+      const changes = changedFields(values, original);
+      if (!Object.keys(changes).length) return "No había cambios para guardar.";
+      await postJson(`/inventario/productos/${product.id}`, changes, "PATCH");
+      return `Producto "${values.nombre}" actualizado.`;
+    },
+  });
+}
+
+function openStockAdjustment(productId) {
+  const product = inventory.products.find(p => p.id === productId) || inventory.alerts.find(p => p.id === productId);
+  if (!product) return;
+
+  openFormDialog({
+    eyebrow: "AJUSTE DE STOCK",
+    title: product.nombre,
+    subtitle: `Stock actual: ${product.stock} (mínimo ${product.stock_minimo}). Positivo para una entrada, negativo para una salida.`,
+    fields: [
+      { name: "cantidad", label: "Cantidad", type: "number", required: true, attrs: 'step="1" placeholder="+5 si llegaron 5, -2 si se dañaron 2"' },
+      { name: "motivo", label: "Motivo", required: true, attrs: 'minlength="5" maxlength="300" placeholder="Llegó el pedido del proveedor (factura 1234)."' },
+    ],
+    submitText: "Aplicar ajuste",
+    onDone: loadInventoryPanel,
+    onSubmit: async values => {
+      const updated = await postJson(`/inventario/productos/${product.id}/ajustes`, values);
+      return `Stock de "${updated.nombre}": ${updated.stock}.`;
+    },
+  });
+}
+
+document.querySelectorAll("[data-inv-tab]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    inventory.tab = btn.dataset.invTab;
+    if (inventory.summary) renderInventory();
+  });
 });
