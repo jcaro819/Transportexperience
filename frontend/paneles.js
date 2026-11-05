@@ -7,6 +7,7 @@ const STAFF_ROLES = ["administrador", "operador"];
 Object.assign(adminTitles, {
   operacion: "Mostrador y despacho",
   inventario: "Inventario",
+  actas: "Reportes: actas de entrega y recepción",
   rastreo: "Rastreo de la flota",
 });
 
@@ -41,6 +42,15 @@ function injectPanelStyles() {
     .tx-subtabs button.active{background:var(--ink);border-color:var(--ink);color:#fff}
     .tx-subtabs button span{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;margin-left:4px;border-radius:999px;background:#fde8e8;color:#a33232;font-size:10px}
     .tx-dialog-scroll{display:grid;gap:14px;max-height:62vh;overflow:auto;padding-right:4px}
+    .nav [hidden]{display:none!important}
+    .tx-actas-filters{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px}
+    .tx-actas-filters label{display:grid;gap:5px;font-size:11px;font-weight:700}
+    .tx-actas-filters input,.tx-actas-filters select{padding:9px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:12px;background:#fff}
+    .tx-pager{display:flex;gap:10px;align-items:center;justify-content:flex-end;margin-top:14px;font-size:12px;color:var(--muted)}
+    .tx-hash{font-family:ui-monospace,Consolas,monospace;font-size:10px;word-break:break-all}
+    #txActasRows td small{display:block;color:var(--muted);font-size:11px;margin-top:3px}
+    #txActasRows td:first-child{display:table-cell}
+    #txActasRows td strong{display:block}
     .tx-popup{display:grid;gap:3px;font-family:Inter,system-ui,sans-serif;font-size:12px}
     .tx-popup small{color:var(--muted)}
     @media(max-width:760px){.tx-fleet-map{height:340px}}
@@ -119,6 +129,53 @@ function onPanelTabShown(tab) {
 
   if (tab === "operacion") loadOperatorPanel();
   if (tab === "inventario") loadInventoryPanel();
+  if (tab === "actas") loadActasPanel();
+}
+
+// Enlaces del sitio que dependen del rol (p. ej. "Mis actas" del cliente). app.js lo
+// llama en cada cambio de sesión.
+function syncRoleLinks() {
+  document.querySelectorAll(".nav [data-roles]").forEach(link => {
+    link.hidden = !link.dataset.roles.split(",").includes(state.user?.rol);
+  });
+}
+
+// Descarga un archivo (PDF o Excel) con la sesión. api() de app.js lee como texto todo lo
+// que no es JSON, así que aquí se pide el binario directamente. Los errores llegan con el
+// mismo formato uniforme.
+async function downloadFile(path, filename) {
+  if (!state.token) throw new Error("Debes iniciar sesión.");
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 20000);
+
+  try {
+    const response = await fetch(`${API_BASE}${path}`, {
+      headers: { Authorization: `Bearer ${state.token}` },
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const contentType = response.headers.get("content-type") || "";
+      const payload = contentType.includes("application/json") ? await response.json() : await response.text();
+      const error = new Error(apiErrorMessage(payload, `Error HTTP ${response.status}.`));
+      error.status = response.status;
+      throw error;
+    }
+
+    const url = URL.createObjectURL(await response.blob());
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch (error) {
+    if (error.name === "AbortError") throw new Error("El backend tardó demasiado en generar el archivo. Inténtalo de nuevo.");
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function postJson(path, body, method = "POST") {
@@ -1206,3 +1263,255 @@ document.querySelectorAll("[data-inv-tab]").forEach(btn => {
     if (inventory.summary) renderInventory();
   });
 });
+
+// ---------------------------------------------------------
+// Actas (HU-11): reportes del personal y conformidad del cliente
+// ---------------------------------------------------------
+
+const ACTAS_PAGE_SIZE = 20;
+const actas = { page: 1, pages: 0, total: 0, items: [] };
+
+function actaTypeLabel(type) {
+  return ({ entrega: "Entrega", recepcion: "Recepción" })[type] || type;
+}
+
+function actaOrigin(acta) {
+  const operation = acta.alquiler_id ? `Alquiler #${Number(acta.alquiler_id)}` : `Compra #${Number(acta.venta_id)}`;
+  return `${operation} · ${acta.domicilio_id ? "por domicilio" : "en el local"}`;
+}
+
+function actaPdfName(acta) {
+  return `${acta.numero}.pdf`;
+}
+
+function actasFilters() {
+  const form = document.getElementById("txActasFilters");
+  return { desde: form.desde.value, hasta: form.hasta.value, tipo: form.tipo.value };
+}
+
+function actasQuery(extra = {}) {
+  const { desde, hasta, tipo } = actasFilters();
+  const params = new URLSearchParams({ desde, hasta, ...extra });
+  if (tipo) params.set("tipo", tipo);
+  return params.toString();
+}
+
+// Por defecto, los últimos 30 días de Colombia (lo mismo que usa el backend).
+function initActasFilters() {
+  const form = document.getElementById("txActasFilters");
+  if (!form || form.hasta.value) return;
+  const today = colombiaDateISO();
+  form.hasta.value = today;
+  form.desde.value = addDaysISO(today, -29);
+}
+
+async function loadActasPanel(page = actas.page) {
+  if (!userHasRole(STAFF_ROLES)) return;
+  initActasFilters();
+  const errorBox = document.getElementById("txActasError");
+  const tbody = document.getElementById("txActasRows");
+  if (!tbody.children.length) tbody.innerHTML = messageRow(6, "Cargando...");
+
+  try {
+    const data = await api(`/actas?${actasQuery({ pagina: page, tamano: ACTAS_PAGE_SIZE })}`, { auth: true });
+    Object.assign(actas, { page: data.pagina, pages: data.paginas, total: data.total, items: data.elementos || [] });
+    hidePanelError(errorBox);
+    renderActas();
+  } catch (error) {
+    if (error.status === 401) handleExpiredSession();
+    else showPanelError(errorBox, error);
+  }
+}
+
+function conformityCell(acta) {
+  if (!acta.conformidad) return `<span class="status-chip maintenance-chip">Pendiente</span>`;
+  return `<span class="status-chip active-chip">Conforme</span>
+    <small>${escapeHtml(acta.conformidad.conforme_por)} · ${escapeHtml(humanDateTime(acta.conformidad.conforme_en))}</small>`;
+}
+
+function renderActas() {
+  const tbody = document.getElementById("txActasRows");
+  tbody.innerHTML = actas.items.length ? actas.items.map(acta => `
+    <tr>
+      <td><strong>${escapeHtml(acta.numero)}</strong><small>${escapeHtml(actaTypeLabel(acta.tipo))} · ${actaOrigin(acta)}</small></td>
+      <td><strong>${escapeHtml(acta.vehiculo_codigo)}</strong><small>${escapeHtml(acta.modelo)}</small></td>
+      <td>${escapeHtml(acta.cliente)}</td>
+      <td>${escapeHtml(humanDateTime(acta.creado_en))}<small>Registró ${escapeHtml(acta.registrada_por)}</small><small>${escapeHtml(acta.estado_vehiculo)}${acta.nivel_bateria != null ? ` · batería ${Number(acta.nivel_bateria)}%` : ""}</small></td>
+      <td>${conformityCell(acta)}</td>
+      <td><div class="tx-row-actions">
+        <button class="table-action" data-acta-pdf="${Number(acta.id)}">PDF</button>
+        ${acta.conformidad ? `<button class="table-action" data-acta-verify="${Number(acta.id)}">Verificar</button>` : ""}
+      </div></td>
+    </tr>
+  `).join("") : messageRow(6, "No hay actas en ese rango de fechas.");
+
+  const pager = document.getElementById("txActasPager");
+  pager.innerHTML = actas.pages > 1 ? `
+    <span>Página ${actas.page} de ${actas.pages} · ${actas.total} actas</span>
+    <button class="table-action" data-actas-page="${actas.page - 1}" ${actas.page <= 1 ? "disabled" : ""}>Anterior</button>
+    <button class="table-action" data-actas-page="${actas.page + 1}" ${actas.page >= actas.pages ? "disabled" : ""}>Siguiente</button>
+  ` : `<span>${actas.total} acta${actas.total === 1 ? "" : "s"}</span>`;
+
+  pager.querySelectorAll("[data-actas-page]").forEach(btn => {
+    btn.addEventListener("click", () => loadActasPanel(Number(btn.dataset.actasPage)));
+  });
+  tbody.querySelectorAll("[data-acta-pdf]").forEach(btn => {
+    const acta = actas.items.find(a => a.id === Number(btn.dataset.actaPdf));
+    btn.addEventListener("click", () => downloadActaPdf(acta, btn));
+  });
+  tbody.querySelectorAll("[data-acta-verify]").forEach(btn => {
+    const acta = actas.items.find(a => a.id === Number(btn.dataset.actaVerify));
+    btn.addEventListener("click", () => verifyActa(acta, btn));
+  });
+}
+
+async function downloadActaPdf(acta, button) {
+  await runWithButton(button, "Descargando...", async () => {
+    try {
+      await downloadFile(`/actas/${acta.id}/pdf`, actaPdfName(acta));
+    } catch (error) {
+      handlePanelActionError(error);
+    }
+  });
+}
+
+async function verifyActa(acta, button) {
+  await runWithButton(button, "Verificando...", async () => {
+    try {
+      const result = await api(`/actas/${acta.id}/verificacion`, { auth: true });
+      if (result.coincide === true) {
+        showToast(`${acta.numero}: el PDF de hoy es el mismo que aceptó el cliente (SHA-256 ${result.hash_pdf.slice(0, 12)}…).`);
+      } else if (result.coincide === false) {
+        showToast(`${acta.numero}: el PDF de hoy NO coincide con el que aceptó el cliente. Revisa el acta con el equipo.`);
+      } else {
+        showToast(`${acta.numero} todavía no tiene la conformidad del cliente.`);
+      }
+    } catch (error) {
+      handlePanelActionError(error);
+    }
+  });
+}
+
+document.getElementById("txActasFilters")?.addEventListener("submit", e => {
+  e.preventDefault();
+  loadActasPanel(1);
+});
+
+document.getElementById("txActasExcel")?.addEventListener("click", e => {
+  const { desde, hasta } = actasFilters();
+  runWithButton(e.currentTarget, "Generando...", async () => {
+    try {
+      await downloadFile(`/actas/exportacion/excel?${actasQuery()}`, `actas-${desde}-a-${hasta}.xlsx`);
+      showToast("Reporte de actas descargado en Excel.");
+    } catch (error) {
+      handlePanelActionError(error);
+    }
+  });
+});
+
+// --- Mis actas (cliente) ---------------------------------------------------
+
+let myActas = [];
+
+function myActaCard(acta) {
+  const conformity = acta.conformidad;
+  return `
+    <article class="tx-rental-card">
+      <div class="tx-rental-main">
+        <div class="tx-rental-icon">📄</div>
+        <div>
+          <small>${escapeHtml(acta.numero)} · ${actaOrigin(acta)}</small>
+          <h3>${escapeHtml(actaTypeLabel(acta.tipo))} de ${escapeHtml(acta.vehiculo_codigo)}</h3>
+          <span class="tx-status ${conformity ? "tx-status-ok" : "tx-status-pending"}">${conformity ? "Conforme" : "Pendiente de tu conformidad"}</span>
+        </div>
+      </div>
+      <div class="tx-rental-dates">
+        <strong>${escapeHtml(acta.modelo)} · ${escapeHtml(humanDateTime(acta.creado_en))}</strong>
+        <span>${escapeHtml(acta.estado_vehiculo)}${acta.nivel_bateria != null ? ` · batería ${Number(acta.nivel_bateria)}%` : ""}</span>
+        <small>Registró ${escapeHtml(acta.registrada_por)}</small>
+        ${conformity ? `<small>Diste tu conformidad el ${escapeHtml(humanDateTime(conformity.conforme_en))}</small>
+          <small class="tx-hash">SHA-256 ${escapeHtml(conformity.hash_pdf)}</small>` : ""}
+      </div>
+      <div class="tx-rental-actions">
+        <button class="btn btn-ghost small-btn" data-my-acta-pdf="${Number(acta.id)}">Descargar PDF</button>
+        ${conformity ? "" : `<button class="btn btn-primary small-btn" data-my-acta-accept="${Number(acta.id)}">Dar conformidad</button>`}
+      </div>
+    </article>
+  `;
+}
+
+async function loadMyActas() {
+  const list = document.getElementById("txMyActasList");
+  const errorBox = document.getElementById("txMyActasError");
+  if (!list) return;
+
+  if (!userHasRole(["cliente"])) {
+    list.innerHTML = `<div class="empty-state"><div>🔐</div><h3>Inicia sesión como cliente</h3><p>Aquí aparecen las actas de tus alquileres y compras.</p></div>`;
+    return;
+  }
+
+  if (list.dataset.owner !== String(state.user.id)) {
+    list.dataset.owner = String(state.user.id);
+    list.innerHTML = `<div class="empty-state"><div>⏳</div><h3>Cargando tus actas</h3></div>`;
+  }
+
+  try {
+    myActas = await fetchAllPages("/actas/mias");
+    hidePanelError(errorBox);
+  } catch (error) {
+    if (error.status === 401) handleExpiredSession();
+    else showPanelError(errorBox, error);
+    return;
+  }
+
+  if (!myActas.length) {
+    list.innerHTML = `<div class="empty-state"><div>📄</div><h3>Aún no tienes actas</h3><p>Se generan cuando te entregan o recibes de vuelta un vehículo.</p></div>`;
+    return;
+  }
+
+  list.innerHTML = myActas.map(myActaCard).join("");
+  list.querySelectorAll("[data-my-acta-pdf]").forEach(btn => {
+    const acta = myActas.find(a => a.id === Number(btn.dataset.myActaPdf));
+    btn.addEventListener("click", () => downloadActaPdf(acta, btn));
+  });
+  list.querySelectorAll("[data-my-acta-accept]").forEach(btn => {
+    const acta = myActas.find(a => a.id === Number(btn.dataset.myActaAccept));
+    btn.addEventListener("click", () => openConformityDialog(acta));
+  });
+}
+
+function openConformityDialog(acta) {
+  const content = openPanelDialog(`
+    <span class="eyebrow">CONFORMIDAD DEL ACTA</span>
+    <h2>${escapeHtml(acta.numero)}</h2>
+    <p>Vas a aceptar el acta de ${escapeHtml(actaTypeLabel(acta.tipo).toLowerCase())} de ${escapeHtml(acta.vehiculo_codigo)} tal como está en su PDF.
+      Queda registrada con tu usuario, la fecha y la huella del PDF, y solo se da una vez. Revisa el PDF antes de aceptar.</p>
+    <div class="tx-form-actions">
+      <button type="button" class="btn btn-ghost" data-conformity-pdf>Descargar PDF</button>
+      <button type="button" class="btn btn-primary" data-conformity-accept>Doy mi conformidad</button>
+    </div>
+  `);
+
+  content.querySelector("[data-conformity-pdf]").addEventListener("click", async e => {
+    await runWithButton(e.currentTarget, "Descargando...", async () => {
+      try {
+        await downloadFile(`/actas/${acta.id}/pdf`, actaPdfName(acta));
+      } catch (error) {
+        handleDialogError(content, error);
+      }
+    });
+  });
+
+  content.querySelector("[data-conformity-accept]").addEventListener("click", async e => {
+    await runWithButton(e.currentTarget, "Registrando...", async () => {
+      try {
+        await postJson(`/actas/${acta.id}/conformidad`);
+        dialog.close();
+        showToast(`Registramos tu conformidad con ${acta.numero}.`);
+        await loadMyActas();
+      } catch (error) {
+        handleDialogError(content, error);
+      }
+    });
+  });
+}

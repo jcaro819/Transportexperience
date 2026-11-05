@@ -311,6 +311,7 @@ function showView(name) {
   if (name === "cuenta") loadMyRentals();
   if (name === "admin") loadAdminData();
   if (name === "entregas") loadCourierPanel(); // paneles.js
+  if (name === "mis-actas") loadMyActas(); // paneles.js
 }
 
 document.querySelectorAll("[data-view-button], [data-view-link]").forEach(el => {
@@ -369,6 +370,7 @@ function focusFirstPendingRental() {
 }
 
 function updateSessionUi() {
+  syncRoleLinks(); // paneles.js
   if (!headerLoginButton) return;
 
   if (!state.user) {
@@ -1261,7 +1263,7 @@ window.showToast = showToast;
   updateSessionUi();
 
   const initial = location.hash.replace("#", "");
-  const allowed = ["inicio", "catalogo", "login", "admin", "cuenta", "entregas"];
+  const allowed = ["inicio", "catalogo", "login", "admin", "cuenta", "entregas", "mis-actas"];
   const target = allowed.includes(initial) ? initial : "inicio";
 
   if (target === "admin" && !["administrador", "operador"].includes(state.user?.rol)) {
@@ -1269,6 +1271,8 @@ window.showToast = showToast;
   } else if (target === "cuenta" && state.user?.rol !== "cliente") {
     showView("inicio");
   } else if (target === "entregas" && state.user?.rol !== "domiciliario") {
+    showView("inicio");
+  } else if (target === "mis-actas" && state.user?.rol !== "cliente") {
     showView("inicio");
   } else {
     showView(target);
