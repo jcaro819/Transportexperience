@@ -5,6 +5,7 @@ const PANEL_POLL_MS = 5000;
 const STAFF_ROLES = ["administrador", "operador"];
 
 Object.assign(adminTitles, {
+  operacion: "Mostrador y despacho",
   rastreo: "Rastreo de la flota",
 });
 
@@ -21,6 +22,14 @@ function injectPanelStyles() {
     .tx-fleet-legend small{color:var(--muted);font-weight:500}
     .tx-fleet-map{height:460px;border:1px solid var(--line);border-radius:14px;margin-bottom:18px;isolation:isolate;background:var(--bg)}
     .tx-panel-error{margin-bottom:14px}
+    .tx-panel-stack{display:grid;gap:18px}
+    .tx-panel-stack td small,.tx-cell-note{display:block;color:var(--muted);font-size:11px;margin-top:3px}
+    .tx-row-actions{display:flex;gap:6px;flex-wrap:wrap}
+    .tx-reservation-form select,.tx-reservation-form textarea{padding:11px;border:1px solid var(--line);border-radius:10px;font:inherit;background:#fff}
+    .tx-reservation-form textarea{min-height:84px;resize:vertical}
+    .tx-form-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+    .dialog-body .tx-form-actions .btn{width:auto}
+    .tx-dialog-error{margin-top:14px}
     .tx-popup{display:grid;gap:3px;font-family:Inter,system-ui,sans-serif;font-size:12px}
     .tx-popup small{color:var(--muted)}
     @media(max-width:760px){.tx-fleet-map{height:340px}}
@@ -96,6 +105,59 @@ function syncPanelTabs() {
 function onPanelTabShown(tab) {
   if (tab === "rastreo") startFleetMap();
   else stopFleetMap();
+
+  if (tab === "operacion") loadOperatorPanel();
+}
+
+async function postJson(path, body) {
+  return api(path, {
+    method: "POST",
+    auth: true,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body ?? {}),
+  });
+}
+
+// Maneja el error de una acción: sesión vencida o mensaje y acción del backend.
+function handlePanelActionError(error) {
+  if (error.status === 401) handleExpiredSession();
+  else showToast(panelErrorMessage(error));
+}
+
+// Reutiliza el <dialog> de app.js para los formularios de los paneles.
+function openPanelDialog(html) {
+  const content = document.getElementById("dialogContent");
+  content.innerHTML = `<div class="dialog-body">${html}<div class="tx-availability no tx-dialog-error" data-dialog-error hidden></div></div>`;
+  dialog.showModal();
+  content.querySelector("[data-dialog-cancel]")?.addEventListener("click", () => dialog.close());
+  return content;
+}
+
+// El toast queda detrás del modal: los errores de un formulario se muestran dentro del diálogo.
+function handleDialogError(content, error) {
+  if (error.status === 401) {
+    dialog.close();
+    handleExpiredSession();
+    return;
+  }
+  showPanelError(content.querySelector("[data-dialog-error]"), error);
+}
+
+// Deshabilita el botón mientras corre la acción, para no enviarla dos veces.
+async function runWithButton(button, busyText, action) {
+  const original = button.textContent;
+  button.disabled = true;
+  button.textContent = busyText;
+  try {
+    return await action();
+  } finally {
+    button.disabled = false;
+    button.textContent = original;
+  }
+}
+
+function vehicleCell(vehicle) {
+  return `<strong>${escapeHtml(vehicle?.codigo || "")}</strong><small>${escapeHtml(vehicle?.modelo?.nombre || "Modelo")}</small>`;
 }
 
 // ---------------------------------------------------------
@@ -311,3 +373,282 @@ function renderFleetRows(vehicles) {
     });
   });
 }
+
+// ---------------------------------------------------------
+// Panel del operador: mostrador (HU-03) y despacho de domicilios (HU-06)
+// ---------------------------------------------------------
+
+const ACTIVE_DELIVERY_STATES = ["pendiente", "asignado", "recogido", "en_camino"];
+
+const ops = {
+  toDeliver: [],
+  toReceive: [],
+  pendingDeliveries: [],
+  activeByRental: new Map(),
+  paidSales: new Set(),
+};
+
+function deliveryStatusLabel(status = "") {
+  return ({
+    pendiente: "Pendiente",
+    asignado: "Asignado",
+    recogido: "Recogido",
+    en_camino: "En camino",
+    entregado: "Entregado",
+    cancelado: "Cancelado",
+  })[status] || status.replaceAll("_", " ");
+}
+
+function messageRow(columns, text) {
+  return `<tr><td colspan="${columns}">${escapeHtml(text)}</td></tr>`;
+}
+
+async function loadOperatorPanel() {
+  if (!userHasRole(STAFF_ROLES)) return;
+  const errorBox = document.getElementById("txOpsError");
+  ["txDeliverRows", "txReceiveRows", "txAssignRows"].forEach(id => {
+    const tbody = document.getElementById(id);
+    if (tbody && !tbody.children.length) tbody.innerHTML = messageRow(5, "Cargando...");
+  });
+
+  try {
+    const [toDeliver, toReceive, ...deliveriesByState] = await Promise.all([
+      fetchAllPages("/alquileres?estado=confirmado"),
+      fetchAllPages("/alquileres?estado=en_curso"),
+      ...ACTIVE_DELIVERY_STATES.map(s => fetchAllPages(`/domicilios?estado=${s}`)),
+    ]);
+
+    ops.toDeliver = toDeliver;
+    ops.toReceive = toReceive;
+    ops.pendingDeliveries = deliveriesByState[0];
+    ops.activeByRental = new Map(deliveriesByState.flat().filter(d => d.alquiler_id).map(d => [d.alquiler_id, d]));
+
+    // Un alquiler confirmado ya está pagado; de las compras se consulta su estado.
+    const saleIds = [...new Set(ops.pendingDeliveries.filter(d => d.venta_id).map(d => d.venta_id))];
+    const sales = await Promise.all(saleIds.map(id => api(`/ventas/${id}`, { auth: true })));
+    ops.paidSales = new Set(sales.filter(v => v.estado === "pagada").map(v => v.id));
+
+    hidePanelError(errorBox);
+    renderOperatorPanel();
+  } catch (error) {
+    if (error.status === 401) handleExpiredSession();
+    else showPanelError(errorBox, error);
+  }
+}
+
+function isDeliveryPaid(delivery) {
+  if (delivery.alquiler_id) return ops.toDeliver.some(r => r.id === delivery.alquiler_id);
+  return ops.paidSales.has(delivery.venta_id);
+}
+
+function deliverRow(rental) {
+  const today = colombiaDateISO();
+  const delivery = ops.activeByRental.get(rental.id);
+  const note = rental.fecha_inicio > today
+    ? `Inicia el ${rental.fecha_inicio}`
+    : rental.fecha_fin < today ? "Ya pasó la fecha de fin" : "Se puede entregar hoy";
+
+  return `
+    <tr>
+      <td><strong>#${Number(rental.id)}</strong><small>Cliente #${Number(rental.cliente_id)}</small></td>
+      <td>${vehicleCell(rental.vehiculo)}</td>
+      <td>${escapeHtml(rental.fecha_inicio)} → ${escapeHtml(rental.fecha_fin)}<small>${escapeHtml(note)}</small></td>
+      <td>${formatCOP(rental.total)}</td>
+      <td>${delivery
+        ? `<span class="status-chip maintenance-chip">Por domicilio · ${escapeHtml(deliveryStatusLabel(delivery.estado))}</span>`
+        : `<button class="btn btn-primary small-btn" data-deliver-rental="${Number(rental.id)}">Entregar</button>`}</td>
+    </tr>
+  `;
+}
+
+function receiveRow(rental) {
+  const today = colombiaDateISO();
+  const note = rental.fecha_fin < today ? `Debió volver el ${rental.fecha_fin}` : `Vuelve el ${rental.fecha_fin}`;
+
+  return `
+    <tr>
+      <td><strong>#${Number(rental.id)}</strong><small>Cliente #${Number(rental.cliente_id)}</small></td>
+      <td>${vehicleCell(rental.vehiculo)}</td>
+      <td>${escapeHtml(rental.fecha_inicio)} → ${escapeHtml(rental.fecha_fin)}<small>${escapeHtml(note)}</small></td>
+      <td>${formatCOP(rental.total)}</td>
+      <td><button class="btn btn-primary small-btn" data-receive-rental="${Number(rental.id)}">Recibir</button></td>
+    </tr>
+  `;
+}
+
+function assignRow(delivery) {
+  const paid = isDeliveryPaid(delivery);
+  const operation = delivery.alquiler_id ? `Alquiler #${Number(delivery.alquiler_id)}` : `Compra #${Number(delivery.venta_id)}`;
+
+  return `
+    <tr>
+      <td><strong>${escapeHtml(delivery.codigo_rastreo)}</strong><small>${operation}</small></td>
+      <td>
+        <strong>${escapeHtml(delivery.cliente?.nombre_completo || "Cliente")}</strong>
+        <small>${escapeHtml(delivery.direccion)}</small>
+        ${delivery.indicaciones ? `<small>${escapeHtml(delivery.indicaciones)}</small>` : ""}
+        ${delivery.cliente?.telefono ? `<small>Tel. ${escapeHtml(delivery.cliente.telefono)}</small>` : ""}
+      </td>
+      <td>${escapeHtml(delivery.zona?.nombre || "")}<small>Envío ${formatCOP(delivery.valor_envio)}</small></td>
+      <td><span class="status-chip ${paid ? "active-chip" : "maintenance-chip"}">${paid ? "Pagado" : "Esperando pago"}</span></td>
+      <td>${paid
+        ? `<button class="btn btn-primary small-btn" data-assign-delivery="${Number(delivery.id)}">Asignar</button>`
+        : `<span class="tx-cell-note">Se asigna cuando el cliente pague</span>`}</td>
+    </tr>
+  `;
+}
+
+function renderOperatorPanel() {
+  const deliverRows = document.getElementById("txDeliverRows");
+  const receiveRows = document.getElementById("txReceiveRows");
+  const assignRows = document.getElementById("txAssignRows");
+
+  deliverRows.innerHTML = ops.toDeliver.length
+    ? ops.toDeliver.map(deliverRow).join("")
+    : messageRow(5, "No hay alquileres confirmados por entregar.");
+  receiveRows.innerHTML = ops.toReceive.length
+    ? ops.toReceive.map(receiveRow).join("")
+    : messageRow(5, "No hay vehículos alquilados por recibir.");
+  assignRows.innerHTML = ops.pendingDeliveries.length
+    ? ops.pendingDeliveries.map(assignRow).join("")
+    : messageRow(5, "No hay domicilios esperando domiciliario.");
+
+  deliverRows.querySelectorAll("[data-deliver-rental]").forEach(btn => {
+    btn.addEventListener("click", () => openRentalActaDialog(Number(btn.dataset.deliverRental), "entrega"));
+  });
+  receiveRows.querySelectorAll("[data-receive-rental]").forEach(btn => {
+    btn.addEventListener("click", () => openRentalActaDialog(Number(btn.dataset.receiveRental), "devolucion"));
+  });
+  assignRows.querySelectorAll("[data-assign-delivery]").forEach(btn => {
+    btn.addEventListener("click", () => runWithButton(btn, "Cargando...", () => openAssignDialog(Number(btn.dataset.assignDelivery))));
+  });
+}
+
+// Formulario del acta (HU-11) que acompaña una entrega o una recepción. Todo es opcional.
+function actaFormHtml(confirmText) {
+  return `
+    <form class="tx-reservation-form" id="txActaForm">
+      <label>Estado del vehículo
+        <textarea name="estado_vehiculo" minlength="3" maxlength="1000" placeholder="Sin rayones. Frenos y luces funcionando."></textarea>
+      </label>
+      <label>Nivel de batería (%)
+        <input name="nivel_bateria" type="number" min="0" max="100" placeholder="Solo si el vehículo usa batería">
+      </label>
+      <small class="tx-payment-note">Si no anotas nada, el acta dice "Sin observaciones.".</small>
+      <div class="tx-form-actions">
+        <button type="button" class="btn btn-ghost" data-dialog-cancel>Cancelar</button>
+        <button type="submit" class="btn btn-primary">${escapeHtml(confirmText)}</button>
+      </div>
+    </form>
+  `;
+}
+
+function readActaForm(form) {
+  const acta = {};
+  const text = form.estado_vehiculo.value.trim();
+  if (text) acta.estado_vehiculo = text;
+  if (form.nivel_bateria.value !== "") acta.nivel_bateria = Number(form.nivel_bateria.value);
+  return acta;
+}
+
+function openRentalActaDialog(rentalId, action) {
+  const delivering = action === "entrega";
+  const rental = (delivering ? ops.toDeliver : ops.toReceive).find(r => r.id === rentalId);
+  if (!rental) return;
+
+  const content = openPanelDialog(`
+    <span class="eyebrow">${delivering ? "ENTREGA EN EL LOCAL" : "RECEPCIÓN EN EL LOCAL"}</span>
+    <h2>Reserva #${Number(rental.id)} · ${escapeHtml(rental.vehiculo?.codigo || "")}</h2>
+    <p>${escapeHtml(rental.vehiculo?.modelo?.nombre || "")} · ${escapeHtml(rental.fecha_inicio)} → ${escapeHtml(rental.fecha_fin)}.
+      Queda registrada el acta de ${delivering ? "entrega" : "recepción"}.</p>
+    ${actaFormHtml(delivering ? "Entregar vehículo" : "Recibir vehículo")}
+  `);
+
+  const form = content.querySelector("#txActaForm");
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    await runWithButton(form.querySelector('[type="submit"]'), "Guardando...", async () => {
+      try {
+        await postJson(`/alquileres/${rental.id}/${action}`, readActaForm(form));
+        dialog.close();
+        showToast(delivering
+          ? `Reserva #${rental.id} entregada. Quedó el acta de entrega.`
+          : `Reserva #${rental.id} recibida. Quedó el acta de recepción.`);
+        await loadOperatorPanel();
+      } catch (error) {
+        handleDialogError(content, error);
+      }
+    });
+  });
+}
+
+async function openAssignDialog(deliveryId) {
+  const delivery = ops.pendingDeliveries.find(d => d.id === deliveryId);
+  if (!delivery) return;
+
+  let couriers;
+  let vehicles;
+  try {
+    [couriers, vehicles] = await Promise.all([
+      fetchAllPages("/domicilios/domiciliarios-disponibles"),
+      fetchAllPages("/vehiculos?estado=disponible"),
+    ]);
+  } catch (error) {
+    handlePanelActionError(error);
+    return;
+  }
+
+  if (!couriers.length) {
+    showToast("No hay domiciliarios disponibles: todos tienen una entrega en ruta. Intenta de nuevo cuando alguno termine.");
+    return;
+  }
+
+  // La unidad que se entrega no puede ser también el vehículo del domiciliario.
+  const deliveredUnit = ops.toDeliver.find(r => r.id === delivery.alquiler_id)?.vehiculo?.id;
+  const transport = vehicles.filter(v => v.id !== deliveredUnit);
+
+  const content = openPanelDialog(`
+    <span class="eyebrow">ASIGNAR DOMICILIO</span>
+    <h2>${escapeHtml(delivery.codigo_rastreo)}</h2>
+    <p>${escapeHtml(delivery.cliente?.nombre_completo || "")} · ${escapeHtml(delivery.direccion)} (${escapeHtml(delivery.zona?.nombre || "")})</p>
+    <form class="tx-reservation-form" id="txAssignForm">
+      <label>Domiciliario
+        <select name="domiciliario_id" required>
+          ${couriers.map(c => `<option value="${Number(c.id)}">${escapeHtml(c.nombre_completo)}${c.telefono ? ` · ${escapeHtml(c.telefono)}` : ""}</option>`).join("")}
+        </select>
+      </label>
+      <label>Vehículo de transporte (opcional)
+        <select name="vehiculo_transporte_id">
+          <option value="">Sin vehículo de la flota</option>
+          ${transport.map(v => `<option value="${Number(v.id)}">${escapeHtml(v.codigo)} · ${escapeHtml(v.modelo?.nombre || "")}</option>`).join("")}
+        </select>
+      </label>
+      <div class="tx-form-actions">
+        <button type="button" class="btn btn-ghost" data-dialog-cancel>Cancelar</button>
+        <button type="submit" class="btn btn-primary">Asignar</button>
+      </div>
+    </form>
+  `);
+
+  const form = content.querySelector("#txAssignForm");
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    await runWithButton(form.querySelector('[type="submit"]'), "Asignando...", async () => {
+      try {
+        const result = await postJson(`/domicilios/${delivery.id}/asignacion`, {
+          domiciliario_id: Number(form.domiciliario_id.value),
+          vehiculo_transporte_id: form.vehiculo_transporte_id.value ? Number(form.vehiculo_transporte_id.value) : null,
+        });
+        dialog.close();
+        showToast(`${result.codigo_rastreo} asignado a ${result.domiciliario?.nombre_completo || "el domiciliario"}.`);
+        await loadOperatorPanel();
+      } catch (error) {
+        handleDialogError(content, error);
+      }
+    });
+  });
+}
+
+document.getElementById("txOpsRefresh")?.addEventListener("click", e => {
+  runWithButton(e.currentTarget, "Actualizando...", loadOperatorPanel);
+});
