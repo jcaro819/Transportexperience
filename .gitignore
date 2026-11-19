@@ -33,3 +33,6 @@ Thumbs.db
 
 # Herramientas descargadas por los scripts (p. ej. el .jar de PlantUML)
 .herramientas/
+
+# Configuración local del frontend (URL de la API del túnel de la sustentación)
+frontend/config.local.js

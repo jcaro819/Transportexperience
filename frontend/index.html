@@ -1675,6 +1675,13 @@
     crossorigin=""
   ></script>
 
+  <dialog id="vehicleDialog" class="vehicle-dialog"><button class="dialog-close" id="closeDialog" aria-label="Cerrar">×</button><div id="dialogContent"></div></dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <!-- Opcional y local (no se sube al repo): define window.TRANSPORT_API_BASE cuando la API
+       no está en http://127.0.0.1:8000, p. ej. el túnel de la sustentación. Si el archivo
+       no existe, el navegador lo ignora. Ver docs/sustentacion-tunel.md. -->
+  <script src="config.local.js"></script>
   <script src="app.js"></script>
   <script src="paneles.js"></script>
   <script src="cliente.js"></script>

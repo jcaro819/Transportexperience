@@ -2,48 +2,52 @@
 !include estilo.iuml
 title Diagrama de despliegue — TransportExperience (entorno de desarrollo y sustentación)
 
-node "Equipo del usuario" as equipo_usuario {
-  node "Navegador web" as navegador {
-    artifact "frontend descargado\n<size:10>index.html · app.js · styles.css</size>" as pagina
-  }
+' Más aire entre nodos para que las cajas y las etiquetas no se amontonen.
+skinparam nodesep 80
+skinparam ranksep 100
+skinparam padding 4
+
+node "Navegador web\n<size:10>equipo del usuario</size>" as navegador {
+  artifact "frontend descargado\n<size:10>index.html · app.js · paneles.js</size>\n<size:10>cliente.js · styles.css</size>" as pagina
 }
 
-node "Equipo del proyecto (127.0.0.1)" as servidor {
-  node "Servidor de archivos estáticos\n<size:10>python -m http.server 5173</size>" as estatico {
-    artifact "frontend/" as frontend
-  }
-
-  node "Uvicorn :8000\n<size:10>uvicorn app.main:app</size>" as uvicorn {
-    artifact "Backend FastAPI\n<size:10>app/main.py + app/modulos/</size>" as api
-  }
-
-  node "Simulador GPS\n<size:10>python -m simulador_gps</size>" as simulador {
-    artifact "simulador_gps/" as codigo_simulador
-  }
-
-  node "Docker Compose (proyecto transportexperience)" as compose {
-    node "transportexperience-postgres\n<size:10>imagen postgres:16-alpine · puerto 5432</size>" as contenedor_pg {
-      database "transportexperience" as bd
-      database "transportexperience_pruebas\n<size:10>la usan los tests</size>" as bd_pruebas
-    }
-    node "transportexperience-adminer\n<size:10>imagen adminer · puerto 8080</size>" as adminer
-    storage "volumen datos_postgres" as volumen
-  }
+node "Servidor de archivos estáticos\n<size:10>python -m http.server 5173</size>" as estatico {
+  artifact "frontend/" as frontend
 }
 
-cloud "Wompi sandbox\n<size:10>https://sandbox.wompi.co/v1</size>" as wompi
+node "Uvicorn :8000\n<size:10>uvicorn app.main:app</size>" as uvicorn {
+  artifact "Backend FastAPI\n<size:10>app/main.py + app/modulos/</size>" as api
+}
+
+node "Simulador GPS\n<size:10>python -m simulador_gps</size>" as simulador {
+  artifact "simulador_gps/" as codigo_simulador
+}
+
 node "Dispositivo GPS real\n<size:10>opcional: GPS_FUENTE=dispositivo</size>" as dispositivo
 
+node "Docker Compose\n<size:10>proyecto transportexperience</size>" as compose {
+  node "transportexperience-postgres\n<size:10>imagen postgres:16-alpine · puerto 5432</size>" as contenedor_pg {
+    database "transportexperience" as bd
+    database "transportexperience_pruebas\n<size:10>la usan los tests</size>" as bd_pruebas
+  }
+  node "transportexperience-adminer\n<size:10>imagen adminer · puerto 8080</size>" as adminer
+}
+
+storage "volumen datos_postgres" as volumen
+
+cloud "Wompi sandbox\n<size:10>https://sandbox.wompi.co/v1</size>" as wompi
+
+' Todas las conexiones van hacia abajo, por niveles: quien inicia arriba, quien responde abajo.
+' Así el motor de distribución no cruza flechas.
+dispositivo ..> uvicorn : POST /rastreo/posiciones
+simulador --> uvicorn : POST /rastreo/posiciones\ncada 5 s
 navegador --> estatico : HTTP :5173\n(descarga el frontend)
 navegador --> uvicorn : HTTP/JSON :8000\n(CORS, JWT)
+navegador ..> adminer : HTTP :8080\n(solo el equipo)
+uvicorn <--> wompi : HTTPS: cobro y consulta de respaldo\nwebhook: POST /pagos/webhooks/wompi
 uvicorn --> contenedor_pg : TCP 5432\n(SQLAlchemy + psycopg)
 adminer --> contenedor_pg : TCP 5432
 contenedor_pg --> volumen
-navegador ..> adminer : HTTP :8080\n(solo el equipo)
-simulador --> uvicorn : HTTP POST /rastreo/posiciones\ncada 5 s
-dispositivo ..> uvicorn : HTTP POST /rastreo/posiciones
-uvicorn --> wompi : HTTPS\n(cobro y consulta de respaldo)
-wompi ..> uvicorn : HTTPS POST /pagos/webhooks/wompi
 
 note bottom of wompi
   En desarrollo Wompi no alcanza a 127.0.0.1:
@@ -51,8 +55,8 @@ note bottom of wompi
   de respaldo (GET /pagos/{referencia}).
 end note
 
-note bottom of compose
-  Los puertos solo se publican en 127.0.0.1.
-  Arranque: docker compose up -d
-end note
+legend bottom
+  El servidor estático, Uvicorn, el simulador y Docker Compose corren en el equipo
+  del proyecto. Los puertos solo se publican en 127.0.0.1. Arranque: docker compose up -d
+endlegend
 @enduml
