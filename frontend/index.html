@@ -3,25 +3,52 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="TransportExperience - movilidad urbana, alquiler, venta y domicilios." />
+  <meta
+    name="description"
+    content="TransportExperience - plataforma de movilidad urbana para alquiler, venta y domicilios."
+  />
   <title>TransportExperience</title>
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="icon" href="data:," />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  >
+
+  <link rel="icon" type="image/svg+xml" href="icono_app_optimizado.svg" />
   <link rel="stylesheet" href="styles.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
 </head>
+
 <body>
+
   <header class="site-header">
     <a class="brand" href="#inicio" data-view-link="inicio" aria-label="Ir al inicio">
       <span class="brand-mark" aria-hidden="true">
-        <svg viewBox="0 0 48 48"><path d="M9 27h17l8-12h5L29 33H12a7 7 0 1 1-3-6Zm4 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm24 0a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg>
+        <img
+          src="icono_app_optimizado.svg"
+          alt=""
+          style="width:100%;height:100%;object-fit:contain;"
+        >
       </span>
       <span>Transport<span>Experience</span></span>
     </a>
 
-    <button class="menu-toggle" id="menuToggle" aria-label="Abrir menú" aria-expanded="false">☰</button>
+    <button
+      class="menu-toggle"
+      id="menuToggle"
+      aria-label="Abrir menú"
+      aria-expanded="false"
+    >
+      ☰
+    </button>
+
     <nav class="nav" id="mainNav" aria-label="Navegación principal">
       <a href="#inicio" data-view-link="inicio" class="active">Inicio</a>
       <a href="#catalogo" data-view-link="catalogo">Catálogo</a>
@@ -29,202 +56,1624 @@
       <a href="#seguimiento" data-view-link="seguimiento">Seguir pedido</a>
       <a href="#como-funciona" data-anchor-link="como-funciona">Cómo funciona</a>
       <a href="#contacto" data-anchor-link="contacto">Contacto</a>
-      <a href="#mis-actas" data-view-link="mis-actas" data-roles="cliente" hidden>Mis actas</a>
+      <a
+        href="#mis-actas"
+        data-view-link="mis-actas"
+        data-roles="cliente"
+        hidden
+      >
+        Mis actas
+      </a>
     </nav>
 
     <div class="header-actions">
-      <button class="btn btn-soft tx-cart-button" id="txCartButton" data-view-button="carrito" aria-label="Abrir el carrito">🛒 <span class="tx-cart-text">Carrito</span> <span class="tx-cart-count" id="txCartCount">0</span></button>
-      <button class="btn btn-ghost" data-view-button="login">Iniciar sesión</button>
-      <button class="btn btn-primary" data-view-button="catalogo">Ver vehículos</button>
+      <button
+        class="btn btn-soft tx-cart-button"
+        id="txCartButton"
+        data-view-button="carrito"
+        aria-label="Abrir el carrito"
+      >
+        🛒
+        <span class="tx-cart-text">Carrito</span>
+        <span class="tx-cart-count" id="txCartCount">0</span>
+      </button>
+
+      <button class="btn btn-ghost" data-view-button="login">
+        Iniciar sesión
+      </button>
+
+      <button class="btn btn-primary" data-view-button="catalogo">
+        Ver vehículos
+      </button>
     </div>
   </header>
 
   <main>
+
+    <!-- ===================================================== -->
+    <!-- INICIO -->
+    <!-- ===================================================== -->
+
     <section class="view active" id="view-inicio" data-view="inicio">
+
       <section class="hero">
         <div class="hero-content">
           <span class="eyebrow">MOVILIDAD URBANA SIMPLE</span>
-          <h1>Muévete por la ciudad <span>sin complicaciones.</span></h1>
-          <p>Alquila o compra ciclas, patines y monopatines eléctricos. Elige tu vehículo, revisa su disponibilidad y recíbelo donde lo necesites.</p>
+
+          <h1>
+            Muévete por la ciudad
+            <span>sin complicaciones.</span>
+          </h1>
+
+          <p>
+            Alquila o compra ciclas, patines y monopatines eléctricos.
+            Elige tu vehículo, revisa su disponibilidad y recíbelo donde
+            lo necesites.
+          </p>
+
           <div class="hero-actions">
-            <button class="btn btn-primary btn-lg" data-view-button="catalogo">Explorar catálogo</button>
-            <a class="btn btn-soft btn-lg" href="#como-funciona" data-anchor-link="como-funciona">Cómo funciona</a>
+            <button
+              class="btn btn-primary btn-lg"
+              data-view-button="catalogo"
+            >
+              Explorar catálogo
+            </button>
+
+            <a
+              class="btn btn-soft btn-lg"
+              href="#como-funciona"
+              data-anchor-link="como-funciona"
+            >
+              Cómo funciona
+            </a>
           </div>
+
           <div class="hero-stats" aria-label="Resumen del servicio">
-            <div><strong>15+</strong><span>vehículos demo</span></div>
-            <div><strong>3</strong><span>tipos de movilidad</span></div>
-            <div><strong>7 días</strong><span>de atención</span></div>
+            <div>
+              <strong>15+</strong>
+              <span>vehículos disponibles</span>
+            </div>
+
+            <div>
+              <strong>3</strong>
+              <span>tipos de movilidad</span>
+            </div>
+
+            <div>
+              <strong>7 días</strong>
+              <span>de atención</span>
+            </div>
           </div>
         </div>
 
         <div class="hero-visual" aria-label="Vista ilustrada de movilidad urbana">
-          <div class="orb orb-one"></div><div class="orb orb-two"></div>
+          <div class="orb orb-one"></div>
+          <div class="orb orb-two"></div>
+
           <div class="vehicle-card featured">
             <div class="vehicle-badge">Disponible hoy</div>
+
             <div class="vehicle-icon huge">🛴</div>
-            <div class="vehicle-info-row"><div><small>Monopatín eléctrico</small><h3>Volt City S2</h3></div><strong>$18.000<span>/día</span></strong></div>
-            <div class="mini-tags"><span>⚡ 92% batería</span><span>📍 Centro</span></div>
+
+            <div class="vehicle-info-row">
+              <div>
+                <small>Monopatín eléctrico</small>
+                <h3>Volt City S2</h3>
+              </div>
+
+              <strong>
+                $18.000
+                <span>/día</span>
+              </strong>
+            </div>
+
+            <div class="mini-tags">
+              <span>⚡ 92% batería</span>
+              <span>📍 Centro</span>
+            </div>
           </div>
-          <div class="floating-card card-left"><span>⚡</span><div><strong>Rápido</strong><small>Reserva en pocos pasos</small></div></div>
-          <div class="floating-card card-right"><span>🌱</span><div><strong>Sostenible</strong><small>Movilidad de corta distancia</small></div></div>
+
+          <div class="floating-card card-left">
+            <span>⚡</span>
+            <div>
+              <strong>Rápido</strong>
+              <small>Reserva en pocos pasos</small>
+            </div>
+          </div>
+
+          <div class="floating-card card-right">
+            <span>🌱</span>
+            <div>
+              <strong>Sostenible</strong>
+              <small>Movilidad de corta distancia</small>
+            </div>
+          </div>
         </div>
       </section>
+
+      <!-- SERVICIOS -->
 
       <section class="section services" id="servicios">
         <div class="section-heading">
-          <div><span class="eyebrow">NUESTROS SERVICIOS</span><h2>Una plataforma para moverte y recibir</h2></div>
-          <p>TransportExperience reúne alquiler, venta y domicilios en un solo lugar.</p>
+          <div>
+            <span class="eyebrow">NUESTROS SERVICIOS</span>
+            <h2>Una plataforma para moverte y recibir</h2>
+          </div>
+
+          <p>
+            TransportExperience reúne alquiler, venta y domicilios
+            en un solo lugar.
+          </p>
         </div>
+
         <div class="service-grid">
-          <article class="service-card"><span class="service-icon">🚲</span><h3>Alquila</h3><p>Consulta vehículos disponibles y elige el que mejor se ajuste a tu recorrido.</p><button data-view-button="catalogo">Ver alquileres →</button></article>
-          <article class="service-card"><span class="service-icon">🛼</span><h3>Compra</h3><p>Explora dispositivos y accesorios disponibles para venta desde el catálogo.</p><button data-view-button="accesorios">Ver productos →</button></article>
-          <article class="service-card"><span class="service-icon">📦</span><h3>Domicilios</h3><p>Solicita la entrega de un vehículo o producto dentro de las zonas habilitadas.</p><button data-view-button="seguimiento">Seguir mi pedido →</button></article>
+
+          <article class="service-card">
+            <span class="service-icon">🚲</span>
+            <h3>Alquila</h3>
+            <p>
+              Consulta vehículos disponibles y elige el que mejor
+              se ajuste a tu recorrido.
+            </p>
+            <button data-view-button="catalogo">
+              Ver alquileres →
+            </button>
+          </article>
+
+          <article class="service-card">
+            <span class="service-icon">🛼</span>
+            <h3>Compra</h3>
+            <p>
+              Explora dispositivos y accesorios disponibles para
+              venta desde el catálogo.
+            </p>
+            <button data-view-button="accesorios">
+              Ver productos →
+            </button>
+          </article>
+
+          <article class="service-card">
+            <span class="service-icon">📦</span>
+            <h3>Domicilios</h3>
+            <p>
+              Solicita la entrega de un vehículo o producto dentro
+              de las zonas habilitadas.
+            </p>
+            <button data-view-button="seguimiento">
+              Seguir mi pedido →
+            </button>
+          </article>
+
         </div>
       </section>
+
+      <!-- CÓMO FUNCIONA -->
 
       <section class="section steps" id="como-funciona">
-        <div class="section-heading centered"><span class="eyebrow">CÓMO FUNCIONA</span><h2>De la selección al recorrido en 4 pasos</h2></div>
+        <div class="section-heading centered">
+          <span class="eyebrow">CÓMO FUNCIONA</span>
+          <h2>De la selección al recorrido en 4 pasos</h2>
+        </div>
+
         <div class="steps-grid">
-          <article><span>01</span><div class="step-icon">🔎</div><h3>Explora</h3><p>Busca por tipo, precio y disponibilidad.</p></article>
-          <article><span>02</span><div class="step-icon">📅</div><h3>Elige</h3><p>Selecciona vehículo, modalidad y fechas.</p></article>
-          <article><span>03</span><div class="step-icon">💳</div><h3>Confirma</h3><p>Revisa el costo y completa tu solicitud.</p></article>
-          <article><span>04</span><div class="step-icon">✨</div><h3>Disfruta</h3><p>Recoge tu vehículo o espera la entrega.</p></article>
+
+          <article>
+            <span>01</span>
+            <div class="step-icon">🔎</div>
+            <h3>Explora</h3>
+            <p>Busca por tipo, precio y disponibilidad.</p>
+          </article>
+
+          <article>
+            <span>02</span>
+            <div class="step-icon">📅</div>
+            <h3>Elige</h3>
+            <p>Selecciona vehículo, modalidad y fechas.</p>
+          </article>
+
+          <article>
+            <span>03</span>
+            <div class="step-icon">💳</div>
+            <h3>Confirma</h3>
+            <p>Revisa el costo y completa tu solicitud.</p>
+          </article>
+
+          <article>
+            <span>04</span>
+            <div class="step-icon">✨</div>
+            <h3>Disfruta</h3>
+            <p>Recoge tu vehículo o espera la entrega.</p>
+          </article>
+
         </div>
       </section>
+
+      <!-- MISIÓN / VISIÓN -->
 
       <section class="section institutional">
-        <div class="institutional-card"><span class="eyebrow">MISIÓN</span><h2>Movilidad práctica para recorridos urbanos.</h2><p>Facilitar el acceso a medios de transporte livianos mediante una experiencia digital clara, rápida y confiable.</p></div>
-        <div class="institutional-card dark"><span class="eyebrow">VISIÓN</span><h2>Una ciudad más conectada y sostenible.</h2><p>Convertir TransportExperience en una alternativa accesible para la movilidad de corta distancia y la logística liviana.</p></div>
+
+        <div class="institutional-card">
+          <span class="eyebrow">MISIÓN</span>
+          <h2>Movilidad práctica para recorridos urbanos.</h2>
+          <p>
+            Facilitar el acceso a medios de transporte livianos mediante
+            una experiencia digital clara, rápida y confiable.
+          </p>
+        </div>
+
+        <div class="institutional-card dark">
+          <span class="eyebrow">VISIÓN</span>
+          <h2>Una ciudad más conectada y sostenible.</h2>
+          <p>
+            Convertir TransportExperience en una alternativa accesible
+            para la movilidad de corta distancia y la logística liviana.
+          </p>
+        </div>
+
       </section>
+
+      <!-- CONTACTO -->
 
       <section class="section contact" id="contacto">
-        <div><span class="eyebrow">CONTACTO</span><h2>¿Necesitas ayuda?</h2><p>Esta primera versión usa información de demostración. El contenido institucional real se cargará desde el backend.</p></div>
+
+        <div>
+          <span class="eyebrow">CONTACTO</span>
+          <h2>¿Necesitas ayuda?</h2>
+          <p>
+            Estamos disponibles para orientarte en alquileres,
+            compras, domicilios y seguimiento de tus solicitudes.
+          </p>
+        </div>
+
         <div class="contact-grid">
-          <div><span>✉️</span><div><small>Correo</small><strong>contacto@transportexperience.co</strong></div></div>
-          <div><span>📞</span><div><small>Teléfono</small><strong>+57 300 000 0000</strong></div></div>
-          <div><span>🕘</span><div><small>Horario demo</small><strong>Lun–Sáb · 7:00–19:00</strong></div></div>
+
+          <div>
+            <span>✉️</span>
+            <div>
+              <small>Correo</small>
+              <strong>contacto@transportexperience.co</strong>
+            </div>
+          </div>
+
+          <div>
+            <span>📞</span>
+            <div>
+              <small>Teléfono</small>
+              <strong>+57 300 000 0000</strong>
+            </div>
+          </div>
+
+          <div>
+            <span>🕘</span>
+            <div>
+              <small>Horario de atención</small>
+              <strong>Lun–Sáb · 7:00–19:00</strong>
+            </div>
+          </div>
+
         </div>
       </section>
+
     </section>
+
+    <!-- ===================================================== -->
+    <!-- CATÁLOGO -->
+    <!-- ===================================================== -->
 
     <section class="view" id="view-catalogo" data-view="catalogo">
+
       <section class="page-hero compact">
-        <div><span class="eyebrow">CATÁLOGO</span><h1>Encuentra tu próxima forma de moverte</h1><p>Filtra por tipo, modalidad y tarifa. Los datos mostrados son de demostración para el prototipo visual.</p></div>
+        <div>
+          <span class="eyebrow">CATÁLOGO</span>
+          <h1>Encuentra tu próxima forma de moverte</h1>
+          <p>
+            Filtra por tipo, modalidad y tarifa para encontrar
+            vehículos disponibles para alquiler o venta.
+          </p>
+        </div>
       </section>
+
       <section class="catalog-layout section">
+
         <aside class="filters">
-          <div class="filter-header"><h3>Filtros</h3><button id="clearFilters">Limpiar</button></div>
-          <label>Tipo de vehículo<select id="typeFilter"><option value="todos">Todos</option><option value="Cicla">Ciclas</option><option value="Patines">Patines</option><option value="Monopatín">Monopatines</option></select></label>
-          <label>Modalidad<select id="modeFilter"><option value="todos">Todas</option><option value="Alquiler">Alquiler</option><option value="Venta">Venta</option></select></label>
-          <label>Tarifa máxima <span id="priceLabel">$80.000</span><input id="priceFilter" type="range" min="10000" max="80000" step="5000" value="80000"></label>
-          <label class="check-row"><input id="availableFilter" type="checkbox"> Solo disponibles hoy</label>
+
+          <div class="filter-header">
+            <h3>Filtros</h3>
+            <button id="clearFilters">Limpiar</button>
+          </div>
+
+          <label>
+            Tipo de vehículo
+            <select id="typeFilter">
+              <option value="todos">Todos</option>
+              <option value="Cicla">Ciclas</option>
+              <option value="Patines">Patines</option>
+              <option value="Monopatín">Monopatines</option>
+            </select>
+          </label>
+
+          <label>
+            Modalidad
+            <select id="modeFilter">
+              <option value="todos">Todas</option>
+              <option value="Alquiler">Alquiler</option>
+              <option value="Venta">Venta</option>
+            </select>
+          </label>
+
+          <label>
+            Tarifa máxima
+            <span id="priceLabel">$80.000</span>
+            <input
+              id="priceFilter"
+              type="range"
+              min="10000"
+              max="80000"
+              step="5000"
+              value="80000"
+            >
+          </label>
+
+          <label class="check-row">
+            <input id="availableFilter" type="checkbox">
+            Solo disponibles hoy
+          </label>
+
         </aside>
+
         <div class="catalog-content">
-          <div class="catalog-toolbar"><div><strong id="resultCount">6</strong> resultados</div><select aria-label="Ordenar"><option>Recomendados</option><option>Menor precio</option><option>Mayor precio</option></select></div>
+
+          <div class="catalog-toolbar">
+            <div>
+              <strong id="resultCount">6</strong>
+              resultados
+            </div>
+
+            <select aria-label="Ordenar">
+              <option>Recomendados</option>
+              <option>Menor precio</option>
+              <option>Mayor precio</option>
+            </select>
+          </div>
+
           <div class="catalog-grid" id="catalogGrid"></div>
-          <div class="empty-state" id="emptyState" hidden><div>🔎</div><h3>No encontramos vehículos</h3><p>Prueba quitando algunos filtros.</p></div>
+
+          <div class="empty-state" id="emptyState" hidden>
+            <div>🔎</div>
+            <h3>No encontramos vehículos</h3>
+            <p>Prueba quitando algunos filtros.</p>
+          </div>
+
         </div>
       </section>
     </section>
+
+    <!-- ===================================================== -->
+    <!-- ACCESORIOS -->
+    <!-- ===================================================== -->
 
     <section class="view" id="view-accesorios" data-view="accesorios">
+
       <section class="page-hero compact">
-        <div><span class="eyebrow">ACCESORIOS Y REPUESTOS · HU-04</span><h1>Completa tu equipo</h1><p>Cascos, candados, cargadores y repuestos. Agrégalos al carrito junto con los vehículos en venta del catálogo y paga todo en una sola compra.</p></div>
+        <div>
+          <span class="eyebrow">ACCESORIOS Y REPUESTOS · HU-04</span>
+          <h1>Completa tu equipo</h1>
+          <p>
+            Cascos, candados, cargadores y repuestos. Agrégalos al
+            carrito junto con los vehículos en venta del catálogo y
+            paga todo en una sola compra.
+          </p>
+        </div>
       </section>
+
       <section class="catalog-layout section">
+
         <aside class="filters">
-          <div class="filter-header"><h3>Filtros</h3></div>
-          <label>Categoría<select id="txShopCategory"><option value="">Todas</option><option value="accesorio">Accesorios</option><option value="repuesto">Repuestos</option></select></label>
-          <label class="check-row"><input id="txShopAvailable" type="checkbox"> Solo con existencias</label>
+
+          <div class="filter-header">
+            <h3>Filtros</h3>
+          </div>
+
+          <label>
+            Categoría
+            <select id="txShopCategory">
+              <option value="">Todas</option>
+              <option value="accesorio">Accesorios</option>
+              <option value="repuesto">Repuestos</option>
+            </select>
+          </label>
+
+          <label class="check-row">
+            <input id="txShopAvailable" type="checkbox">
+            Solo con existencias
+          </label>
+
         </aside>
+
         <div class="catalog-content">
-          <div class="catalog-toolbar"><div><strong id="txShopCount">0</strong> productos</div><button class="btn btn-ghost small-btn" data-view-button="carrito">Ver carrito</button></div>
-          <div id="txShopError" class="tx-availability no tx-panel-error" hidden></div>
+
+          <div class="catalog-toolbar">
+            <div>
+              <strong id="txShopCount">0</strong>
+              productos
+            </div>
+
+            <button
+              class="btn btn-ghost small-btn"
+              data-view-button="carrito"
+            >
+              Ver carrito
+            </button>
+          </div>
+
+          <div
+            id="txShopError"
+            class="tx-availability no tx-panel-error"
+            hidden
+          ></div>
+
           <div class="catalog-grid" id="txShopGrid"></div>
+
         </div>
       </section>
     </section>
+
+    <!-- ===================================================== -->
+    <!-- CARRITO -->
+    <!-- ===================================================== -->
 
     <section class="view" id="view-carrito" data-view="carrito">
-      <section class="page-hero compact">
-        <div><span class="eyebrow">CARRITO · HU-04</span><h1>Tu compra</h1><p>Vehículos y accesorios en una sola compra y un solo pago. Al comprar, apartamos todo durante 15 minutos mientras pagas.</p><div class="tx-account-actions"><button class="btn btn-ghost" data-view-button="catalogo">Ver vehículos</button><button class="btn btn-ghost" data-view-button="accesorios">Ver accesorios</button></div></div>
-      </section>
-      <section class="section tx-rentals-section">
-        <div id="txCartError" class="tx-availability no tx-panel-error" hidden></div>
-        <div id="txCartList" class="tx-rentals-list"></div>
-        <div id="txCartSummary" class="tx-cart-summary" hidden></div>
-      </section>
-    </section>
 
-    <section class="view" id="view-seguimiento" data-view="seguimiento">
       <section class="page-hero compact">
-        <div><span class="eyebrow">SEGUIMIENTO · HU-07</span><h1>Sigue tu pedido</h1><p>Escribe el código de rastreo de tu domicilio (empieza por TX-). No necesitas iniciar sesión: solo se muestran el estado y la hora de cada cambio.</p>
-          <form class="tx-track-form" id="txTrackForm"><input id="txTrackCode" maxlength="40" placeholder="Ej. TX-ABCD1234" autocomplete="off" aria-label="Código de rastreo" required><button class="btn btn-primary" id="txTrackButton" type="submit">Consultar</button></form>
+        <div>
+          <span class="eyebrow">CARRITO · HU-04</span>
+          <h1>Tu compra</h1>
+
+          <p>
+            Vehículos y accesorios en una sola compra y un solo pago.
+            Al comprar, apartamos todo durante 15 minutos mientras
+            completas el proceso.
+          </p>
+
+          <div class="tx-account-actions">
+            <button class="btn btn-ghost" data-view-button="catalogo">
+              Ver vehículos
+            </button>
+
+            <button class="btn btn-ghost" data-view-button="accesorios">
+              Ver accesorios
+            </button>
+          </div>
         </div>
       </section>
+
       <section class="section tx-rentals-section">
-        <div id="txTrackError" class="tx-availability no tx-panel-error" hidden></div>
-        <div id="txTrackResult"></div>
+
+        <div
+          id="txCartError"
+          class="tx-availability no tx-panel-error"
+          hidden
+        ></div>
+
+        <div id="txCartList" class="tx-rentals-list"></div>
+
+        <div
+          id="txCartSummary"
+          class="tx-cart-summary"
+          hidden
+        ></div>
+
       </section>
     </section>
 
-    <section class="view auth-view" id="view-login" data-view="login">
-      <div class="auth-panel">
-        <button class="back-link" data-view-button="inicio">← Volver al inicio</button>
-        <div class="auth-brand"><span class="brand-mark small"><svg viewBox="0 0 48 48"><path d="M9 27h17l8-12h5L29 33H12a7 7 0 1 1-3-6Zm4 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm24 0a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg></span><strong>TransportExperience</strong></div>
-        <span class="eyebrow">BIENVENIDO</span><h1>Inicia sesión</h1><p>Accede para gestionar reservas, consultar tu actividad o entrar al panel operativo.</p>
-        <form id="loginForm">
-          <label>Correo electrónico<input type="email" placeholder="correo@ejemplo.com" value="admin@transportexperience.test" required></label>
-          <label>Contraseña<div class="password-field"><input id="passwordInput" type="password" value="Desarrollo2026!" required><button type="button" id="togglePassword">Mostrar</button></div></label>
-          <div class="form-meta"><label class="check-row"><input type="checkbox"> Recordarme</label><button type="button" class="text-button">¿Olvidaste tu contraseña?</button></div>
-          <button class="btn btn-primary btn-full" type="submit">Entrar</button>
-        </form>
-        <div class="demo-note"><strong>Modo demostración</strong><p>Este formulario no valida credenciales. Al continuar abre una vista simulada del panel administrativo.</p></div>
-      </div>
-      <div class="auth-visual"><div class="auth-quote"><span>“</span><h2>Controla tu movilidad desde un solo lugar.</h2><p>Catálogo, flota, usuarios y mantenimiento listos para conectarse con la API.</p></div></div>
+    <!-- ===================================================== -->
+    <!-- SEGUIMIENTO -->
+    <!-- ===================================================== -->
+
+    <section class="view" id="view-seguimiento" data-view="seguimiento">
+
+      <section class="page-hero compact">
+        <div>
+          <span class="eyebrow">SEGUIMIENTO · HU-07</span>
+          <h1>Sigue tu pedido</h1>
+
+          <p>
+            Escribe el código de rastreo de tu domicilio
+            (empieza por TX-). No necesitas iniciar sesión:
+            puedes consultar directamente el estado de tu entrega.
+          </p>
+
+          <form class="tx-track-form" id="txTrackForm">
+
+            <input
+              id="txTrackCode"
+              maxlength="40"
+              placeholder="Ej. TX-ABCD1234"
+              autocomplete="off"
+              aria-label="Código de rastreo"
+              required
+            >
+
+            <button
+              class="btn btn-primary"
+              id="txTrackButton"
+              type="submit"
+            >
+              Consultar
+            </button>
+
+          </form>
+        </div>
+      </section>
+
+      <section class="section tx-rentals-section">
+
+        <div
+          id="txTrackError"
+          class="tx-availability no tx-panel-error"
+          hidden
+        ></div>
+
+        <div id="txTrackResult"></div>
+
+      </section>
     </section>
+
+    <!-- ===================================================== -->
+    <!-- LOGIN -->
+    <!-- ===================================================== -->
+
+    <section class="view auth-view" id="view-login" data-view="login">
+
+      <div class="auth-panel">
+
+        <button class="back-link" data-view-button="inicio">
+          ← Volver al inicio
+        </button>
+
+        <div class="auth-brand">
+          <img
+            src="logo_fondo_transparente.svg"
+            alt="TransportExperience"
+            style="max-width:210px;width:100%;height:auto;"
+          >
+        </div>
+
+        <span class="eyebrow">BIENVENIDO</span>
+
+        <h1>Inicia sesión</h1>
+
+        <p>
+          Accede para gestionar reservas, compras, domicilios y
+          consultar tu actividad.
+        </p>
+
+        <form id="loginForm">
+
+          <label>
+            Correo electrónico
+            <input
+              type="email"
+              placeholder="correo@ejemplo.com"
+              value="admin@transportexperience.test"
+              required
+            >
+          </label>
+
+          <label>
+            Contraseña
+
+            <div class="password-field">
+              <input
+                id="passwordInput"
+                type="password"
+                value="Desarrollo2026!"
+                required
+              >
+
+              <button type="button" id="togglePassword">
+                Mostrar
+              </button>
+            </div>
+          </label>
+
+          <div class="form-meta">
+            <label class="check-row">
+              <input type="checkbox">
+              Recordarme
+            </label>
+          </div>
+
+          <button
+            class="btn btn-primary btn-full"
+            type="submit"
+          >
+            Entrar
+          </button>
+
+        </form>
+
+        <!-- app.js actualiza este contenido con el estado real del backend -->
+        <div class="demo-note">
+          <strong>Conexión al sistema</strong>
+          <p>Comprobando disponibilidad del backend...</p>
+        </div>
+
+      </div>
+
+      <div class="auth-visual">
+        <div class="auth-quote">
+          <span>“</span>
+          <h2>Controla tu movilidad desde un solo lugar.</h2>
+          <p>
+            Catálogo, alquileres, compras, domicilios y seguimiento
+            integrados en una misma plataforma.
+          </p>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ===================================================== -->
+    <!-- PANEL ADMINISTRATIVO -->
+    <!-- ===================================================== -->
 
     <section class="view admin-view" id="view-admin" data-view="admin">
+
       <aside class="admin-sidebar">
-        <div class="auth-brand"><span class="brand-mark small"><svg viewBox="0 0 48 48"><path d="M9 27h17l8-12h5L29 33H12a7 7 0 1 1-3-6Zm4 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm24 0a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg></span><strong>TransportExperience</strong></div>
-        <nav class="admin-nav"><button class="active" data-admin-tab="resumen">▦ Resumen</button><button data-admin-tab="usuarios">👥 Usuarios</button><button data-admin-tab="flota">🛴 Flota</button><button data-admin-tab="mantenimiento">🛠 Mantenimiento</button><button data-admin-tab="operacion" data-roles="administrador,operador" hidden>🧾 Operación</button><button data-admin-tab="inventario" data-roles="administrador" hidden>📦 Inventario</button><button data-admin-tab="rastreo" data-roles="administrador,operador" hidden>📍 Rastreo</button><button data-admin-tab="actas" data-roles="administrador,operador" hidden>📊 Reportes</button></nav>
-        <button class="logout" data-view-button="inicio">↪ Cerrar demo</button>
+
+        <div class="auth-brand">
+          <img
+            src="logo_fondo_transparente.svg"
+            alt="TransportExperience"
+            style="max-width:180px;width:100%;height:auto;"
+          >
+        </div>
+
+        <nav class="admin-nav">
+
+          <button class="active" data-admin-tab="resumen">
+            ▦ Resumen
+          </button>
+
+          <button data-admin-tab="usuarios">
+            👥 Usuarios
+          </button>
+
+          <button data-admin-tab="flota">
+            🛴 Flota
+          </button>
+
+          <button data-admin-tab="mantenimiento">
+            🛠 Mantenimiento
+          </button>
+
+          <button
+            data-admin-tab="operacion"
+            data-roles="administrador,operador"
+            hidden
+          >
+            🧾 Operación
+          </button>
+
+          <button
+            data-admin-tab="inventario"
+            data-roles="administrador"
+            hidden
+          >
+            📦 Inventario
+          </button>
+
+          <button
+            data-admin-tab="rastreo"
+            data-roles="administrador,operador"
+            hidden
+          >
+            📍 Rastreo
+          </button>
+
+          <button
+            data-admin-tab="actas"
+            data-roles="administrador,operador"
+            hidden
+          >
+            📊 Reportes
+          </button>
+
+        </nav>
+
+        <button class="logout" data-view-button="inicio">
+          ↪ Cerrar sesión
+        </button>
+
       </aside>
+
       <div class="admin-main">
-        <header class="admin-topbar"><div><small>Panel administrativo</small><h2 id="adminTitle">Resumen</h2></div><div class="admin-user"><div class="avatar">AM</div><div><strong>Administrador Demo</strong><small>Administrador</small></div></div></header>
-        <section class="admin-tab active" data-admin-content="resumen">
-          <div class="metric-grid"><article><span>Vehículos disponibles</span><strong>11</strong><small>de 15 unidades</small></article><article><span>En mantenimiento</span><strong>3</strong><small>1 novedad crítica</small></article><article><span>Usuarios activos</span><strong>24</strong><small>4 roles configurados</small></article><article><span>Solicitudes hoy</span><strong>8</strong><small>dato de demostración</small></article></div>
-          <div class="admin-grid two"><article class="panel"><div class="panel-heading"><div><small>FLOTA</small><h3>Estado general</h3></div><button data-admin-tab="flota">Ver flota</button></div><div class="status-list"><div><span><i class="dot available"></i>Disponible</span><strong>11</strong></div><div><span><i class="dot maintenance"></i>Mantenimiento</span><strong>3</strong></div><div><span><i class="dot reserved"></i>Reservado</span><strong>1</strong></div></div></article><article class="panel"><div class="panel-heading"><div><small>ACTIVIDAD</small><h3>Últimos movimientos</h3></div></div><div class="activity-list"><p><span>🛠</span><span><strong>TE-MP-004</strong> pasó a mantenimiento<small>Hace 18 min</small></span></p><p><span>👤</span><span>Nuevo cliente registrado<small>Hace 42 min</small></span></p><p><span>✅</span><span><strong>TE-CI-002</strong> volvió a servicio<small>Hace 1 h</small></span></p></div></article></div>
+
+        <header class="admin-topbar">
+          <div>
+            <small>Panel administrativo</small>
+            <h2 id="adminTitle">Resumen</h2>
+          </div>
+
+          <div class="admin-user">
+            <div class="avatar">AM</div>
+
+            <div>
+              <strong>Administrador</strong>
+              <small>Administrador</small>
+            </div>
+          </div>
+        </header>
+
+        <!-- RESUMEN -->
+
+        <section
+          class="admin-tab active"
+          data-admin-content="resumen"
+        >
+
+          <div class="metric-grid">
+
+            <article>
+              <span>Vehículos disponibles</span>
+              <strong>11</strong>
+              <small>de 15 unidades</small>
+            </article>
+
+            <article>
+              <span>En mantenimiento</span>
+              <strong>3</strong>
+              <small>1 novedad crítica</small>
+            </article>
+
+            <article>
+              <span>Usuarios activos</span>
+              <strong>24</strong>
+              <small>4 roles configurados</small>
+            </article>
+
+            <article>
+              <span>Solicitudes hoy</span>
+              <strong>8</strong>
+              <small>actividad registrada</small>
+            </article>
+
+          </div>
+
+          <div class="admin-grid two">
+
+            <article class="panel">
+
+              <div class="panel-heading">
+                <div>
+                  <small>FLOTA</small>
+                  <h3>Estado general</h3>
+                </div>
+
+                <button data-admin-tab="flota">
+                  Ver flota
+                </button>
+              </div>
+
+              <div class="status-list">
+
+                <div>
+                  <span>
+                    <i class="dot available"></i>
+                    Disponible
+                  </span>
+                  <strong>11</strong>
+                </div>
+
+                <div>
+                  <span>
+                    <i class="dot maintenance"></i>
+                    Mantenimiento
+                  </span>
+                  <strong>3</strong>
+                </div>
+
+                <div>
+                  <span>
+                    <i class="dot reserved"></i>
+                    Reservado
+                  </span>
+                  <strong>1</strong>
+                </div>
+
+              </div>
+            </article>
+
+            <article class="panel">
+
+              <div class="panel-heading">
+                <div>
+                  <small>ACTIVIDAD</small>
+                  <h3>Últimos movimientos</h3>
+                </div>
+              </div>
+
+              <div class="activity-list">
+
+                <p>
+                  <span>🛠</span>
+                  <span>
+                    <strong>TE-MP-004</strong> pasó a mantenimiento
+                    <small>Hace 18 min</small>
+                  </span>
+                </p>
+
+                <p>
+                  <span>👤</span>
+                  <span>
+                    Nuevo cliente registrado
+                    <small>Hace 42 min</small>
+                  </span>
+                </p>
+
+                <p>
+                  <span>✅</span>
+                  <span>
+                    <strong>TE-CI-002</strong> volvió a servicio
+                    <small>Hace 1 h</small>
+                  </span>
+                </p>
+
+              </div>
+            </article>
+
+          </div>
         </section>
 
-        <section class="admin-tab" data-admin-content="usuarios"><article class="panel"><div class="panel-heading"><div><small>HU-12</small><h3>Gestión de usuarios y roles</h3></div><button class="btn btn-primary small-btn">+ Nuevo usuario</button></div><div class="table-wrap"><table><thead><tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Acción</th></tr></thead><tbody><tr><td><strong>Ana Morales</strong><small>ana@example.com</small></td><td><span class="role admin">Administrador</span></td><td><span class="status-chip active-chip">Activo</span></td><td><button class="table-action">Editar</button></td></tr><tr><td><strong>Carlos Ruiz</strong><small>carlos@example.com</small></td><td><span class="role client">Cliente</span></td><td><span class="status-chip active-chip">Activo</span></td><td><button class="table-action">Editar</button></td></tr><tr><td><strong>Laura Díaz</strong><small>laura@example.com</small></td><td><span class="role operator">Operador</span></td><td><span class="status-chip active-chip">Activo</span></td><td><button class="table-action">Editar</button></td></tr><tr><td><strong>Mateo Gómez</strong><small>mateo@example.com</small></td><td><span class="role delivery">Domiciliario</span></td><td><span class="status-chip inactive-chip">Inactivo</span></td><td><button class="table-action">Editar</button></td></tr></tbody></table></div></article></section>
+        <!-- USUARIOS -->
 
-        <section class="admin-tab" data-admin-content="flota"><article class="panel"><div class="panel-heading"><div><small>HU-09</small><h3>Gestión de flota</h3></div><div class="inline-actions"><input class="search-input" placeholder="Buscar por código"><button class="btn btn-primary small-btn">+ Registrar</button></div></div><div class="fleet-grid"><article><div class="vehicle-icon">🚲</div><div><small>TE-CI-001</small><h4>Urban Ride 3</h4><span class="status-chip active-chip">Disponible</span></div><button class="outline-danger" data-inactivate="TE-CI-001">Inactivar</button></article><article><div class="vehicle-icon">🛴</div><div><small>TE-MP-004</small><h4>Volt City S2</h4><span class="status-chip maintenance-chip">Mantenimiento</span></div><button class="table-action">Ver novedades</button></article><article><div class="vehicle-icon">🛼</div><div><small>TE-PA-002</small><h4>Street Glide</h4><span class="status-chip active-chip">Disponible</span></div><button class="outline-danger" data-inactivate="TE-PA-002">Inactivar</button></article></div></article></section>
+        <section
+          class="admin-tab"
+          data-admin-content="usuarios"
+        >
 
-        <section class="admin-tab" data-admin-content="mantenimiento"><article class="panel"><div class="panel-heading"><div><small>MANTENIMIENTO</small><h3>Novedades abiertas</h3></div></div><div class="maintenance-list"><article><span class="warning-icon">!</span><div><small>TE-MP-004 · Crítica</small><h4>Falla de freno trasero</h4><p>Unidad retirada temporalmente del catálogo.</p></div><button class="btn btn-soft">Revisar</button></article><article><span class="warning-icon soft">!</span><div><small>TE-MP-007 · Media</small><h4>Batería con carga irregular</h4><p>Pendiente de diagnóstico del operador.</p></div><button class="btn btn-soft">Revisar</button></article></div></article></section>
+          <article class="panel">
 
-        <section class="admin-tab" data-admin-content="operacion"><div id="txOpsError" class="tx-availability no tx-panel-error" hidden></div><div class="tx-panel-stack"><article class="panel"><div class="panel-heading"><div><small>HU-03</small><h3>Alquileres por entregar</h3></div><button class="btn btn-ghost small-btn" id="txOpsRefresh">Actualizar</button></div><div class="table-wrap"><table><thead><tr><th>Reserva</th><th>Unidad</th><th>Fechas</th><th>Total</th><th>Acción</th></tr></thead><tbody id="txDeliverRows"></tbody></table></div></article><article class="panel"><div class="panel-heading"><div><small>HU-03</small><h3>Alquileres por recibir</h3></div></div><div class="table-wrap"><table><thead><tr><th>Reserva</th><th>Unidad</th><th>Fechas</th><th>Total</th><th>Acción</th></tr></thead><tbody id="txReceiveRows"></tbody></table></div></article><article class="panel"><div class="panel-heading"><div><small>HU-06</small><h3>Domicilios por asignar</h3></div></div><div class="table-wrap"><table><thead><tr><th>Domicilio</th><th>Cliente y dirección</th><th>Zona</th><th>Pago</th><th>Acción</th></tr></thead><tbody id="txAssignRows"></tbody></table></div></article></div></section>
+            <div class="panel-heading">
+              <div>
+                <small>HU-12</small>
+                <h3>Gestión de usuarios y roles</h3>
+              </div>
 
-        <section class="admin-tab" data-admin-content="inventario"><div id="txInvError" class="tx-availability no tx-panel-error" hidden></div><div class="metric-grid" id="txInvMetrics"></div><div class="tx-subtabs" role="tablist" aria-label="Secciones del inventario"><button class="active" data-inv-tab="alertas">Alertas de stock <span id="txInvAlertCount">0</span></button><button data-inv-tab="modelos">Modelos</button><button data-inv-tab="unidades">Unidades</button><button data-inv-tab="productos">Productos</button></div><article class="panel" id="txInvPanel"></article></section>
+              <button class="btn btn-primary small-btn">
+                + Nuevo usuario
+              </button>
+            </div>
 
-        <section class="admin-tab" data-admin-content="actas"><div id="txActasError" class="tx-availability no tx-panel-error" hidden></div><article class="panel"><div class="panel-heading"><div><small>HU-11</small><h3>Actas de entrega y recepción</h3></div><button class="btn btn-primary small-btn" id="txActasExcel">Exportar a Excel</button></div><form class="tx-actas-filters" id="txActasFilters"><label>Desde<input type="date" name="desde" required></label><label>Hasta<input type="date" name="hasta" required></label><label>Tipo<select name="tipo"><option value="">Todas</option><option value="entrega">Entrega</option><option value="recepcion">Recepción</option></select></label><button class="btn btn-ghost small-btn" type="submit">Filtrar</button></form><div class="table-wrap"><table><thead><tr><th>Acta</th><th>Vehículo</th><th>Cliente</th><th>Registro</th><th>Conformidad</th><th>Acciones</th></tr></thead><tbody id="txActasRows"></tbody></table></div><div class="tx-pager" id="txActasPager"></div></article></section>
+            <div class="table-wrap">
 
-        <section class="admin-tab" data-admin-content="rastreo"><article class="panel"><div class="panel-heading"><div><small>HU-08</small><h3>Mapa de la flota</h3></div><div class="tx-fleet-legend"><span><i class="dot available"></i>En línea</span><span><i class="dot tx-dot-off"></i>Sin señal</span><small id="txFleetUpdated">Sin consultar</small></div></div><div id="txFleetError" class="tx-availability no" hidden></div><div id="txFleetMap" class="tx-fleet-map" aria-label="Mapa de la flota"></div><div class="table-wrap"><table><thead><tr><th>Unidad</th><th>Estado</th><th>Señal</th><th>Último reporte</th></tr></thead><tbody id="txFleetRows"></tbody></table></div></article></section>
+              <table>
+
+                <thead>
+                  <tr>
+                    <th>Usuario</th>
+                    <th>Rol</th>
+                    <th>Estado</th>
+                    <th>Acción</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+
+                  <tr>
+                    <td>
+                      <strong>Ana Morales</strong>
+                      <small>ana@example.com</small>
+                    </td>
+
+                    <td>
+                      <span class="role admin">Administrador</span>
+                    </td>
+
+                    <td>
+                      <span class="status-chip active-chip">
+                        Activo
+                      </span>
+                    </td>
+
+                    <td>
+                      <button class="table-action">Editar</button>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td>
+                      <strong>Carlos Ruiz</strong>
+                      <small>carlos@example.com</small>
+                    </td>
+
+                    <td>
+                      <span class="role client">Cliente</span>
+                    </td>
+
+                    <td>
+                      <span class="status-chip active-chip">
+                        Activo
+                      </span>
+                    </td>
+
+                    <td>
+                      <button class="table-action">Editar</button>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td>
+                      <strong>Laura Díaz</strong>
+                      <small>laura@example.com</small>
+                    </td>
+
+                    <td>
+                      <span class="role operator">Operador</span>
+                    </td>
+
+                    <td>
+                      <span class="status-chip active-chip">
+                        Activo
+                      </span>
+                    </td>
+
+                    <td>
+                      <button class="table-action">Editar</button>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td>
+                      <strong>Mateo Gómez</strong>
+                      <small>mateo@example.com</small>
+                    </td>
+
+                    <td>
+                      <span class="role delivery">Domiciliario</span>
+                    </td>
+
+                    <td>
+                      <span class="status-chip inactive-chip">
+                        Inactivo
+                      </span>
+                    </td>
+
+                    <td>
+                      <button class="table-action">Editar</button>
+                    </td>
+                  </tr>
+
+                </tbody>
+              </table>
+
+            </div>
+          </article>
+        </section>
+
+        <!-- FLOTA -->
+
+        <section
+          class="admin-tab"
+          data-admin-content="flota"
+        >
+
+          <article class="panel">
+
+            <div class="panel-heading">
+
+              <div>
+                <small>HU-09</small>
+                <h3>Gestión de flota</h3>
+              </div>
+
+              <div class="inline-actions">
+
+                <input
+                  class="search-input"
+                  placeholder="Buscar por código"
+                >
+
+                <button class="btn btn-primary small-btn">
+                  + Registrar
+                </button>
+
+              </div>
+            </div>
+
+            <div class="fleet-grid">
+
+              <article>
+                <div class="vehicle-icon">🚲</div>
+
+                <div>
+                  <small>TE-CI-001</small>
+                  <h4>Urban Ride 3</h4>
+                  <span class="status-chip active-chip">
+                    Disponible
+                  </span>
+                </div>
+
+                <button
+                  class="outline-danger"
+                  data-inactivate="TE-CI-001"
+                >
+                  Inactivar
+                </button>
+              </article>
+
+              <article>
+                <div class="vehicle-icon">🛴</div>
+
+                <div>
+                  <small>TE-MP-004</small>
+                  <h4>Volt City S2</h4>
+                  <span class="status-chip maintenance-chip">
+                    Mantenimiento
+                  </span>
+                </div>
+
+                <button class="table-action">
+                  Ver novedades
+                </button>
+              </article>
+
+              <article>
+                <div class="vehicle-icon">🛼</div>
+
+                <div>
+                  <small>TE-PA-002</small>
+                  <h4>Street Glide</h4>
+                  <span class="status-chip active-chip">
+                    Disponible
+                  </span>
+                </div>
+
+                <button
+                  class="outline-danger"
+                  data-inactivate="TE-PA-002"
+                >
+                  Inactivar
+                </button>
+              </article>
+
+            </div>
+          </article>
+        </section>
+
+        <!-- MANTENIMIENTO -->
+
+        <section
+          class="admin-tab"
+          data-admin-content="mantenimiento"
+        >
+
+          <article class="panel">
+
+            <div class="panel-heading">
+              <div>
+                <small>MANTENIMIENTO</small>
+                <h3>Novedades abiertas</h3>
+              </div>
+            </div>
+
+            <div class="maintenance-list">
+
+              <article>
+                <span class="warning-icon">!</span>
+
+                <div>
+                  <small>TE-MP-004 · Crítica</small>
+                  <h4>Falla de freno trasero</h4>
+                  <p>
+                    Unidad retirada temporalmente del catálogo.
+                  </p>
+                </div>
+
+                <button class="btn btn-soft">
+                  Revisar
+                </button>
+              </article>
+
+              <article>
+                <span class="warning-icon soft">!</span>
+
+                <div>
+                  <small>TE-MP-007 · Media</small>
+                  <h4>Batería con carga irregular</h4>
+                  <p>
+                    Pendiente de diagnóstico del operador.
+                  </p>
+                </div>
+
+                <button class="btn btn-soft">
+                  Revisar
+                </button>
+              </article>
+
+            </div>
+          </article>
+        </section>
+
+        <!-- OPERACIÓN -->
+
+        <section
+          class="admin-tab"
+          data-admin-content="operacion"
+        >
+
+          <div
+            id="txOpsError"
+            class="tx-availability no tx-panel-error"
+            hidden
+          ></div>
+
+          <div class="tx-panel-stack">
+
+            <article class="panel">
+
+              <div class="panel-heading">
+                <div>
+                  <small>HU-03</small>
+                  <h3>Alquileres por entregar</h3>
+                </div>
+
+                <button
+                  class="btn btn-ghost small-btn"
+                  id="txOpsRefresh"
+                >
+                  Actualizar
+                </button>
+              </div>
+
+              <div class="table-wrap">
+
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Reserva</th>
+                      <th>Unidad</th>
+                      <th>Fechas</th>
+                      <th>Total</th>
+                      <th>Acción</th>
+                    </tr>
+                  </thead>
+
+                  <tbody id="txDeliverRows"></tbody>
+                </table>
+
+              </div>
+            </article>
+
+            <article class="panel">
+
+              <div class="panel-heading">
+                <div>
+                  <small>HU-03</small>
+                  <h3>Alquileres por recibir</h3>
+                </div>
+              </div>
+
+              <div class="table-wrap">
+
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Reserva</th>
+                      <th>Unidad</th>
+                      <th>Fechas</th>
+                      <th>Total</th>
+                      <th>Acción</th>
+                    </tr>
+                  </thead>
+
+                  <tbody id="txReceiveRows"></tbody>
+                </table>
+
+              </div>
+            </article>
+
+            <article class="panel">
+
+              <div class="panel-heading">
+                <div>
+                  <small>HU-06</small>
+                  <h3>Domicilios por asignar</h3>
+                </div>
+              </div>
+
+              <div class="table-wrap">
+
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Domicilio</th>
+                      <th>Cliente y dirección</th>
+                      <th>Zona</th>
+                      <th>Pago</th>
+                      <th>Acción</th>
+                    </tr>
+                  </thead>
+
+                  <tbody id="txAssignRows"></tbody>
+                </table>
+
+              </div>
+            </article>
+
+          </div>
+        </section>
+
+        <!-- INVENTARIO -->
+
+        <section
+          class="admin-tab"
+          data-admin-content="inventario"
+        >
+
+          <div
+            id="txInvError"
+            class="tx-availability no tx-panel-error"
+            hidden
+          ></div>
+
+          <div
+            class="metric-grid"
+            id="txInvMetrics"
+          ></div>
+
+          <div
+            class="tx-subtabs"
+            role="tablist"
+            aria-label="Secciones del inventario"
+          >
+
+            <button class="active" data-inv-tab="alertas">
+              Alertas de stock
+              <span id="txInvAlertCount">0</span>
+            </button>
+
+            <button data-inv-tab="modelos">
+              Modelos
+            </button>
+
+            <button data-inv-tab="unidades">
+              Unidades
+            </button>
+
+            <button data-inv-tab="productos">
+              Productos
+            </button>
+
+          </div>
+
+          <article
+            class="panel"
+            id="txInvPanel"
+          ></article>
+
+        </section>
+
+        <!-- ACTAS -->
+
+        <section
+          class="admin-tab"
+          data-admin-content="actas"
+        >
+
+          <div
+            id="txActasError"
+            class="tx-availability no tx-panel-error"
+            hidden
+          ></div>
+
+          <article class="panel">
+
+            <div class="panel-heading">
+
+              <div>
+                <small>HU-11</small>
+                <h3>Actas de entrega y recepción</h3>
+              </div>
+
+              <button
+                class="btn btn-primary small-btn"
+                id="txActasExcel"
+              >
+                Exportar a Excel
+              </button>
+
+            </div>
+
+            <form
+              class="tx-actas-filters"
+              id="txActasFilters"
+            >
+
+              <label>
+                Desde
+                <input type="date" name="desde" required>
+              </label>
+
+              <label>
+                Hasta
+                <input type="date" name="hasta" required>
+              </label>
+
+              <label>
+                Tipo
+                <select name="tipo">
+                  <option value="">Todas</option>
+                  <option value="entrega">Entrega</option>
+                  <option value="recepcion">Recepción</option>
+                </select>
+              </label>
+
+              <button
+                class="btn btn-ghost small-btn"
+                type="submit"
+              >
+                Filtrar
+              </button>
+
+            </form>
+
+            <div class="table-wrap">
+
+              <table>
+                <thead>
+                  <tr>
+                    <th>Acta</th>
+                    <th>Vehículo</th>
+                    <th>Cliente</th>
+                    <th>Registro</th>
+                    <th>Conformidad</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+
+                <tbody id="txActasRows"></tbody>
+              </table>
+
+            </div>
+
+            <div
+              class="tx-pager"
+              id="txActasPager"
+            ></div>
+
+          </article>
+        </section>
+
+        <!-- RASTREO GPS -->
+
+        <section
+          class="admin-tab"
+          data-admin-content="rastreo"
+        >
+
+          <article class="panel">
+
+            <div class="panel-heading">
+
+              <div>
+                <small>HU-08</small>
+                <h3>Mapa de la flota</h3>
+              </div>
+
+              <div class="tx-fleet-legend">
+
+                <span>
+                  <i class="dot available"></i>
+                  En línea
+                </span>
+
+                <span>
+                  <i class="dot tx-dot-off"></i>
+                  Sin señal
+                </span>
+
+                <small id="txFleetUpdated">
+                  Sin consultar
+                </small>
+
+              </div>
+            </div>
+
+            <div
+              id="txFleetError"
+              class="tx-availability no"
+              hidden
+            ></div>
+
+            <div
+              id="txFleetMap"
+              class="tx-fleet-map"
+              aria-label="Mapa de la flota"
+            ></div>
+
+            <div class="table-wrap">
+
+              <table>
+                <thead>
+                  <tr>
+                    <th>Unidad</th>
+                    <th>Estado</th>
+                    <th>Señal</th>
+                    <th>Último reporte</th>
+                  </tr>
+                </thead>
+
+                <tbody id="txFleetRows"></tbody>
+              </table>
+
+            </div>
+          </article>
+        </section>
+
       </div>
     </section>
 
-    <section class="view" id="view-entregas" data-view="entregas">
-      <section class="page-hero compact"><div><span class="eyebrow">DOMICILIARIO · HU-07</span><h1 id="txCourierGreeting">Mis entregas</h1><p>Tus domicilios en ruta. Avanza el estado a medida que recoges y entregas cada pedido.</p><div class="tx-account-actions"><button class="btn btn-primary" id="txCourierRefresh">Actualizar</button><button class="btn btn-ghost" id="txCourierLogout">Cerrar sesión</button></div></div></section>
-      <section class="section tx-rentals-section"><div id="txCourierError" class="tx-availability no tx-panel-error" hidden></div><div id="txCourierList" class="tx-rentals-list"></div></section>
+    <!-- ===================================================== -->
+    <!-- DOMICILIARIO -->
+    <!-- ===================================================== -->
+
+    <section
+      class="view"
+      id="view-entregas"
+      data-view="entregas"
+    >
+
+      <section class="page-hero compact">
+        <div>
+          <span class="eyebrow">DOMICILIARIO · HU-07</span>
+
+          <h1 id="txCourierGreeting">
+            Mis entregas
+          </h1>
+
+          <p>
+            Tus domicilios en ruta. Avanza el estado a medida
+            que recoges y entregas cada pedido.
+          </p>
+
+          <div class="tx-account-actions">
+
+            <button
+              class="btn btn-primary"
+              id="txCourierRefresh"
+            >
+              Actualizar
+            </button>
+
+            <button
+              class="btn btn-ghost"
+              id="txCourierLogout"
+            >
+              Cerrar sesión
+            </button>
+
+          </div>
+        </div>
+      </section>
+
+      <section class="section tx-rentals-section">
+
+        <div
+          id="txCourierError"
+          class="tx-availability no tx-panel-error"
+          hidden
+        ></div>
+
+        <div
+          id="txCourierList"
+          class="tx-rentals-list"
+        ></div>
+
+      </section>
     </section>
 
-    <section class="view" id="view-mis-actas" data-view="mis-actas">
-      <section class="page-hero compact"><div><span class="eyebrow">MIS ACTAS · HU-11</span><h1>Actas de entrega y recepción</h1><p>Revisa el PDF de cada acta y, si estás de acuerdo con lo que dice, da tu conformidad. Queda registrada con tu usuario, la fecha y la huella (SHA-256) del PDF.</p></div></section>
-      <section class="section tx-rentals-section"><div id="txMyActasError" class="tx-availability no tx-panel-error" hidden></div><div id="txMyActasList" class="tx-rentals-list"></div></section>
+    <!-- ===================================================== -->
+    <!-- ACTAS DEL CLIENTE -->
+    <!-- ===================================================== -->
+
+    <section
+      class="view"
+      id="view-mis-actas"
+      data-view="mis-actas"
+    >
+
+      <section class="page-hero compact">
+        <div>
+          <span class="eyebrow">MIS ACTAS · HU-11</span>
+
+          <h1>Actas de entrega y recepción</h1>
+
+          <p>
+            Revisa el PDF de cada acta y, si estás de acuerdo con
+            su contenido, da tu conformidad. El sistema registra
+            tu usuario, la fecha y la huella SHA-256 del documento.
+          </p>
+        </div>
+      </section>
+
+      <section class="section tx-rentals-section">
+
+        <div
+          id="txMyActasError"
+          class="tx-availability no tx-panel-error"
+          hidden
+        ></div>
+
+        <div
+          id="txMyActasList"
+          class="tx-rentals-list"
+        ></div>
+
+      </section>
     </section>
+
   </main>
 
-  <footer class="site-footer" id="siteFooter"><div><strong>TransportExperience</strong><p>Prototipo frontend v1 · SystemSolutions · 2026</p></div><div><a href="#inicio" data-view-link="inicio">Inicio</a><a href="#catalogo" data-view-link="catalogo">Catálogo</a><a href="#contacto" data-anchor-link="contacto">Contacto</a></div></footer>
+  <!-- ===================================================== -->
+  <!-- FOOTER -->
+  <!-- ===================================================== -->
+
+  <footer class="site-footer" id="siteFooter">
+
+    <div>
+      <img
+        src="logo_fondo_transparente.svg"
+        alt="TransportExperience"
+        style="max-width:180px;width:100%;height:auto;margin-bottom:8px;"
+      >
+
+      <p>
+        Movilidad, alquiler, venta y domicilios · SystemSolutions · 2026
+      </p>
+    </div>
+
+    <div>
+      <a href="#inicio" data-view-link="inicio">Inicio</a>
+      <a href="#catalogo" data-view-link="catalogo">Catálogo</a>
+      <a href="#contacto" data-anchor-link="contacto">Contacto</a>
+    </div>
+
+  </footer>
+
+  <!-- ===================================================== -->
+  <!-- DIÁLOGOS / MENSAJES -->
+  <!-- ===================================================== -->
+
+  <dialog id="vehicleDialog" class="vehicle-dialog">
+    <button
+      class="dialog-close"
+      id="closeDialog"
+      aria-label="Cerrar"
+    >
+      ×
+    </button>
+
+    <div id="dialogContent"></div>
+  </dialog>
+
+  <div
+    class="toast"
+    id="toast"
+    role="status"
+    aria-live="polite"
+  ></div>
+
+  <!-- ===================================================== -->
+  <!-- SCRIPTS -->
+  <!-- ===================================================== -->
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
 
   <dialog id="vehicleDialog" class="vehicle-dialog"><button class="dialog-close" id="closeDialog" aria-label="Cerrar">×</button><div id="dialogContent"></div></dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -236,5 +1685,6 @@
   <script src="app.js"></script>
   <script src="paneles.js"></script>
   <script src="cliente.js"></script>
+
 </body>
 </html>
