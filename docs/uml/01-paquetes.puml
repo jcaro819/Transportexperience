@@ -25,7 +25,7 @@ package "app/" as app {
   }
 }
 folder "simulador_gps/\n<size:10>~__main~__.py · movimiento.py · rutas.py</size>\n<size:10>simulador.py</size>" as c_simulador_gps
-folder "frontend/\n<size:10>README.md · app.js · cliente.js</size>\n<size:10>config.local.example.js · index.html · paneles.js</size>\n<size:10>styles.css</size>" as c_frontend
+folder "frontend/\n<size:10>README.md · app.js · cliente.js</size>\n<size:10>config.local.example.js · icono_app_optimizado.svg · index.html</size>\n<size:10>logo_fondo_transparente.svg · paneles.js · styles.css</size>" as c_frontend
 
 a_main ..> a_config
 a_main ..> a_db
