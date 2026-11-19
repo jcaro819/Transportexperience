@@ -6,6 +6,7 @@ eléctricos. Proyecto académico del equipo **SystemSolutions** (Scrum, 4 sprint
 - Requisitos: [`docs/SRS.pdf`](docs/SRS.pdf)
 - Plan y backlog: [`docs/plan-desarrollo.pdf`](docs/plan-desarrollo.pdf)
 - Guía de la API para el frontend: [`docs/api/README.md`](docs/api/README.md)
+- Abrir el sistema desde otro equipo (túnel para la sustentación): [`docs/sustentacion-tunel.md`](docs/sustentacion-tunel.md)
 - Guía de trabajo del equipo y de Claude Code: [`CLAUDE.md`](CLAUDE.md)
 
 ## Requisitos previos
